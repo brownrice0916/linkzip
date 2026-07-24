@@ -17,7 +17,7 @@ import {
   FaFacebook,
   FaWhatsapp,
 } from "react-icons/fa";
-import { User, Share, MoreHorizontal, Link2, X, Mail } from "lucide-react";
+import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import clsx from "clsx";
 
@@ -89,38 +89,39 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
 }) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const isColor = templateType === "color";
-  const { 
-    buttonStyle = 'solid', 
-    buttonRoundness = 'full', 
-    buttonShadow = 'soft',
-    buttonColor, 
-    buttonTextColor, 
-    fontFamily = 'sans', 
+  const {
+    buttonStyle = "solid",
+    buttonRoundness = "full",
+    buttonShadow = "soft",
+    buttonColor,
+    buttonTextColor,
+    fontFamily = "sans",
     titleFontFamily,
-    pageTextColor, 
-    sticker 
+    pageTextColor,
+    sticker,
   } = useStore();
 
   let fontClass = "font-sans";
-  if (fontFamily === 'mono') fontClass = "font-mono";
-  if (fontFamily === 'serif') fontClass = "font-serif";
+  if (fontFamily === "mono") fontClass = "font-mono";
+  if (fontFamily === "serif") fontClass = "font-serif";
 
   let roundnessClass = "rounded-full";
-  if (buttonRoundness === 'none') roundnessClass = "rounded-none";
-  if (buttonRoundness === 'sm') roundnessClass = "rounded-md";
-  if (buttonRoundness === 'md') roundnessClass = "rounded-xl";
-  if (buttonRoundness === 'full') roundnessClass = "rounded-full";
+  if (buttonRoundness === "none") roundnessClass = "rounded-none";
+  if (buttonRoundness === "sm") roundnessClass = "rounded-md";
+  if (buttonRoundness === "md") roundnessClass = "rounded-xl";
+  if (buttonRoundness === "full") roundnessClass = "rounded-full";
 
   let shadowClass = "shadow-sm";
-  if (buttonShadow === 'none') shadowClass = "shadow-none";
-  if (buttonShadow === 'soft') shadowClass = "shadow-sm";
-  if (buttonShadow === 'strong') shadowClass = "shadow-lg";
-  if (buttonShadow === 'hard') shadowClass = "border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
+  if (buttonShadow === "none") shadowClass = "shadow-none";
+  if (buttonShadow === "soft") shadowClass = "shadow-sm";
+  if (buttonShadow === "strong") shadowClass = "shadow-lg";
+  if (buttonShadow === "hard")
+    shadowClass =
+      "border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
 
-  let containerClass =
-    `flex flex-col items-center w-full min-h-screen transition-all duration-300 relative`;
+  let containerClass = `flex flex-col items-center w-full min-h-screen transition-all duration-300 relative`;
   let containerStyle: React.CSSProperties = {
-    fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : 'sans-serif'
+    fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : "sans-serif",
   };
 
   let textClass = "text-gray-900";
@@ -135,75 +136,96 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
     containerStyle.backgroundColor = templateValue;
     const isDark = templateValue === "#0f172a";
     if (!pageTextColor) textClass = isDark ? "text-white" : "text-gray-900";
-    themeDefaultBtnClass = isDark 
-      ? "bg-white/10 text-white border border-white/20 hover:bg-white/20" 
+    themeDefaultBtnClass = isDark
+      ? "bg-white/10 text-white border border-white/20 hover:bg-white/20"
       : "bg-white text-gray-900 border border-gray-200 hover:bg-gray-100 shadow-sm";
   } else {
     if (templateValue === "minimalist") {
       containerClass += " bg-[#FAF9F6]";
-      themeDefaultBtnClass = "bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 shadow-sm";
+      themeDefaultBtnClass =
+        "bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 shadow-sm";
     } else if (templateValue === "neon-dark") {
       containerClass += " bg-gray-900";
       if (!pageTextColor) textClass = "text-white";
-      themeDefaultBtnClass = "bg-gray-800 border-2 border-indigo-500 text-indigo-400 hover:bg-indigo-500 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]";
+      themeDefaultBtnClass =
+        "bg-gray-800 border-2 border-indigo-500 text-indigo-400 hover:bg-indigo-500 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]";
     } else if (templateValue === "soft-gradient") {
-      containerClass += " bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400";
+      containerClass +=
+        " bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400";
       if (!pageTextColor) textClass = "text-white";
-      themeDefaultBtnClass = "bg-white/25 backdrop-blur-md border border-white/30 text-white hover:bg-white/35 shadow-lg";
+      themeDefaultBtnClass =
+        "bg-white/25 backdrop-blur-md border border-white/30 text-white hover:bg-white/35 shadow-lg";
     } else if (templateValue === "air") {
       containerClass += " bg-gray-100";
-      themeDefaultBtnClass = "bg-white text-gray-900 border border-gray-200 shadow-sm hover:bg-gray-50";
+      themeDefaultBtnClass =
+        "bg-white text-gray-900 border border-gray-200 shadow-sm hover:bg-gray-50";
     } else if (templateValue === "blocks") {
       containerClass += " bg-purple-600";
       if (!pageTextColor) textClass = "text-white";
-      themeDefaultBtnClass = "bg-pink-500 text-white font-bold hover:bg-pink-600 shadow-md";
+      themeDefaultBtnClass =
+        "bg-pink-500 text-white font-bold hover:bg-pink-600 shadow-md";
     } else if (templateValue === "bloom") {
       containerClass += " bg-gradient-to-br from-pink-500 to-rose-600";
       if (!pageTextColor) textClass = "text-white";
-      themeDefaultBtnClass = "bg-white/20 backdrop-blur-md text-white border border-white/40 hover:bg-white/30 shadow-md";
+      themeDefaultBtnClass =
+        "bg-white/20 backdrop-blur-md text-white border border-white/40 hover:bg-white/30 shadow-md";
     } else if (templateValue === "sunbloom") {
-      containerClass += " bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400";
+      containerClass +=
+        " bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400";
       if (!pageTextColor) textClass = "text-amber-950";
-      themeDefaultBtnClass = "bg-white/30 backdrop-blur-md text-amber-950 border border-white/50 hover:bg-white/40 shadow-md font-semibold";
+      themeDefaultBtnClass =
+        "bg-white/30 backdrop-blur-md text-amber-950 border border-white/50 hover:bg-white/40 shadow-md font-semibold";
     } else if (templateValue === "neo-pop") {
-      containerClass += " bg-gradient-to-tr from-yellow-300 via-pink-400 to-indigo-500";
+      containerClass +=
+        " bg-gradient-to-tr from-yellow-300 via-pink-400 to-indigo-500";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+      themeDefaultBtnClass =
+        "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
     } else if (templateValue === "neo-sunshine") {
-      containerClass += " bg-gradient-to-tr from-yellow-300 via-amber-400 to-lime-300";
+      containerClass +=
+        " bg-gradient-to-tr from-yellow-300 via-amber-400 to-lime-300";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-lime-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+      themeDefaultBtnClass =
+        "bg-lime-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
     } else if (templateValue === "neo-cyber") {
-      containerClass += " bg-gradient-to-tr from-cyan-300 via-blue-500 to-pink-500";
+      containerClass +=
+        " bg-gradient-to-tr from-cyan-300 via-blue-500 to-pink-500";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-yellow-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+      themeDefaultBtnClass =
+        "bg-yellow-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
     } else if (templateValue === "neo-mint") {
-      containerClass += " bg-gradient-to-tr from-emerald-300 via-teal-400 to-purple-500";
+      containerClass +=
+        " bg-gradient-to-tr from-emerald-300 via-teal-400 to-purple-500";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+      themeDefaultBtnClass =
+        "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
     } else if (templateValue === "groove") {
-      containerClass += " bg-gradient-to-r from-amber-500 via-red-500 to-purple-600";
+      containerClass +=
+        " bg-gradient-to-r from-amber-500 via-red-500 to-purple-600";
       if (!pageTextColor) textClass = "text-white";
-      themeDefaultBtnClass = "bg-black/40 backdrop-blur-sm border border-white/20 text-white hover:bg-black/60 shadow-md";
+      themeDefaultBtnClass =
+        "bg-black/40 backdrop-blur-sm border border-white/20 text-white hover:bg-black/60 shadow-md";
     } else if (templateValue === "lake") {
       containerClass += " bg-slate-800";
       if (!pageTextColor) textClass = "text-slate-100";
-      themeDefaultBtnClass = "bg-slate-700/80 border border-slate-600 text-slate-100 hover:bg-slate-700 shadow-md";
+      themeDefaultBtnClass =
+        "bg-slate-700/80 border border-slate-600 text-slate-100 hover:bg-slate-700 shadow-md";
     } else if (templateValue === "nourish") {
       containerClass += " bg-emerald-700";
       if (!pageTextColor) textClass = "text-emerald-50";
-      themeDefaultBtnClass = "bg-amber-100 text-emerald-950 font-bold hover:bg-amber-200 shadow-md";
+      themeDefaultBtnClass =
+        "bg-amber-100 text-emerald-950 font-bold hover:bg-amber-200 shadow-md";
     }
   }
-  let buttonClass =
-    `w-full py-4 px-4 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between ${roundnessClass} ${shadowClass}`;
+  let buttonClass = `w-full py-4 px-4 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between ${roundnessClass} ${shadowClass}`;
   let customButtonStyle: React.CSSProperties = {};
   if (buttonColor) customButtonStyle.backgroundColor = buttonColor;
   if (buttonTextColor) customButtonStyle.color = buttonTextColor;
 
-  if (buttonStyle === 'glass') {
-    buttonClass += " bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30";
-  } else if (buttonStyle === 'outline') {
+  if (buttonStyle === "glass") {
+    buttonClass +=
+      " bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30";
+  } else if (buttonStyle === "outline") {
     buttonClass += " bg-transparent border-2 border-current hover:bg-black/5";
   } else {
     // Solid: use theme default button class if no custom buttonColor
@@ -214,11 +236,23 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
 
   let socialIconClass = "w-7 h-7 hover:scale-110 transition-transform";
 
+  const [emailCopied, setEmailCopied] = useState(false);
+
   const shareUrl = `${window.location.origin}/${profile.username || "preview"}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl);
     alert("Link copied to clipboard!");
+  };
+
+  const handleCopyEmail = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (profile.email) {
+      navigator.clipboard.writeText(profile.email);
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 2000);
+    }
   };
 
   return (
@@ -233,10 +267,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
         style={containerStyle}
       >
         {/* Banner Header Image (Only for banner layout - flush to top edge) */}
-        {profile.profileLayout === 'banner' && (
+        {profile.profileLayout === "banner" && (
           <div className="w-full h-48 sm:h-52 bg-gray-200 relative shrink-0 overflow-hidden">
             {profile.bannerUrl ? (
-              <img src={profile.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+              <img
+                src={profile.bannerUrl}
+                alt="Banner"
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                 Banner Image Preview
@@ -246,29 +284,48 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
         )}
 
         {/* Top Header Icons */}
-        <div className={clsx(
-          "w-full flex justify-between items-center p-6 z-30",
-          profile.profileLayout === 'banner' ? "absolute top-0 left-0 right-0" : "relative"
-        )}>
-          <div className={clsx(
-            "w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition shadow-2xs",
-            profile.profileLayout === 'banner' ? "bg-white/40 backdrop-blur-md hover:bg-white/60 text-gray-900" : "bg-black/5 hover:bg-black/10"
-          )}>
-            <Link2 className={clsx("w-5 h-5", profile.profileLayout === 'banner' ? "text-gray-900" : textClass)} />
-          </div>
+        <div
+          className={clsx(
+            "w-full flex justify-between items-center p-6 z-30",
+            profile.profileLayout === "banner"
+              ? "absolute top-0 left-0 right-0"
+              : "relative"
+          )}
+        >
+          {/* <div
+            className={clsx(
+              "w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition shadow-2xs",
+              profile.profileLayout === "banner"
+                ? "bg-white/40 backdrop-blur-md hover:bg-white/60 text-gray-900"
+                : "bg-black/5 hover:bg-black/10"
+            )}
+          >
+            <Link2
+              className={clsx(
+                "w-5 h-5",
+                profile.profileLayout === "banner" ? "text-gray-900" : textClass
+              )}
+            />
+          </div> */}
           <div
             onClick={() => setIsShareModalOpen(true)}
             className={clsx(
               "w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition shadow-2xs",
-              profile.profileLayout === 'banner' ? "bg-white/40 backdrop-blur-md hover:bg-white/60 text-gray-900" : "bg-black/5 hover:bg-black/10"
+              profile.profileLayout === "banner"
+                ? "bg-white/40 backdrop-blur-md hover:bg-white/60 text-gray-900"
+                : "bg-black/5 hover:bg-black/10"
             )}
           >
-            <Share className={clsx("w-5 h-5", profile.profileLayout === 'banner' ? "text-gray-900" : textClass)} />
+            <Share
+              className={clsx(
+                "w-5 h-5",
+                profile.profileLayout === "banner" ? "text-gray-900" : textClass
+              )}
+            />
           </div>
         </div>
 
         <div className="w-full px-6 flex flex-col items-center pb-24 relative z-10">
-          
           {/* Profile Avatar based on Layout */}
           <div className="relative">
             {sticker && (
@@ -277,26 +334,36 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
               </div>
             )}
 
-            {profile.profileLayout === 'hero' ? (
+            {profile.profileLayout === "hero" ? (
               <div className="w-full max-w-[320px] relative overflow-hidden mb-4 shrink-0 flex flex-col items-center">
-                <div 
+                <div
                   className="relative w-full aspect-square max-h-[300px] overflow-hidden flex items-center justify-center"
                   style={{
-                    WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 98%)',
-                    maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 98%)'
+                    WebkitMaskImage:
+                      "linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 98%)",
+                    maskImage:
+                      "linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 98%)",
                   }}
                 >
                   {profile.avatarUrl ? (
-                    <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                    <img
+                      src={profile.avatarUrl}
+                      alt={profile.name}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <User className="w-24 h-24 text-gray-400" />
                   )}
                 </div>
               </div>
-            ) : profile.profileLayout === 'banner' ? (
+            ) : profile.profileLayout === "banner" ? (
               <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-2 border-white shadow-md -mt-12 shrink-0 z-20 bg-white">
                 {profile.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                  <img
+                    src={profile.avatarUrl}
+                    alt={profile.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full bg-amber-100 flex items-center justify-center text-gray-700">
                     <User className="w-12 h-12" />
@@ -307,7 +374,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
               /* Classic Default - Pure Avatar Image without backgrounds or borders */
               <div className="w-24 h-24 rounded-full overflow-hidden mb-4 shrink-0 flex items-center justify-center">
                 {profile.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                  <img
+                    src={profile.avatarUrl}
+                    alt={profile.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <User className="w-16 h-16 text-gray-700 opacity-80" />
                 )}
@@ -316,9 +387,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
           </div>
 
           {/* Profile Title / Logo */}
-          {profile.titleStyle === 'logo' && profile.logoUrl ? (
+          {profile.titleStyle === "logo" && profile.logoUrl ? (
             <div className="mb-2 max-w-[220px] max-h-16 flex items-center justify-center">
-              <img src={profile.logoUrl} alt="Logo" className="max-h-14 w-auto object-contain" />
+              <img
+                src={profile.logoUrl}
+                alt="Logo"
+                className="max-h-14 w-auto object-contain"
+              />
             </div>
           ) : (
             <h1
@@ -328,7 +403,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
               )}
               style={{
                 ...(profile.titleColor ? { color: profile.titleColor } : {}),
-                ...(titleFontFamily ? { fontFamily: `'${titleFontFamily}', sans-serif` } : {})
+                ...(titleFontFamily
+                  ? { fontFamily: `'${titleFontFamily}', sans-serif` }
+                  : {}),
               }}
             >
               {profile.name || profile.username || "username"}
@@ -345,20 +422,31 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             {profile.bio || "bio goes here"}
           </p>
 
-          {/* Contact Email Badge */}
+          {/* Contact Email Badge (Click to Copy) */}
           {profile.email && (
-            <a
-              href={`mailto:${profile.email}`}
+            <button
+              type="button"
+              onClick={handleCopyEmail}
               className={clsx(
-                "inline-flex items-center gap-1.5 text-xs font-semibold mb-5 px-3 py-1 rounded-full transition hover:opacity-100",
-                templateValue.startsWith('neo-') ? "bg-black text-white border border-black" : "bg-black/5 hover:bg-black/10 text-gray-900",
+                "inline-flex items-center gap-1.5 text-xs font-semibold mb-5 px-3.5 py-1.5 rounded-full transition cursor-pointer shadow-2xs group hover:scale-105",
+                templateValue.startsWith("neo-")
+                  ? "bg-black text-white border-2 border-black"
+                  : "bg-black/5 hover:bg-black/10 text-gray-900",
                 textClass,
                 "opacity-90"
               )}
+              title="Click to copy email address"
             >
-              <Mail className="w-3.5 h-3.5" />
+              <Mail className="w-3.5 h-3.5 opacity-80" />
               <span>{profile.email}</span>
-            </a>
+              {emailCopied ? (
+                <span className="text-[10px] font-bold text-green-500 flex items-center gap-0.5 ml-0.5 animate-in zoom-in-50">
+                  <Check className="w-3.5 h-3.5 text-green-500" /> Copied!
+                </span>
+              ) : (
+                <Copy className="w-3 h-3 opacity-40 group-hover:opacity-100 ml-0.5 transition" />
+              )}
+            </button>
           )}
 
           {/* Social Icons */}
@@ -366,16 +454,22 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             <div className="flex gap-3 mb-8 flex-wrap justify-center items-center">
               {socialLinks.map((link) => {
                 const Icon = getLinkIcon(link.platform);
-                const targetUrl = link.url || '#';
+                const targetUrl = link.url || "#";
                 return (
                   <a
                     key={link.id || link.platform}
-                    href={targetUrl.match(/^https?:\/\//) ? targetUrl : `https://${targetUrl}`}
+                    href={
+                      targetUrl.match(/^https?:\/\//)
+                        ? targetUrl
+                        : `https://${targetUrl}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className={clsx(
                       "w-9 h-9 rounded-full flex items-center justify-center transition shadow-2xs hover:scale-110",
-                      templateValue.startsWith('neo-') ? "bg-black text-white border-2 border-black" : "bg-black/5 hover:bg-black/10 text-gray-900",
+                      templateValue.startsWith("neo-")
+                        ? "bg-black text-white border-2 border-black"
+                        : "bg-black/5 hover:bg-black/10 text-gray-900",
                       textClass
                     )}
                     style={pageTextColor ? { color: pageTextColor } : {}}
@@ -391,41 +485,76 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
           {/* Custom Links & Collections */}
           <div className="w-full space-y-4 mb-12">
             {customLinks.map((block) => {
-              if (block.type === 'collection') {
-                if (block.layout === 'grid') {
+              if (block.type === "collection") {
+                if (block.layout === "grid") {
                   const linkCount = block.links?.length || 0;
                   const isEven = linkCount > 0 && linkCount % 2 === 0;
                   const gridColsClass = isEven ? "grid-cols-2" : "grid-cols-3";
 
                   return (
                     <div key={block.id} className="w-full pt-2">
-                      {block.title && <h3 className={clsx("font-bold text-sm mb-3 pl-1", textClass)}>{block.title}</h3>}
+                      {block.title && (
+                        <h3
+                          className={clsx(
+                            "font-bold text-sm mb-3 pl-1",
+                            textClass
+                          )}
+                        >
+                          {block.title}
+                        </h3>
+                      )}
                       <div className={clsx("grid gap-3", gridColsClass)}>
-                        {block.links?.map(link => {
-                          const isImage = link.thumbnailType === 'image' || (!link.thumbnailType && link.icon);
-                          const isIcon = link.thumbnailType === 'icon' || (!link.thumbnailType && link.iconName);
-                          const isNone = link.thumbnailType === 'none';
+                        {block.links?.map((link) => {
+                          const isImage =
+                            link.thumbnailType === "image" ||
+                            (!link.thumbnailType && link.icon);
+                          const isIcon =
+                            link.thumbnailType === "icon" ||
+                            (!link.thumbnailType && link.iconName);
+                          const isNone = link.thumbnailType === "none";
                           const IconComp = getLinkIcon(link.iconName);
 
                           return (
                             <a
                               key={link.id}
-                              href={link.url?.match(/^https?:\/\//) ? link.url : `https://${link.url}`}
+                              href={
+                                link.url?.match(/^https?:\/\//)
+                                  ? link.url
+                                  : `https://${link.url}`
+                              }
                               target="_blank"
                               rel="noopener noreferrer"
                               className="aspect-square rounded-2xl flex flex-col items-center justify-center p-2 bg-white/20 backdrop-blur-md border border-white/20 hover:scale-105 transition-transform"
-                              style={isColor && templateValue !== '#0f172a' ? { backgroundColor: 'rgba(0,0,0,0.05)', borderColor: 'rgba(0,0,0,0.1)' } : {}}
+                              style={
+                                isColor && templateValue !== "#0f172a"
+                                  ? {
+                                      backgroundColor: "rgba(0,0,0,0.05)",
+                                      borderColor: "rgba(0,0,0,0.1)",
+                                    }
+                                  : {}
+                              }
                             >
                               {!isNone && (
                                 <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-2 overflow-hidden shrink-0">
                                   {isImage && link.icon ? (
-                                    <img src={link.icon} alt={link.title} className="w-full h-full object-cover" />
+                                    <img
+                                      src={link.icon}
+                                      alt={link.title}
+                                      className="w-full h-full object-cover"
+                                    />
                                   ) : (
-                                    <IconComp className={clsx("w-5 h-5", textClass)} />
+                                    <IconComp
+                                      className={clsx("w-5 h-5", textClass)}
+                                    />
                                   )}
                                 </div>
                               )}
-                              <span className={clsx("text-[10px] font-bold text-center line-clamp-2 leading-tight", textClass)}>
+                              <span
+                                className={clsx(
+                                  "text-[10px] font-bold text-center line-clamp-2 leading-tight",
+                                  textClass
+                                )}
+                              >
                                 {link.title || "Link Title"}
                               </span>
                             </a>
@@ -438,18 +567,35 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                   // List Layout
                   return (
                     <div key={block.id} className="w-full pt-2">
-                      {block.title && <h3 className={clsx("font-bold text-sm mb-3 pl-1", textClass)}>{block.title}</h3>}
+                      {block.title && (
+                        <h3
+                          className={clsx(
+                            "font-bold text-sm mb-3 pl-1",
+                            textClass
+                          )}
+                        >
+                          {block.title}
+                        </h3>
+                      )}
                       <div className="space-y-3">
-                        {block.links?.map(link => {
-                          const isImage = link.thumbnailType === 'image' || (!link.thumbnailType && link.icon);
-                          const isIcon = link.thumbnailType === 'icon' || (!link.thumbnailType && link.iconName);
-                          const isNone = link.thumbnailType === 'none';
+                        {block.links?.map((link) => {
+                          const isImage =
+                            link.thumbnailType === "image" ||
+                            (!link.thumbnailType && link.icon);
+                          const isIcon =
+                            link.thumbnailType === "icon" ||
+                            (!link.thumbnailType && link.iconName);
+                          const isNone = link.thumbnailType === "none";
                           const IconComp = getLinkIcon(link.iconName);
 
                           return (
                             <a
                               key={link.id}
-                              href={link.url?.match(/^https?:\/\//) ? link.url : `https://${link.url}`}
+                              href={
+                                link.url?.match(/^https?:\/\//)
+                                  ? link.url
+                                  : `https://${link.url}`
+                              }
                               target="_blank"
                               rel="noopener noreferrer"
                               className={buttonClass}
@@ -457,7 +603,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                               {!isNone && (
                                 <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
                                   {isImage && link.icon ? (
-                                    <img src={link.icon} alt={link.title} className="w-full h-full object-cover" />
+                                    <img
+                                      src={link.icon}
+                                      alt={link.title}
+                                      className="w-full h-full object-cover"
+                                    />
                                   ) : (
                                     <IconComp className="w-5 h-5 opacity-85" />
                                   )}
@@ -479,29 +629,52 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
               }
 
               // Normal standalone link
-              const isImage = block.thumbnailType === 'image' || (!block.thumbnailType && block.icon);
-              const isIcon = block.thumbnailType === 'icon' || (!block.thumbnailType && block.iconName);
-              const isNone = block.thumbnailType === 'none';
+              const isImage =
+                block.thumbnailType === "image" ||
+                (!block.thumbnailType && block.icon);
+              const isIcon =
+                block.thumbnailType === "icon" ||
+                (!block.thumbnailType && block.iconName);
+              const isNone = block.thumbnailType === "none";
               const IconComp = getLinkIcon(block.iconName);
 
               return (
                 <a
                   key={block.id}
-                  href={block.url?.match(/^https?:\/\//) ? block.url : `https://${block.url}`}
+                  href={
+                    block.url?.match(/^https?:\/\//)
+                      ? block.url
+                      : `https://${block.url}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className={buttonClass}
                   style={customButtonStyle}
                 >
                   {!isNone && (
-                    <div className={clsx(
-                      "w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
-                      templateValue.startsWith('neo-') ? "bg-amber-300 border-2 border-black text-black shadow-xs font-bold" : "bg-black/5"
-                    )}>
+                    <div
+                      className={clsx(
+                        "w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
+                        templateValue.startsWith("neo-")
+                          ? "bg-amber-300 border-2 border-black text-black shadow-xs font-bold"
+                          : "bg-black/5"
+                      )}
+                    >
                       {isImage && block.icon ? (
-                        <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
+                        <img
+                          src={block.icon}
+                          alt={block.title}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        <IconComp className={clsx("w-5 h-5", templateValue.startsWith('neo-') ? "text-black opacity-90" : "opacity-85")} />
+                        <IconComp
+                          className={clsx(
+                            "w-5 h-5",
+                            templateValue.startsWith("neo-")
+                              ? "text-black opacity-90"
+                              : "opacity-85"
+                          )}
+                        />
                       )}
                     </div>
                   )}
@@ -636,7 +809,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             </div>
 
             {/* Modal Footer / Upsell */}
-            <div className="border-t border-gray-100 pt-6">
+            {/* <div className="border-t border-gray-100 pt-6">
               <h3 className="font-bold text-gray-900 mb-1 text-[15px]">
                 Join {profile.username || "username"} on LinkZip
               </h3>
@@ -657,7 +830,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                   Find out more
                 </a>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       )}
