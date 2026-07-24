@@ -1,8 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
+import { useStore } from '../store/useStore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -21,7 +22,12 @@ export const analytics = getAnalytics(app);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
 export const googleProvider = new GoogleAuthProvider();
+// Force Google to always show account selector modal instead of auto-logging in with cached session
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 export const signInWithGoogle = async () => {
   try {
@@ -36,6 +42,7 @@ export const signInWithGoogle = async () => {
 export const logout = async () => {
   try {
     await signOut(auth);
+    useStore.getState().setUser(null);
   } catch (error) {
     console.error("Error signing out", error);
     throw error;
