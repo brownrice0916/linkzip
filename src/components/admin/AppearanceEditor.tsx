@@ -6,6 +6,7 @@ import {
   Check, 
   Sparkles, 
   ChevronRight, 
+  ChevronDown,
   Square, 
   Smile, 
   Palette, 
@@ -33,47 +34,47 @@ const themes = [
 
 const fonts = [
   // Korean Fonts (한글 폰트)
-  { id: 'Pretendard', name: '프리텐다드 (Pretendard)', font: 'Pretendard', badge: 'bolt' },
-  { id: 'Gowun Batang', name: '고운 바탕 (Gowun Batang)', font: 'Gowun Batang', badge: 'bolt' },
-  { id: 'Gowun Dodum', name: '고운 도돋 (Gowun Dodum)', font: 'Gowun Dodum', badge: 'bolt' },
-  { id: 'Black Han Sans', name: '블랙한상스 (Black Han)', font: 'Black Han Sans', badge: 'bolt' },
-  { id: 'Do Hyeon', name: '도현 (Do Hyeon)', font: 'Do Hyeon', badge: 'bolt' },
-  { id: 'Jua', name: '주아 (Jua)', font: 'Jua', badge: 'bolt' },
-  { id: 'Gamja Flower', name: '감자꽃 (Gamja Flower)', font: 'Gamja Flower', badge: 'bolt' },
-  { id: 'Nanum Gothic', name: '나눔고딕 (Nanum Gothic)', font: 'Nanum Gothic' },
-  { id: 'Nanum Myeongjo', name: '나눔명조 (Nanum Myeongjo)', font: 'Nanum Myeongjo' },
-  { id: 'Nanum Pen Script', name: '나눔펜 (Nanum Pen)', font: 'Nanum Pen Script', badge: 'bolt' },
-  { id: 'Sunflower', name: '해바라기 (Sunflower)', font: 'Sunflower' },
-  { id: 'Dongle', name: '동글 (Dongle)', font: 'Dongle', badge: 'bolt' },
-  { id: 'Song Myung', name: '송명 (Song Myung)', font: 'Song Myung' },
+  { id: 'Pretendard', name: '프리텐다드 (Pretendard)', font: 'Pretendard', badge: 'bolt', category: 'korean' },
+  { id: 'Gowun Batang', name: '고운 바탕 (Gowun Batang)', font: 'Gowun Batang', badge: 'bolt', category: 'korean' },
+  { id: 'Gowun Dodum', name: '고운 도돋 (Gowun Dodum)', font: 'Gowun Dodum', badge: 'bolt', category: 'korean' },
+  { id: 'Black Han Sans', name: '블랙한상스 (Black Han)', font: 'Black Han Sans', badge: 'bolt', category: 'korean' },
+  { id: 'Do Hyeon', name: '도현 (Do Hyeon)', font: 'Do Hyeon', badge: 'bolt', category: 'korean' },
+  { id: 'Jua', name: '주아 (Jua)', font: 'Jua', badge: 'bolt', category: 'korean' },
+  { id: 'Gamja Flower', name: '감자꽃 (Gamja Flower)', font: 'Gamja Flower', badge: 'bolt', category: 'korean' },
+  { id: 'Nanum Gothic', name: '나눔고딕 (Nanum Gothic)', font: 'Nanum Gothic', category: 'korean' },
+  { id: 'Nanum Myeongjo', name: '나눔명조 (Nanum Myeongjo)', font: 'Nanum Myeongjo', category: 'korean' },
+  { id: 'Nanum Pen Script', name: '나눔펜 (Nanum Pen)', font: 'Nanum Pen Script', badge: 'bolt', category: 'korean' },
+  { id: 'Sunflower', name: '해바라기 (Sunflower)', font: 'Sunflower', category: 'korean' },
+  { id: 'Dongle', name: '동글 (Dongle)', font: 'Dongle', badge: 'bolt', category: 'korean' },
+  { id: 'Song Myung', name: '송명 (Song Myung)', font: 'Song Myung', category: 'korean' },
 
   // English & Global Fonts
-  { id: 'Albert Sans', name: 'Albert Sans', font: 'Albert Sans' },
-  { id: 'Belanosima', name: 'Belanosima', font: 'Belanosima', badge: 'bolt' },
-  { id: 'Bricolage Grotesque', name: 'Bricolage Grotesque', font: 'Bricolage Grotesque', badge: 'bolt' },
-  { id: 'DM Sans', name: 'DM Sans', font: 'DM Sans' },
-  { id: 'Epilogue', name: 'Epilogue', font: 'Epilogue' },
-  { id: 'IBM Plex Sans', name: 'IBM Plex Sans', font: 'IBM Plex Sans' },
-  { id: 'Inter', name: 'Inter', font: 'Inter' },
-  { id: 'Lato', name: 'Lato', font: 'Lato', badge: 'bolt' },
-  { id: 'Manrope', name: 'Manrope', font: 'Manrope' },
-  { id: 'Oxanium', name: 'Oxanium', font: 'Oxanium' },
-  { id: 'Poppins', name: 'Poppins', font: 'Poppins', badge: 'pro' },
-  { id: 'Red Hat Display', name: 'Red Hat Display', font: 'Red Hat Display' },
-  { id: 'Roboto', name: 'Roboto', font: 'Roboto', badge: 'bolt' },
-  { id: 'Rubik', name: 'Rubik', font: 'Rubik', badge: 'bolt' },
-  { id: 'Space Grotesk', name: 'Space Grotesk', font: 'Space Grotesk', badge: 'bolt' },
-  { id: 'Syne', name: 'Syne', font: 'Syne', badge: 'bolt' },
-  { id: 'BioRhyme', name: 'BioRhyme', font: 'BioRhyme', badge: 'bolt' },
-  { id: 'Bitter', name: 'Bitter', font: 'Bitter', badge: 'bolt' },
-  { id: 'Caudex', name: 'Caudex', font: 'Caudex' },
-  { id: 'Corben', name: 'Corben', font: 'Corben' },
-  { id: 'Domine', name: 'Domine', font: 'Domine' },
-  { id: 'Hahmlet', name: 'Hahmlet', font: 'Hahmlet' },
-  { id: 'IBM Plex Serif', name: 'IBM Plex Serif', font: 'IBM Plex Serif', badge: 'bolt' },
-  { id: 'Lora', name: 'Lora', font: 'Lora', badge: 'bolt' },
-  { id: 'Space Mono', name: 'Space Mono', font: 'Space Mono' },
-  { id: 'Outfit', name: 'Outfit', font: 'Outfit' },
+  { id: 'Albert Sans', name: 'Albert Sans', font: 'Albert Sans', category: 'global' },
+  { id: 'Belanosima', name: 'Belanosima', font: 'Belanosima', badge: 'bolt', category: 'global' },
+  { id: 'Bricolage Grotesque', name: 'Bricolage Grotesque', font: 'Bricolage Grotesque', badge: 'bolt', category: 'global' },
+  { id: 'DM Sans', name: 'DM Sans', font: 'DM Sans', category: 'global' },
+  { id: 'Epilogue', name: 'Epilogue', font: 'Epilogue', category: 'global' },
+  { id: 'IBM Plex Sans', name: 'IBM Plex Sans', font: 'IBM Plex Sans', category: 'global' },
+  { id: 'Inter', name: 'Inter', font: 'Inter', category: 'global' },
+  { id: 'Lato', name: 'Lato', font: 'Lato', badge: 'bolt', category: 'global' },
+  { id: 'Manrope', name: 'Manrope', font: 'Manrope', category: 'global' },
+  { id: 'Oxanium', name: 'Oxanium', font: 'Oxanium', category: 'global' },
+  { id: 'Poppins', name: 'Poppins', font: 'Poppins', badge: 'pro', category: 'global' },
+  { id: 'Red Hat Display', name: 'Red Hat Display', font: 'Red Hat Display', category: 'global' },
+  { id: 'Roboto', name: 'Roboto', font: 'Roboto', badge: 'bolt', category: 'global' },
+  { id: 'Rubik', name: 'Rubik', font: 'Rubik', badge: 'bolt', category: 'global' },
+  { id: 'Space Grotesk', name: 'Space Grotesk', font: 'Space Grotesk', badge: 'bolt', category: 'global' },
+  { id: 'Syne', name: 'Syne', font: 'Syne', badge: 'bolt', category: 'global' },
+  { id: 'BioRhyme', name: 'BioRhyme', font: 'BioRhyme', badge: 'bolt', category: 'global' },
+  { id: 'Bitter', name: 'Bitter', font: 'Bitter', badge: 'bolt', category: 'global' },
+  { id: 'Caudex', name: 'Caudex', font: 'Caudex', category: 'global' },
+  { id: 'Corben', name: 'Corben', font: 'Corben', category: 'global' },
+  { id: 'Domine', name: 'Domine', font: 'Domine', category: 'global' },
+  { id: 'Hahmlet', name: 'Hahmlet', font: 'Hahmlet', category: 'global' },
+  { id: 'IBM Plex Serif', name: 'IBM Plex Serif', font: 'IBM Plex Serif', badge: 'bolt', category: 'global' },
+  { id: 'Lora', name: 'Lora', font: 'Lora', badge: 'bolt', category: 'global' },
+  { id: 'Space Mono', name: 'Space Mono', font: 'Space Mono', category: 'global' },
+  { id: 'Outfit', name: 'Outfit', font: 'Outfit', category: 'global' },
 ];
 
 const stickers = [
@@ -347,79 +348,69 @@ const AppearanceEditor = () => {
         </button>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-          {/* Font Family */}
-          <div className="space-y-3">
-            <h3 className="text-base font-bold text-gray-900">Page font</h3>
-            <div className="grid grid-cols-2 gap-3.5">
-              {fonts.map((f) => {
-                const isSelected = fontFamily === f.id || fontFamily === f.font;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => setDesignSettings({ fontFamily: f.font })}
-                    className={clsx(
-                      "h-14 px-4 rounded-2xl flex items-center justify-between text-sm transition-all relative overflow-hidden",
-                      isSelected 
-                        ? "border-2 border-black bg-white ring-1 ring-black shadow-xs font-bold text-gray-900" 
-                        : "bg-[#F4F3F0] hover:bg-stone-200 text-stone-900 font-medium border-2 border-transparent"
-                    )}
-                  >
-                    <span className="truncate pr-2" style={{ fontFamily: `'${f.font}', sans-serif` }}>
-                      {f.name}
-                    </span>
-                    
-                    {f.badge === 'pro' ? (
-                      <span className="px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold flex items-center gap-0.5 shrink-0 shadow-xs">
-                        Pro ⚡
-                      </span>
-                    ) : f.badge === 'bolt' ? (
-                      <span className="w-5 h-5 rounded-full bg-stone-300/60 text-stone-700 flex items-center justify-center text-[10px] shrink-0">
-                        ⚡
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
+          {/* Page font Dropdown */}
+          <div className="space-y-2">
+            <label className="block text-sm font-bold text-gray-900">Page font</label>
+            <div className="relative">
+              <select
+                value={fontFamily}
+                onChange={(e) => setDesignSettings({ fontFamily: e.target.value })}
+                className="w-full p-3.5 pr-10 rounded-2xl border-2 border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:border-black focus:bg-white appearance-none cursor-pointer transition-all shadow-xs"
+                style={{ fontFamily: `'${fontFamily}', sans-serif` }}
+              >
+                <optgroup label="🇰🇷 한글 추천 폰트 (Free Korean Fonts)">
+                  {fonts.filter(f => f.category === 'korean').map((f) => (
+                    <option key={f.id} value={f.font} style={{ fontFamily: `'${f.font}', sans-serif` }}>
+                      {f.name} {f.badge ? '⚡' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="🌐 글로벌 폰트 (Free Global Fonts)">
+                  {fonts.filter(f => f.category !== 'korean').map((f) => (
+                    <option key={f.id} value={f.font} style={{ fontFamily: `'${f.font}', sans-serif` }}>
+                      {f.name} {f.badge ? '⚡' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                <ChevronDown className="w-5 h-5" />
+              </div>
             </div>
           </div>
-          {/* Title Font Family (Optional Override) */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-gray-900">Title font</h3>
-                <p className="text-xs text-gray-400">Set a unique font specifically for profile title</p>
-              </div>
-              <button
-                onClick={() => setDesignSettings({ titleFontFamily: '' })}
-                className={clsx(
-                  "px-3 py-1.5 rounded-full text-xs font-bold transition-all",
-                  !titleFontFamily ? "bg-black text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                Auto (Page font)
-              </button>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              {fonts.map((f) => {
-                const isSelected = titleFontFamily === f.font;
-                return (
-                  <button
-                    key={`title-${f.id}`}
-                    onClick={() => setDesignSettings({ titleFontFamily: f.font })}
-                    className={clsx(
-                      "h-12 px-3 rounded-2xl flex items-center justify-between text-xs transition-all relative overflow-hidden",
-                      isSelected 
-                        ? "border-2 border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600 font-bold text-indigo-900" 
-                        : "bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium border border-gray-200"
-                    )}
-                  >
-                    <span className="truncate pr-1" style={{ fontFamily: `'${f.font}', sans-serif` }}>
-                      {f.name}
-                    </span>
-                  </button>
-                );
-              })}
+          {/* Title font Dropdown */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-bold text-gray-900">Title font</label>
+              <span className="text-xs text-gray-400">Profile title font override</span>
+            </div>
+            <div className="relative">
+              <select
+                value={titleFontFamily || ''}
+                onChange={(e) => setDesignSettings({ titleFontFamily: e.target.value })}
+                className="w-full p-3.5 pr-10 rounded-2xl border-2 border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:border-black focus:bg-white appearance-none cursor-pointer transition-all shadow-xs"
+                style={{ fontFamily: titleFontFamily ? `'${titleFontFamily}', sans-serif` : `'${fontFamily}', sans-serif` }}
+              >
+                <option value="">✨ Auto (Page font와 동일하게 적용)</option>
+                <optgroup label="🇰🇷 한글 추천 폰트 (Free Korean Fonts)">
+                  {fonts.filter(f => f.category === 'korean').map((f) => (
+                    <option key={`title-${f.id}`} value={f.font} style={{ fontFamily: `'${f.font}', sans-serif` }}>
+                      {f.name} {f.badge ? '⚡' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="🌐 글로벌 폰트 (Free Global Fonts)">
+                  {fonts.filter(f => f.category !== 'korean').map((f) => (
+                    <option key={`title-${f.id}`} value={f.font} style={{ fontFamily: `'${f.font}', sans-serif` }}>
+                      {f.name} {f.badge ? '⚡' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                <ChevronDown className="w-5 h-5" />
+              </div>
             </div>
           </div>
 
