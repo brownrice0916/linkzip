@@ -115,9 +115,6 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                 type="button"
                 onClick={() => {
                   setActiveTab('image');
-                  if (currentImageUrl) {
-                    onSave({ thumbnailType: 'image', icon: currentImageUrl });
-                  }
                 }}
                 className={clsx(
                   "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer",
@@ -130,7 +127,9 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                 type="button"
                 onClick={() => {
                   setActiveTab('icon');
-                  onSave({ thumbnailType: 'icon', iconName: currentIconName || 'link' });
+                  if (currentType !== 'icon' || !currentIconName) {
+                    setViewMode('iconGrid');
+                  }
                 }}
                 className={clsx(
                   "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer",
