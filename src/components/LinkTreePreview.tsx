@@ -163,10 +163,22 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
       containerClass += " bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400";
       if (!pageTextColor) textClass = "text-amber-950";
       themeDefaultBtnClass = "bg-white/30 backdrop-blur-md text-amber-950 border border-white/50 hover:bg-white/40 shadow-md font-semibold";
-    } else if (templateValue === "grid") {
-      containerClass += " bg-lime-200";
+    } else if (templateValue === "grid" || templateValue === "neo-lime") {
+      containerClass += " bg-lime-300";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-white text-black border-2 border-black font-bold shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]";
+      themeDefaultBtnClass = "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]";
+    } else if (templateValue === "neo-pink") {
+      containerClass += " bg-pink-400";
+      if (!pageTextColor) textClass = "text-black";
+      themeDefaultBtnClass = "bg-yellow-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]";
+    } else if (templateValue === "neo-cyan") {
+      containerClass += " bg-cyan-300";
+      if (!pageTextColor) textClass = "text-black";
+      themeDefaultBtnClass = "bg-pink-400 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]";
+    } else if (templateValue === "neo-yellow") {
+      containerClass += " bg-yellow-300";
+      if (!pageTextColor) textClass = "text-black";
+      themeDefaultBtnClass = "bg-cyan-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]";
     } else if (templateValue === "groove") {
       containerClass += " bg-gradient-to-r from-amber-500 via-red-500 to-purple-600";
       if (!pageTextColor) textClass = "text-white";

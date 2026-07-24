@@ -87,6 +87,23 @@ const recursivelyRemoveLink = (links: CustomLink[], id: string): CustomLink[] =>
   });
 };
 
+const themeFontMap: Record<string, string> = {
+  'minimalist': 'Inter',
+  'neon-dark': 'Space Grotesk',
+  'soft-gradient': 'Outfit',
+  'air': 'DM Sans',
+  'blocks': 'Syne',
+  'bloom': 'Lora',
+  'sunbloom': 'Albert Sans',
+  'grid': 'Bricolage Grotesque',
+  'neo-pink': 'Space Grotesk',
+  'neo-cyan': 'Space Mono',
+  'neo-yellow': 'Oxanium',
+  'groove': 'Epilogue',
+  'lake': 'IBM Plex Sans',
+  'nourish': 'Bitter',
+};
+
 export const useStore = create<AppState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
@@ -100,7 +117,7 @@ export const useStore = create<AppState>((set) => ({
   buttonStyle: 'solid',
   buttonRoundness: 'full',
   buttonShadow: 'soft',
-  fontFamily: 'sans',
+  fontFamily: 'Inter',
   sticker: '',
 
   setTemplate: (type, value) => set((state) => ({ 
@@ -109,6 +126,7 @@ export const useStore = create<AppState>((set) => ({
     buttonColor: '',
     buttonTextColor: '',
     pageTextColor: '',
+    fontFamily: themeFontMap[value] || state.fontFamily,
     profile: { ...state.profile, titleColor: '' }
   })),
   setDesignSettings: (settings) => set((state) => ({ ...state, ...settings })),
