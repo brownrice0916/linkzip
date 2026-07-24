@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { useStore, type CustomLink } from '../../store/useStore';
+import { useStore, type CustomLink, type SocialLink } from '../../store/useStore';
 import { Plus, Trash2, LayoutList, LayoutGrid, Folder, GripVertical, CornerDownRight, Image as ImageIcon } from 'lucide-react';
 import { getLinkIcon } from '../../lib/icons';
 import { ThumbnailModal } from './ThumbnailModal';
+import { SocialModal } from './SocialModal';
 import clsx from 'clsx';
 
 const LinksEditor = () => {
   const { 
+    profile,
+    socialLinks,
+    addSocialLink,
+    updateSocialLink,
+    removeSocialLink,
     customLinks, 
     addCustomLink, 
     updateCustomLink, 
@@ -20,6 +26,32 @@ const LinksEditor = () => {
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const [isOverRootArea, setIsOverRootArea] = useState(false);
   const [activeThumbnailLink, setActiveThumbnailLink] = useState<CustomLink | null>(null);
+
+  // Social Link Modal State
+  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
+  const [editingSocialLink, setEditingSocialLink] = useState<SocialLink | null>(null);
+
+  const handleAddSocial = () => {
+    setEditingSocialLink(null);
+    setIsSocialModalOpen(true);
+  };
+
+  const handleEditSocial = (link: SocialLink) => {
+    setEditingSocialLink(link);
+    setIsSocialModalOpen(true);
+  };
+
+  const handleSaveSocial = (link: SocialLink) => {
+    if (editingSocialLink) {
+      updateSocialLink(link.id, link);
+    } else {
+      addSocialLink(link);
+    }
+  };
+
+  const handleDeleteSocial = (id: string) => {
+    removeSocialLink(id);
+  };
 
   const handleAddCollection = () => {
     addCustomLink({
@@ -68,40 +100,45 @@ const LinksEditor = () => {
   const handleDropOnItem = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (draggedId && draggedId !== targetId) {
-      moveItemRelative(draggedId, targetId);
-    }
-    setDraggedId(null);
     setDragOverTargetId(null);
+
+    const activeId = e.dataTransfer.getData('text/plain');
+    if (!activeId || activeId === targetId) return;
+
+    moveItemRelative(activeId, targetId);
+    setDraggedId(null);
   };
 
   const handleDropOnCollection = (e: React.DragEvent, collectionId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (draggedId && draggedId !== collectionId) {
-      moveItemToCollection(draggedId, collectionId);
-    }
-    setDraggedId(null);
     setDragOverTargetId(null);
+
+    const activeId = e.dataTransfer.getData('text/plain');
+    if (!activeId) return;
+
+    moveItemToCollection(activeId, collectionId);
+    setDraggedId(null);
   };
 
   const handleDropOnRoot = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (draggedId) {
-      moveItemToRoot(draggedId);
-    }
-    setDraggedId(null);
-    setDragOverTargetId(null);
     setIsOverRootArea(false);
+
+    const activeId = e.dataTransfer.getData('text/plain');
+    if (!activeId) return;
+
+    moveItemToRoot(activeId);
+    setDraggedId(null);
   };
 
-  const renderLinkItem = (link: CustomLink, isNested: boolean = false, collectionId?: string) => {
+  // Render standard link item card
+  const renderLinkItem = (link: CustomLink, isNested = false, parentCollectionId?: string) => {
     const isBeingDragged = draggedId === link.id;
     const isDragOver = dragOverTargetId === link.id;
 
-    const hasImage = link.thumbnailType === 'image' && link.icon;
-    const hasIcon = link.thumbnailType === 'icon' && link.iconName;
+    const isImage = link.thumbnailType === 'image' || (!link.thumbnailType && link.icon);
+    const isIcon = link.thumbnailType === 'icon' || (!link.thumbnailType && link.iconName);
     const SelectedIconComp = getLinkIcon(link.iconName);
 
     return (
@@ -113,38 +150,37 @@ const LinksEditor = () => {
         onDragLeave={() => setDragOverTargetId(null)}
         onDrop={(e) => handleDropOnItem(e, link.id)}
         className={clsx(
-          "bg-white border p-4 rounded-xl flex items-center gap-3 transition-all duration-150 shadow-sm relative group",
-          isNested ? "bg-gray-50/80 border-gray-200" : "border-gray-200",
-          isBeingDragged ? "opacity-40 scale-95 border-dashed border-gray-400" : "",
-          isDragOver ? "border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/30" : ""
+          "bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3 transition-all duration-150 relative",
+          isBeingDragged ? "opacity-40 scale-95 border-dashed border-gray-400" : "border-gray-200",
+          isDragOver ? "border-indigo-500 border-2 bg-indigo-50/20" : "",
+          isNested ? "ml-4" : ""
         )}
       >
         {/* Drag Handle */}
-        <div className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-700 rounded transition-colors shrink-0">
+        <div className="cursor-grab active:cursor-grabbing p-1 text-gray-300 hover:text-gray-600 transition-colors shrink-0">
           <GripVertical className="w-5 h-5" />
         </div>
 
-        {/* Thumbnail Selector Button */}
+        {/* Thumbnail / Icon Button */}
         <button
           type="button"
           onClick={() => setActiveThumbnailLink(link)}
-          className={clsx(
-            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-2xs group cursor-pointer border",
-            hasImage || hasIcon ? "bg-white border-gray-300" : "bg-gray-100 border-gray-200 hover:border-gray-300"
-          )}
-          title="Add or edit thumbnail icon"
+          className="w-12 h-12 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden hover:bg-gray-200 transition group cursor-pointer"
+          title="Change thumbnail / icon"
         >
-          {hasImage ? (
-            <img src={link.icon} alt="Thumbnail" className="w-full h-full object-cover rounded-xl" />
-          ) : hasIcon ? (
-            <SelectedIconComp className="w-5 h-5 text-gray-800" />
+          {isImage && link.icon ? (
+            <img src={link.icon} alt="Thumbnail" className="w-full h-full object-cover" />
+          ) : isIcon ? (
+            <div className="w-6 h-6 flex items-center justify-center shrink-0">
+              <SelectedIconComp className="w-full h-full object-contain text-gray-800" />
+            </div>
           ) : (
             <ImageIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
           )}
         </button>
 
         {/* Form Inputs */}
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-2 min-w-0">
           <input
             type="text"
             value={link.title}
@@ -162,19 +198,19 @@ const LinksEditor = () => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {isNested && (
             <button 
               onClick={() => moveItemToRoot(link.id)} 
               title="Move out of collection"
-              className="p-1.5 text-gray-400 hover:text-indigo-600 rounded hover:bg-gray-100 transition-colors"
+              className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <CornerDownRight className="w-4 h-4 transform rotate-180" />
             </button>
           )}
           <button 
             onClick={() => removeCustomLink(link.id)} 
-            className="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-100 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -198,53 +234,59 @@ const LinksEditor = () => {
         className={clsx(
           "bg-white border rounded-2xl p-5 shadow-sm space-y-5 transition-all duration-150 relative",
           isBeingDragged ? "opacity-40 scale-95 border-dashed border-gray-400" : "border-gray-200",
-          isDragOver ? "border-indigo-600 ring-4 ring-indigo-500/20 bg-indigo-50/10" : ""
+          isDragOver ? "border-indigo-500 border-2 bg-indigo-50/20" : ""
         )}
       >
         {/* Collection Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-700 shrink-0">
-              <GripVertical className="w-5 h-5" />
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 border border-indigo-100">
-              <Folder className="w-4 h-4 text-indigo-600" />
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="cursor-grab active:cursor-grabbing p-1 text-gray-300 hover:text-gray-600 transition-colors shrink-0">
+            <GripVertical className="w-5 h-5" />
+          </div>
+          
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+            <Folder className="w-5 h-5" />
+          </div>
+
+          <div className="flex-1 min-w-0">
             <input
               type="text"
               value={collection.title}
               onChange={(e) => updateCustomLink(collection.id, { title: e.target.value })}
-              className="font-bold text-gray-900 bg-transparent border-none p-0 focus:ring-0 placeholder-gray-400 w-full"
-              placeholder="Collection title"
+              className="font-bold text-gray-900 bg-transparent border-none p-0 focus:ring-0 placeholder-gray-400 w-full text-base"
+              placeholder="Collection Title"
             />
           </div>
-          <button onClick={() => removeCustomLink(collection.id)} className="p-2 text-gray-400 hover:text-red-500">
-            <Trash2 className="w-5 h-5" />
+
+          <button 
+            onClick={() => removeCustomLink(collection.id)} 
+            className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Layout Picker */}
-        <div className="flex gap-2">
+        {/* Collection Layout Selector */}
+        <div className="flex gap-2 p-1 bg-gray-100 rounded-2xl">
           <button
             onClick={() => updateCustomLink(collection.id, { layout: 'list' })}
             className={clsx(
-              "flex-1 flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border transition-all",
-              collection.layout === 'list' ? 'border-black bg-gray-50 ring-1 ring-black' : 'border-gray-200 hover:bg-gray-50'
+              "flex-1 flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border transition-all cursor-pointer",
+              collection.layout === 'list' ? 'border-black bg-white shadow-2xs font-bold text-black' : 'border-transparent text-gray-500 hover:text-black'
             )}
           >
-            <LayoutList className={clsx("w-5 h-5", collection.layout === 'list' ? 'text-black' : 'text-gray-400')} />
-            <span className={clsx("text-xs font-semibold", collection.layout === 'list' ? 'text-black' : 'text-gray-500')}>List</span>
+            <LayoutList className="w-4 h-4" />
+            <span className="text-xs">List</span>
           </button>
           
           <button
             onClick={() => updateCustomLink(collection.id, { layout: 'grid' })}
             className={clsx(
-              "flex-1 flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border transition-all",
-              collection.layout === 'grid' ? 'border-black bg-gray-50 ring-1 ring-black' : 'border-gray-200 hover:bg-gray-50'
+              "flex-1 flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border transition-all cursor-pointer",
+              collection.layout === 'grid' ? 'border-black bg-white shadow-2xs font-bold text-black' : 'border-transparent text-gray-500 hover:text-black'
             )}
           >
-            <LayoutGrid className={clsx("w-5 h-5", collection.layout === 'grid' ? 'text-black' : 'text-gray-400')} />
-            <span className={clsx("text-xs font-semibold", collection.layout === 'grid' ? 'text-black' : 'text-gray-500')}>Grid</span>
+            <LayoutGrid className="w-4 h-4" />
+            <span className="text-xs">Grid</span>
           </button>
         </div>
 
@@ -266,7 +308,7 @@ const LinksEditor = () => {
           
           <button 
             onClick={() => handleAddNestedLink(collection.id)}
-            className="w-full py-2.5 bg-gray-200 text-black font-semibold rounded-full hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-xs mt-2"
+            className="w-full py-2.5 bg-gray-200 text-black font-semibold rounded-full hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-xs mt-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Add link to collection
           </button>
@@ -277,19 +319,66 @@ const LinksEditor = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20">
+    <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
+      {/* Top Profile Summary Bar (Avatar + Username + Social Links Row + Add Button - Matching User Screenshot) */}
+      <div className="flex items-center gap-4 bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs mb-6">
+        {/* Avatar */}
+        <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border border-gray-200 shrink-0 flex items-center justify-center shadow-xs">
+          {profile.avatarUrl ? (
+            <img src={profile.avatarUrl} alt={profile.name || profile.username} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-lg font-black text-gray-400 uppercase">
+              {(profile.username || 'LZ')[0]}
+            </span>
+          )}
+        </div>
+
+        {/* User & Social Row */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-gray-900 text-sm truncate mb-1.5">
+            {profile.username || profile.name || 'brownrice0916'}
+          </h3>
+
+          {/* Social Icons Row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {socialLinks.map((social) => {
+              const IconComp = getLinkIcon(social.platform);
+              return (
+                <button
+                  key={social.id}
+                  onClick={() => handleEditSocial(social)}
+                  className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-900 flex items-center justify-center transition shadow-2xs cursor-pointer hover:scale-105"
+                  title={`Edit ${social.platform}`}
+                >
+                  <IconComp className="w-4 h-4 object-contain" />
+                </button>
+              );
+            })}
+
+            {/* Add Social Icon '+' Button */}
+            <button
+              onClick={handleAddSocial}
+              className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition shadow-2xs cursor-pointer hover:scale-105"
+              title="Add Social Icon"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Top Add Buttons */}
       <div className="flex gap-3">
         <button 
           onClick={handleAddCollection}
-          className="flex-1 py-3.5 bg-white border border-gray-200 shadow-sm text-black font-semibold rounded-full hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-sm"
+          className="flex-1 py-3.5 bg-white border border-gray-200 shadow-2xs text-black font-semibold rounded-full hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer"
         >
           <Folder className="w-4 h-4 text-indigo-600" /> Add collection
         </button>
         <button 
           onClick={handleAddRootLink}
-          className="flex-1 py-3.5 bg-black text-white font-semibold rounded-full hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
+          className="flex-1 py-3.5 bg-black text-white font-semibold rounded-full hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 text-sm shadow-2xs cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Add link
         </button>
@@ -335,6 +424,15 @@ const LinksEditor = () => {
           }}
         />
       )}
+
+      {/* Social Icon Add / Edit Modal */}
+      <SocialModal
+        isOpen={isSocialModalOpen}
+        onClose={() => setIsSocialModalOpen(false)}
+        editingLink={editingSocialLink}
+        onSave={handleSaveSocial}
+        onDelete={handleDeleteSocial}
+      />
 
     </div>
   );

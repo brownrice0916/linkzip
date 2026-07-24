@@ -343,21 +343,25 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
 
           {/* Social Icons */}
           {socialLinks.length > 0 && (
-            <div className="flex gap-5 mb-8 flex-wrap justify-center">
+            <div className="flex gap-3 mb-8 flex-wrap justify-center items-center">
               {socialLinks.map((link) => {
-                const Icon = getSocialIcon(link.platform);
-                if (!Icon) return null;
+                const Icon = getLinkIcon(link.platform);
+                const targetUrl = link.url || '#';
                 return (
                   <a
-                    key={link.platform}
-                    href={getSocialUrl(link.platform, link.id)}
+                    key={link.id || link.platform}
+                    href={targetUrl.match(/^https?:\/\//) ? targetUrl : `https://${targetUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={clsx(socialIconClass, textClass)}
+                    className={clsx(
+                      "w-9 h-9 rounded-full flex items-center justify-center transition shadow-2xs hover:scale-110",
+                      templateValue.startsWith('neo-') ? "bg-black text-white border-2 border-black" : "bg-black/5 hover:bg-black/10 text-gray-900",
+                      textClass
+                    )}
                     style={pageTextColor ? { color: pageTextColor } : {}}
                     title={link.platform}
                   >
-                    <Icon className="w-full h-full" />
+                    <Icon className="w-5 h-5 object-contain" />
                   </a>
                 );
               })}

@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 
 export interface SocialLink {
-  platform: string;
   id: string;
+  platform: string;
+  url?: string;
 }
 
 export interface CustomLink {
@@ -80,6 +81,9 @@ interface AppState {
   setTemplate: (type: 'color' | 'preset', value: string) => void;
   setDesignSettings: (settings: Partial<AppState>) => void;
   setSocialLinks: (links: SocialLink[]) => void;
+  addSocialLink: (link: SocialLink) => void;
+  updateSocialLink: (id: string, updates: Partial<SocialLink>) => void;
+  removeSocialLink: (id: string) => void;
   addCustomLink: (link: CustomLink, collectionId?: string) => void;
   updateCustomLink: (id: string, updates: Partial<CustomLink>) => void;
   removeCustomLink: (id: string) => void;
@@ -209,6 +213,36 @@ export const useStore = create<AppState>((set) => ({
     const snap = getSnapshotFromState(state);
     return {
       socialLinks: links,
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  addSocialLink: (link) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      socialLinks: [...state.socialLinks, link],
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  updateSocialLink: (id, updates) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      socialLinks: state.socialLinks.map(s => s.id === id ? { ...s, ...updates } : s),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  removeSocialLink: (id) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      socialLinks: state.socialLinks.filter(s => s.id !== id),
       undoStack: [...state.undoStack, snap],
       redoStack: [],
       isDirty: true
