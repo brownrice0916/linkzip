@@ -236,6 +236,18 @@ const ProfileEditor = () => {
               placeholder="Digital creator sharing unique insights through art..."
             />
           </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-gray-700">Contact Email (이메일 주소)</label>
+            <input
+              type="email"
+              name="email"
+              value={profile.email || ''}
+              onChange={handleChange}
+              className="block w-full text-xs font-semibold p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-black"
+              placeholder="contact@example.com"
+            />
+          </div>
         </div>
 
         <hr className="border-gray-100" />

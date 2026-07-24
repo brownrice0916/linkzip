@@ -24,6 +24,7 @@ export interface UserProfile {
   username: string;
   bio: string;
   avatarUrl: string;
+  email?: string;
   profileLayout?: 'classic' | 'hero' | 'banner' | 'cutout' | 'shape';
   titleStyle?: 'text' | 'logo';
   logoUrl?: string;

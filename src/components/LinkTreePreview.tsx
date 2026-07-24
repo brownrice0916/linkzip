@@ -17,7 +17,7 @@ import {
   FaFacebook,
   FaWhatsapp,
 } from "react-icons/fa";
-import { User, Share, MoreHorizontal, Link2, X } from "lucide-react";
+import { User, Share, MoreHorizontal, Link2, X, Mail } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import clsx from "clsx";
 
@@ -337,13 +337,29 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
 
           <p
             className={clsx(
-              "text-sm text-center font-medium mb-6 max-w-xs",
+              "text-sm text-center font-medium mb-2 max-w-xs",
               textClass,
               "opacity-80"
             )}
           >
             {profile.bio || "bio goes here"}
           </p>
+
+          {/* Contact Email Badge */}
+          {profile.email && (
+            <a
+              href={`mailto:${profile.email}`}
+              className={clsx(
+                "inline-flex items-center gap-1.5 text-xs font-semibold mb-5 px-3 py-1 rounded-full transition hover:opacity-100",
+                templateValue.startsWith('neo-') ? "bg-black text-white border border-black" : "bg-black/5 hover:bg-black/10 text-gray-900",
+                textClass,
+                "opacity-90"
+              )}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>{profile.email}</span>
+            </a>
+          )}
 
           {/* Social Icons */}
           {socialLinks.length > 0 && (

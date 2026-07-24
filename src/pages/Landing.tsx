@@ -12,22 +12,22 @@ const Landing = () => {
 
   React.useEffect(() => {
     if (user) {
-      navigate('/admin', { replace: true });
+      navigate("/admin", { replace: true });
     }
   }, [user, navigate]);
 
   const handleGoogleLogin = async () => {
     try {
       const user = await signInWithGoogle();
-      const { doc, getDoc } = await import('firebase/firestore');
-      const { db } = await import('../lib/firebase');
-      const docRef = doc(db, 'users', user.uid);
+      const { doc, getDoc } = await import("firebase/firestore");
+      const { db } = await import("../lib/firebase");
+      const docRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
-        navigate('/admin');
+        navigate("/admin");
       } else {
-        navigate('/onboarding/template');
+        navigate("/onboarding/template");
       }
     } catch (error) {
       console.error("Login failed", error);
@@ -51,9 +51,7 @@ const Landing = () => {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg">
             <Link2 className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold tracking-tight">
-            LinkZip
-          </span>
+          <span className="text-xl font-bold tracking-tight">LinkZip</span>
         </div>
         <div className="flex items-center gap-4">
           <button
@@ -66,7 +64,7 @@ const Landing = () => {
             onClick={handleGoogleLogin}
             className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-gray-100 font-semibold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
           >
-            Sign up free
+            Sign up
           </button>
         </div>
       </nav>
@@ -75,7 +73,7 @@ const Landing = () => {
       <main className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-32 flex flex-col items-center justify-center min-h-[calc(100vh-100px)] text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-8">
           <Sparkles className="w-4 h-4" />
-          <span>The ultimate bio link tool</span>
+          <span>link zips</span>
         </div>
 
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
@@ -85,17 +83,17 @@ const Landing = () => {
           </span>
         </h1>
 
-        <p className="text-lg md:text-xl text-gray-400 max-w-2xl mb-12 leading-relaxed">
+        {/* <p className="text-lg md:text-xl text-gray-400 max-w-2xl mb-12 leading-relaxed">
           Join thousands of creators using our platform to share their content,
           build their audience, and showcase their portfolio in a beautiful way.
-        </p>
+        </p> */}
 
         <button
           onClick={handleGoogleLogin}
           className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-bold text-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
         >
           <FaGoogle className="w-5 h-5 text-black" />
-          <span>Get started for free</span>
+          <span>Get started</span>
           <ArrowRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
         </button>
 
