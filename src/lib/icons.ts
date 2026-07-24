@@ -74,17 +74,25 @@ export interface IconItem {
 }
 
 // Custom SVG Icons for Korean Platforms
+// Scaled Naver 'N' logo to fit harmoniously with other line icons
 const NaverIcon: IconComponent = ({ className = "w-5 h-5" }) => (
   React.createElement('svg', { className, viewBox: "0 0 24 24", fill: "currentColor" },
-    React.createElement('path', { d: "M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z" })
+    React.createElement('g', { transform: "translate(3.2, 3.2) scale(0.73)" },
+      React.createElement('path', { d: "M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z" })
+    )
   )
 );
 
-// Naver Blog Badge Icon (Green #03CF5D with white N)
+// Naver Blog b| Icon matching user's second image exactly (Green b| logo)
 const NaverBlogIcon: IconComponent = ({ className = "w-5 h-5" }) => (
-  React.createElement('svg', { className, viewBox: "0 0 24 24" },
-    React.createElement('rect', { width: "24", height: "24", rx: "6", fill: "#03CF5D" }),
-    React.createElement('path', { d: "M16.273 12.845L7.376 4H4v16h4.727V11.155L15.624 20H20V4h-3.727v8.845z", fill: "#FFFFFF" })
+  React.createElement('svg', { className, viewBox: "0 0 100 100", fill: "none" },
+    React.createElement('g', { transform: "translate(5, 5) scale(0.9)" },
+      React.createElement('path', {
+        d: "M8 16H22V39C26 33.5 32.5 30.5 41.5 30.5C57.5 30.5 68 42.5 68 57.5C68 72.5 57 84 41 84C32.5 84 26 80.5 21.5 74.5V82H8V16ZM38 43C28.5 43 21 49.5 21 57.5C21 65.5 28.5 72 38 72C47.5 72 55 65.5 55 57.5C55 49.5 47.5 43 38 43Z",
+        fill: "#03CF5D"
+      }),
+      React.createElement('rect', { x: "84", y: "10", width: "7.5", height: "74", rx: "2", fill: "#03CF5D" })
+    )
   )
 );
 
@@ -176,7 +184,7 @@ export const iconRegistry: Record<string, IconComponent> = {
 
 export const availableIcons: IconItem[] = [
   // SNS & Brand Icons
-  { id: 'naverblog', name: '네이버 블로그', icon: NaverBlogIcon, category: 'sns', tags: ['naver', 'blog', '네이버', '블로그', '네이버블로그'] },
+  { id: 'naverblog', name: '네이버 블로그', icon: NaverBlogIcon, category: 'sns', tags: ['naver', 'blog', '네이버', '블로그', '네이버블로그', 'b|'] },
   { id: 'naver', name: '네이버', icon: NaverIcon, category: 'sns', tags: ['naver', '네이버', 'blog', 'cafe'] },
   { id: 'postype', name: '포스타입', icon: PostypeIcon, category: 'sns', tags: ['postype', '포스타입', 'post'] },
   { id: 'youtube', name: 'YouTube', icon: FaYoutube, category: 'sns', tags: ['youtube', '유튜브', 'video'] },
