@@ -17,7 +17,7 @@ import {
   FaFacebook,
   FaWhatsapp,
 } from "react-icons/fa";
-import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check } from "lucide-react";
+import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import clsx from "clsx";
 
@@ -237,6 +237,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
   let socialIconClass = "w-7 h-7 hover:scale-110 transition-transform";
 
   const [emailCopied, setEmailCopied] = useState(false);
+  const [shareModalItem, setShareModalItem] = useState<{ title: string; url?: string } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const shareUrl = `${window.location.origin}/${profile.username || "preview"}`;
 
@@ -253,6 +255,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
       setEmailCopied(true);
       setTimeout(() => setEmailCopied(false), 2000);
     }
+  };
+
+  const handleOpenShareModal = (e: React.MouseEvent, linkItem: { title: string; url?: string }) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShareModalItem(linkItem);
+    setLinkCopied(false);
   };
 
   return (
@@ -616,9 +625,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                               <span className="flex-1 text-center font-semibold text-[15px]">
                                 {link.title || "Link Title"}
                               </span>
-                              <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
-                                <MoreHorizontal className="w-5 h-5 opacity-60" />
-                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => handleOpenShareModal(e, link)}
+                                className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
+                                title="Share link"
+                              >
+                                <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
+                              </button>
                             </a>
                           );
                         })}
@@ -681,9 +695,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                   <span className="flex-1 text-center font-bold text-[15px]">
                     {block.title || "Link Title"}
                   </span>
-                  <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
-                    <MoreHorizontal className="w-5 h-5 opacity-60" />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenShareModal(e, block)}
+                    className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
+                    title="Share link"
+                  >
+                    <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
+                  </button>
                 </a>
               );
             })}
@@ -831,6 +850,83 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                 </a>
               </div>
             </div> */}
+          </div>
+        </div>
+      )}
+      {/* Share Specific Link Modal Popup */}
+      {shareModalItem && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          onClick={() => setShareModalItem(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 text-gray-900 font-sans"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2 truncate pr-2">
+                <Share2 className="w-5 h-5 text-purple-600 shrink-0" />
+                <h3 className="text-sm font-bold text-gray-900 truncate">{shareModalItem.title || '링크 공유'}</h3>
+              </div>
+              <button 
+                onClick={() => setShareModalItem(null)}
+                className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-gray-50 rounded-2xl text-xs font-mono text-gray-600 truncate border border-gray-100">
+              {shareModalItem.url || 'URL 없음'}
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  if (shareModalItem.url) {
+                    const fullUrl = shareModalItem.url.match(/^https?:\/\//) ? shareModalItem.url : `https://${shareModalItem.url}`;
+                    navigator.clipboard.writeText(fullUrl);
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  }
+                }}
+                className="w-full py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-purple-500/20"
+              >
+                {linkCopied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
+                {linkCopied ? '링크 주소 복사됨!' : '링크 주소 복사하기'}
+              </button>
+
+              {navigator.share && (
+                <button
+                  onClick={() => {
+                    if (shareModalItem.url) {
+                      const fullUrl = shareModalItem.url.match(/^https?:\/\//) ? shareModalItem.url : `https://${shareModalItem.url}`;
+                      navigator.share({
+                        title: shareModalItem.title,
+                        url: fullUrl
+                      }).catch(() => {});
+                    }
+                  }}
+                  className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4" />
+                  공유하기 (Share)
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  if (shareModalItem.url) {
+                    const fullUrl = shareModalItem.url.match(/^https?:\/\//) ? shareModalItem.url : `https://${shareModalItem.url}`;
+                    window.open(fullUrl, '_blank');
+                  }
+                }}
+                className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4 text-gray-600" />
+                새 탭에서 바로 이동
+              </button>
+            </div>
           </div>
         </div>
       )}
