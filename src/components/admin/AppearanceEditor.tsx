@@ -28,10 +28,33 @@ const themes = [
 ];
 
 const fonts = [
-  { id: 'sans', name: 'Inter (Sans)' },
-  { id: 'mono', name: 'Space Mono' },
-  { id: 'serif', name: 'Playfair (Serif)' },
-  { id: 'outfit', name: 'Outfit (Modern)' },
+  { id: 'Albert Sans', name: 'Albert Sans', font: 'Albert Sans' },
+  { id: 'Belanosima', name: 'Belanosima', font: 'Belanosima', badge: 'bolt' },
+  { id: 'Bricolage Grotesque', name: 'Bricolage Grotesque', font: 'Bricolage Grotesque', badge: 'bolt' },
+  { id: 'DM Sans', name: 'DM Sans', font: 'DM Sans' },
+  { id: 'Epilogue', name: 'Epilogue', font: 'Epilogue' },
+  { id: 'IBM Plex Sans', name: 'IBM Plex Sans', font: 'IBM Plex Sans' },
+  { id: 'Inter', name: 'Inter', font: 'Inter' },
+  { id: 'Lato', name: 'Lato', font: 'Lato', badge: 'bolt' },
+  { id: 'Link Sans', name: 'Link Sans', font: 'Inter' },
+  { id: 'Manrope', name: 'Manrope', font: 'Manrope' },
+  { id: 'Oxanium', name: 'Oxanium', font: 'Oxanium' },
+  { id: 'Poppins', name: 'Poppins', font: 'Poppins', badge: 'pro' },
+  { id: 'Red Hat Display', name: 'Red Hat Display', font: 'Red Hat Display' },
+  { id: 'Roboto', name: 'Roboto', font: 'Roboto', badge: 'bolt' },
+  { id: 'Rubik', name: 'Rubik', font: 'Rubik', badge: 'bolt' },
+  { id: 'Space Grotesk', name: 'Space Grotesk', font: 'Space Grotesk', badge: 'bolt' },
+  { id: 'Syne', name: 'Syne', font: 'Syne', badge: 'bolt' },
+  { id: 'BioRhyme', name: 'BioRhyme', font: 'BioRhyme', badge: 'bolt' },
+  { id: 'Bitter', name: 'Bitter', font: 'Bitter', badge: 'bolt' },
+  { id: 'Caudex', name: 'Caudex', font: 'Caudex' },
+  { id: 'Corben', name: 'Corben', font: 'Corben' },
+  { id: 'Domine', name: 'Domine', font: 'Domine' },
+  { id: 'Hahmlet', name: 'Hahmlet', font: 'Hahmlet' },
+  { id: 'IBM Plex Serif', name: 'IBM Plex Serif', font: 'IBM Plex Serif', badge: 'bolt' },
+  { id: 'Lora', name: 'Lora', font: 'Lora', badge: 'bolt' },
+  { id: 'Space Mono', name: 'Space Mono', font: 'Space Mono' },
+  { id: 'Outfit', name: 'Outfit', font: 'Outfit' },
 ];
 
 const stickers = [
@@ -305,21 +328,35 @@ const AppearanceEditor = () => {
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           {/* Font Family */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-gray-700">Page font</label>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
+            <h3 className="text-base font-bold text-gray-900">Page font</h3>
+            <div className="grid grid-cols-2 gap-3.5">
               {fonts.map((f) => {
-                const isSelected = fontFamily === f.id;
+                const isSelected = fontFamily === f.id || fontFamily === f.font;
                 return (
                   <button
                     key={f.id}
-                    onClick={() => setDesignSettings({ fontFamily: f.id })}
+                    onClick={() => setDesignSettings({ fontFamily: f.font })}
                     className={clsx(
-                      "p-3 rounded-xl border-2 text-left transition-all",
-                      isSelected ? "border-black bg-gray-50 ring-1 ring-black font-bold" : "border-gray-200 hover:bg-gray-50"
+                      "h-14 px-4 rounded-2xl flex items-center justify-between text-sm transition-all relative overflow-hidden",
+                      isSelected 
+                        ? "border-2 border-black bg-white ring-1 ring-black shadow-xs font-bold text-gray-900" 
+                        : "bg-[#F4F3F0] hover:bg-stone-200 text-stone-900 font-medium border-2 border-transparent"
                     )}
                   >
-                    <span className="text-sm">{f.name}</span>
+                    <span className="truncate pr-2" style={{ fontFamily: `'${f.font}', sans-serif` }}>
+                      {f.name}
+                    </span>
+                    
+                    {f.badge === 'pro' ? (
+                      <span className="px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold flex items-center gap-0.5 shrink-0 shadow-xs">
+                        Pro ⚡
+                      </span>
+                    ) : f.badge === 'bolt' ? (
+                      <span className="w-5 h-5 rounded-full bg-stone-300/60 text-stone-700 flex items-center justify-center text-[10px] shrink-0">
+                        ⚡
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}

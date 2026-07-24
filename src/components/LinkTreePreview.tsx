@@ -116,8 +116,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
   if (buttonShadow === 'hard') shadowClass = "border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
 
   let containerClass =
-    `flex flex-col items-center w-full min-h-screen transition-all duration-300 relative ${fontClass}`;
-  let containerStyle: React.CSSProperties = {};
+    `flex flex-col items-center w-full min-h-screen transition-all duration-300 relative`;
+  let containerStyle: React.CSSProperties = {
+    fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : 'sans-serif'
+  };
 
   let textClass = "text-gray-900";
   if (pageTextColor) {
