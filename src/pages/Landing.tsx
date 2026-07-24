@@ -8,6 +8,13 @@ import { FaGoogle } from "react-icons/fa";
 const Landing = () => {
   const navigate = useNavigate();
   const setUser = useStore((state) => state.setUser);
+  const user = useStore((state) => state.user);
+
+  React.useEffect(() => {
+    if (user) {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleGoogleLogin = async () => {
     try {
