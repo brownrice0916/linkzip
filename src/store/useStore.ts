@@ -101,7 +101,11 @@ export const useStore = create<AppState>((set) => ({
   fontFamily: 'sans',
   sticker: '',
 
-  setTemplate: (type, value) => set({ templateType: type, templateValue: value }),
+  setTemplate: (type, value) => set((state) => ({ 
+    templateType: type, 
+    templateValue: value,
+    profile: { ...state.profile, titleColor: '' }
+  })),
   setDesignSettings: (settings) => set((state) => ({ ...state, ...settings })),
   setSocialLinks: (links) => set({ socialLinks: links }),
   
