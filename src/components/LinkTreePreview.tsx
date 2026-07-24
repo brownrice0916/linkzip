@@ -340,7 +340,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                     href={getSocialUrl(link.platform, link.id)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={socialIconClass}
+                    className={clsx(socialIconClass, textClass)}
+                    style={pageTextColor ? { color: pageTextColor } : {}}
                     title={link.platform}
                   >
                     <Icon className="w-full h-full" />
