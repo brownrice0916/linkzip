@@ -18,6 +18,7 @@ import {
   FaWhatsapp,
 } from "react-icons/fa";
 import { User, Share, MoreHorizontal, Link2, X } from "lucide-react";
+import { getLinkIcon } from "../lib/icons";
 import clsx from "clsx";
 
 interface LinkTreePreviewProps {
@@ -366,23 +367,36 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                     <div key={block.id} className="w-full pt-2">
                       {block.title && <h3 className={clsx("font-bold text-sm mb-3 pl-1", textClass)}>{block.title}</h3>}
                       <div className={clsx("grid gap-3", gridColsClass)}>
-                        {block.links?.map(link => (
-                          <a
-                            key={link.id}
-                            href={link.url?.match(/^https?:\/\//) ? link.url : `https://${link.url}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="aspect-square rounded-2xl flex flex-col items-center justify-center p-2 bg-white/20 backdrop-blur-md border border-white/20 hover:scale-105 transition-transform"
-                            style={isColor && templateValue !== '#0f172a' ? { backgroundColor: 'rgba(0,0,0,0.05)', borderColor: 'rgba(0,0,0,0.1)' } : {}}
-                          >
-                            <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-2">
-                              <Link2 className={clsx("w-5 h-5", textClass)} />
-                            </div>
-                            <span className={clsx("text-[10px] font-bold text-center line-clamp-2 leading-tight", textClass)}>
-                              {link.title || "Link Title"}
-                            </span>
-                          </a>
-                        ))}
+                        {block.links?.map(link => {
+                          const isImage = link.thumbnailType === 'image' || (!link.thumbnailType && link.icon);
+                          const isIcon = link.thumbnailType === 'icon' || (!link.thumbnailType && link.iconName);
+                          const isNone = link.thumbnailType === 'none';
+                          const IconComp = getLinkIcon(link.iconName);
+
+                          return (
+                            <a
+                              key={link.id}
+                              href={link.url?.match(/^https?:\/\//) ? link.url : `https://${link.url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="aspect-square rounded-2xl flex flex-col items-center justify-center p-2 bg-white/20 backdrop-blur-md border border-white/20 hover:scale-105 transition-transform"
+                              style={isColor && templateValue !== '#0f172a' ? { backgroundColor: 'rgba(0,0,0,0.05)', borderColor: 'rgba(0,0,0,0.1)' } : {}}
+                            >
+                              {!isNone && (
+                                <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-2 overflow-hidden shrink-0">
+                                  {isImage && link.icon ? (
+                                    <img src={link.icon} alt={link.title} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <IconComp className={clsx("w-5 h-5", textClass)} />
+                                  )}
+                                </div>
+                              )}
+                              <span className={clsx("text-[10px] font-bold text-center line-clamp-2 leading-tight", textClass)}>
+                                {link.title || "Link Title"}
+                              </span>
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -392,25 +406,38 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                     <div key={block.id} className="w-full pt-2">
                       {block.title && <h3 className={clsx("font-bold text-sm mb-3 pl-1", textClass)}>{block.title}</h3>}
                       <div className="space-y-3">
-                        {block.links?.map(link => (
-                          <a
-                            key={link.id}
-                            href={link.url?.match(/^https?:\/\//) ? link.url : `https://${link.url}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={buttonClass}
-                          >
-                            <div className="w-8 h-8 rounded bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
-                              <Link2 className="w-4 h-4 opacity-50" />
-                            </div>
-                            <span className="flex-1 text-center font-semibold text-[15px]">
-                              {link.title || "Link Title"}
-                            </span>
-                            <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
-                              <MoreHorizontal className="w-5 h-5 opacity-60" />
-                            </div>
-                          </a>
-                        ))}
+                        {block.links?.map(link => {
+                          const isImage = link.thumbnailType === 'image' || (!link.thumbnailType && link.icon);
+                          const isIcon = link.thumbnailType === 'icon' || (!link.thumbnailType && link.iconName);
+                          const isNone = link.thumbnailType === 'none';
+                          const IconComp = getLinkIcon(link.iconName);
+
+                          return (
+                            <a
+                              key={link.id}
+                              href={link.url?.match(/^https?:\/\//) ? link.url : `https://${link.url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={buttonClass}
+                            >
+                              {!isNone && (
+                                <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+                                  {isImage && link.icon ? (
+                                    <img src={link.icon} alt={link.title} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <IconComp className="w-4 h-4 opacity-70" />
+                                  )}
+                                </div>
+                              )}
+                              <span className="flex-1 text-center font-semibold text-[15px]">
+                                {link.title || "Link Title"}
+                              </span>
+                              <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
+                                <MoreHorizontal className="w-5 h-5 opacity-60" />
+                              </div>
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -418,6 +445,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
               }
 
               // Normal standalone link
+              const isImage = block.thumbnailType === 'image' || (!block.thumbnailType && block.icon);
+              const isIcon = block.thumbnailType === 'icon' || (!block.thumbnailType && block.iconName);
+              const isNone = block.thumbnailType === 'none';
+              const IconComp = getLinkIcon(block.iconName);
+
               return (
                 <a
                   key={block.id}
@@ -427,12 +459,18 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                   className={buttonClass}
                   style={customButtonStyle}
                 >
-                  <div className={clsx(
-                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden",
-                    templateValue.startsWith('neo-') ? "bg-amber-300 border-2 border-black text-black shadow-xs font-bold" : "bg-black/5"
-                  )}>
-                    <Link2 className={clsx("w-4 h-4", templateValue.startsWith('neo-') ? "text-black opacity-90" : "opacity-50")} />
-                  </div>
+                  {!isNone && (
+                    <div className={clsx(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
+                      templateValue.startsWith('neo-') ? "bg-amber-300 border-2 border-black text-black shadow-xs font-bold" : "bg-black/5"
+                    )}>
+                      {isImage && block.icon ? (
+                        <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <IconComp className={clsx("w-4 h-4", templateValue.startsWith('neo-') ? "text-black opacity-90" : "opacity-70")} />
+                      )}
+                    </div>
+                  )}
                   <span className="flex-1 text-center font-bold text-[15px]">
                     {block.title || "Link Title"}
                   </span>

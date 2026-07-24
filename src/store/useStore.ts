@@ -13,6 +13,9 @@ export interface CustomLink {
   layout?: 'list' | 'grid';
   links?: CustomLink[]; // For collections
   isVisible?: boolean;
+  icon?: string; // image thumbnail URL
+  thumbnailType?: 'image' | 'icon' | 'none'; // thumbnail mode
+  iconName?: string; // selected icon key e.g. 'link', 'globe', 'instagram', etc.
 }
 
 export interface UserProfile {

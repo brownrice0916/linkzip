@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useStore, type CustomLink } from '../../store/useStore';
-import { Plus, Trash2, LayoutList, LayoutGrid, Folder, GripVertical, CornerDownRight } from 'lucide-react';
+import { Plus, Trash2, LayoutList, LayoutGrid, Folder, GripVertical, CornerDownRight, Image as ImageIcon } from 'lucide-react';
+import { getLinkIcon } from '../../lib/icons';
+import { ThumbnailModal } from './ThumbnailModal';
 import clsx from 'clsx';
 
 const LinksEditor = () => {
@@ -17,6 +19,7 @@ const LinksEditor = () => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const [isOverRootArea, setIsOverRootArea] = useState(false);
+  const [activeThumbnailLink, setActiveThumbnailLink] = useState<CustomLink | null>(null);
 
   const handleAddCollection = () => {
     addCustomLink({
@@ -97,6 +100,10 @@ const LinksEditor = () => {
     const isBeingDragged = draggedId === link.id;
     const isDragOver = dragOverTargetId === link.id;
 
+    const hasImage = link.thumbnailType === 'image' && link.icon;
+    const hasIcon = link.thumbnailType === 'icon' && link.iconName;
+    const SelectedIconComp = getLinkIcon(link.iconName);
+
     return (
       <div 
         key={link.id}
@@ -116,6 +123,25 @@ const LinksEditor = () => {
         <div className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-700 rounded transition-colors shrink-0">
           <GripVertical className="w-5 h-5" />
         </div>
+
+        {/* Thumbnail Selector Button */}
+        <button
+          type="button"
+          onClick={() => setActiveThumbnailLink(link)}
+          className={clsx(
+            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-2xs group cursor-pointer border",
+            hasImage || hasIcon ? "bg-white border-gray-300" : "bg-gray-100 border-gray-200 hover:border-gray-300"
+          )}
+          title="Add or edit thumbnail icon"
+        >
+          {hasImage ? (
+            <img src={link.icon} alt="Thumbnail" className="w-full h-full object-cover rounded-xl" />
+          ) : hasIcon ? (
+            <SelectedIconComp className="w-5 h-5 text-gray-800" />
+          ) : (
+            <ImageIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+          )}
+        </button>
 
         {/* Form Inputs */}
         <div className="flex-1 space-y-2">
@@ -294,6 +320,21 @@ const LinksEditor = () => {
       >
         <p className="text-xs font-semibold">Drop here to move out of collection to main list</p>
       </div>
+
+      {/* Thumbnail Editor Modal */}
+      {activeThumbnailLink && (
+        <ThumbnailModal
+          isOpen={!!activeThumbnailLink}
+          onClose={() => setActiveThumbnailLink(null)}
+          currentType={activeThumbnailLink.thumbnailType || (activeThumbnailLink.icon ? 'image' : 'none')}
+          currentImageUrl={activeThumbnailLink.icon || ''}
+          currentIconName={activeThumbnailLink.iconName || 'link'}
+          onSave={(updates) => {
+            updateCustomLink(activeThumbnailLink.id, updates);
+            setActiveThumbnailLink(null);
+          }}
+        />
+      )}
 
     </div>
   );
