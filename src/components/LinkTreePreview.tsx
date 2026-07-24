@@ -165,35 +165,93 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             <Share className={clsx("w-5 h-5", textClass)} />
           </div>
         </div>
-
-        <div className="w-full px-6 flex flex-col items-center pb-24">
-          {/* Profile Avatar */}
-          <div className="w-28 h-28 rounded-full overflow-hidden mb-5">
-            {profile.avatarUrl ? (
-              <img
-                src={profile.avatarUrl}
-                alt={profile.name}
-                className="w-full h-full object-cover"
-              />
+        {/* Banner Header Image (Only for banner layout) */}
+        {profile.profileLayout === 'banner' && (
+          <div className="w-full h-36 bg-gray-300 relative shrink-0 overflow-hidden">
+            {profile.bannerUrl ? (
+              <img src={profile.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                <User className="w-14 h-14 text-white" />
-              </div>
+              <div className="w-full h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
             )}
           </div>
+        )}
 
-          {/* Profile Info */}
-          <h1
-            className={clsx(
-              "text-[22px] font-bold tracking-tight mb-1",
-              textClass
-            )}
-          >
-            {profile.name || "username"}
-          </h1>
+        <div className="w-full px-6 flex flex-col items-center pb-24 relative z-10">
+          
+          {/* Profile Avatar based on Layout */}
+          {profile.profileLayout === 'hero' ? (
+            <div className="w-full max-w-[300px] h-[200px] rounded-3xl overflow-hidden mb-5 shadow-xl border-2 border-white/20">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                  <User className="w-16 h-16 text-white" />
+                </div>
+              )}
+            </div>
+          ) : profile.profileLayout === 'banner' ? (
+            <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-white shadow-lg -mt-12 bg-white shrink-0">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                  <User className="w-12 h-12 text-white" />
+                </div>
+              )}
+            </div>
+          ) : profile.profileLayout === 'cutout' ? (
+            <div className="w-28 h-32 rounded-b-full overflow-hidden mb-5 shadow-2xl border-4 border-white/40 transform rotate-1 bg-white">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                  <User className="w-14 h-14 text-white" />
+                </div>
+              )}
+            </div>
+          ) : profile.profileLayout === 'shape' ? (
+            <div className="w-28 h-28 rounded-[2rem] overflow-hidden mb-5 shadow-lg border-2 border-white/30 transform -rotate-3 bg-white">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                  <User className="w-14 h-14 text-white" />
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Classic Default */
+            <div className="w-28 h-28 rounded-full overflow-hidden mb-5 shadow-md">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                  <User className="w-14 h-14 text-white" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Profile Title / Logo */}
+          {profile.titleStyle === 'logo' && profile.logoUrl ? (
+            <div className="mb-2 max-w-[220px] max-h-16 flex items-center justify-center">
+              <img src={profile.logoUrl} alt="Logo" className="max-h-14 w-auto object-contain" />
+            </div>
+          ) : (
+            <h1
+              className={clsx(
+                "text-[22px] font-bold tracking-tight mb-1 text-center",
+                textClass
+              )}
+              style={profile.titleColor ? { color: profile.titleColor } : {}}
+            >
+              {profile.name || profile.username || "username"}
+            </h1>
+          )}
+
           <p
             className={clsx(
-              "text-sm text-center font-medium mb-6",
+              "text-sm text-center font-medium mb-6 max-w-xs",
               textClass,
               "opacity-80"
             )}
