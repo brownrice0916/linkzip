@@ -1,0 +1,397 @@
+import React, { useState } from "react";
+import {
+  useStore,
+  type UserProfile,
+  type SocialLink,
+  type CustomLink,
+} from "../store/useStore";
+import {
+  FaInstagram,
+  FaTwitter,
+  FaYoutube,
+  FaGithub,
+  FaLinkedin,
+  FaEnvelope,
+  FaGlobe,
+  FaFigma,
+  FaFacebook,
+  FaWhatsapp,
+} from "react-icons/fa";
+import { User, Share, MoreHorizontal, Link2, X } from "lucide-react";
+import clsx from "clsx";
+
+interface LinkTreePreviewProps {
+  profile: UserProfile;
+  templateType: "color" | "preset";
+  templateValue: string;
+  socialLinks: SocialLink[];
+  customLinks: CustomLink[];
+  isPublic?: boolean;
+}
+
+const getSocialIcon = (platform: string) => {
+  switch (platform) {
+    case "instagram":
+      return FaInstagram;
+    case "twitter":
+      return FaTwitter;
+    case "youtube":
+      return FaYoutube;
+    case "github":
+      return FaGithub;
+    case "linkedin":
+      return FaLinkedin;
+    case "mail":
+      return FaEnvelope;
+    case "globe":
+      return FaGlobe;
+    case "figma":
+      return FaFigma;
+    default:
+      return null;
+  }
+};
+
+const getSocialUrl = (platform: string, id: string) => {
+  const cleanId = id.trim();
+  switch (platform) {
+    case "instagram":
+      return `https://instagram.com/${cleanId}`;
+    case "twitter":
+      return `https://twitter.com/${cleanId}`;
+    case "youtube":
+      return `https://youtube.com/${
+        cleanId.startsWith("@") ? cleanId : `@${cleanId}`
+      }`;
+    case "github":
+      return `https://github.com/${cleanId}`;
+    case "linkedin":
+      return `https://linkedin.com/in/${cleanId}`;
+    case "mail":
+      return `mailto:${cleanId}`;
+    case "globe":
+      return cleanId.match(/^https?:\/\//) ? cleanId : `https://${cleanId}`;
+    case "figma":
+      return `https://figma.com/@${cleanId}`;
+    default:
+      return "#";
+  }
+};
+
+const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
+  profile,
+  templateType,
+  templateValue,
+  socialLinks,
+  customLinks,
+  isPublic = false,
+}) => {
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const isColor = templateType === "color";
+
+  // Base background for the container
+  let containerClass =
+    "flex flex-col items-center w-full min-h-screen transition-all duration-300 relative";
+  let containerStyle: React.CSSProperties = {};
+
+  let textClass = "text-gray-900";
+  let buttonClass =
+    "w-full py-4 px-4 rounded-xl font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between";
+  let socialIconClass = "w-7 h-7 hover:scale-110 transition-transform";
+
+  // If it's a solid color, use it as background
+  if (isColor) {
+    containerStyle.backgroundColor = templateValue;
+    // Basic contrast logic (mock)
+    const isDark = templateValue === "#0f172a";
+    textClass = isDark ? "text-white" : "text-gray-900";
+    buttonClass += isDark
+      ? " bg-white/10 text-white border border-white/20 hover:bg-white/20"
+      : " bg-transparent text-gray-900 border border-gray-300 hover:bg-black/5";
+    socialIconClass += isDark
+      ? " text-gray-300 hover:text-white"
+      : " text-gray-800 hover:text-black";
+  } else {
+    // Preset classes
+    if (templateValue === "minimalist") {
+      containerClass += " bg-[#FAF9F6]"; // Off-white beige like the image
+      textClass = "text-gray-900";
+      buttonClass +=
+        " bg-transparent border border-gray-300 hover:bg-gray-100 text-gray-900";
+      socialIconClass += " text-gray-800 hover:text-black";
+    } else if (templateValue === "neon-dark") {
+      containerClass += " bg-gray-900";
+      textClass = "text-white";
+      buttonClass +=
+        " bg-transparent border-2 border-indigo-500 text-indigo-400 hover:bg-indigo-500 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]";
+      socialIconClass += " text-indigo-400 hover:text-indigo-300";
+    } else if (templateValue === "soft-gradient") {
+      containerClass +=
+        " bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400";
+      textClass = "text-white";
+      buttonClass +=
+        " bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-white/30 shadow-xl";
+      socialIconClass += " text-white hover:text-gray-200";
+    }
+  }
+
+  const shareUrl = `${window.location.origin}/${profile.username || "preview"}`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(shareUrl);
+    alert("Link copied to clipboard!");
+  };
+
+  return (
+    <>
+      <div
+        className={clsx(
+          containerClass,
+          isPublic
+            ? "rounded-none sm:rounded-[2.5rem] sm:my-10 shadow-xl overflow-hidden max-w-[480px] mx-auto"
+            : ""
+        )}
+        style={containerStyle}
+      >
+        {/* Top Header Icons */}
+        <div className="w-full flex justify-between items-center p-6">
+          <div className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center cursor-pointer hover:bg-black/10 transition">
+            <Link2 className={clsx("w-5 h-5", textClass)} />
+          </div>
+          <div
+            onClick={() => setIsShareModalOpen(true)}
+            className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center cursor-pointer hover:bg-black/10 transition"
+          >
+            <Share className={clsx("w-5 h-5", textClass)} />
+          </div>
+        </div>
+
+        <div className="w-full px-6 flex flex-col items-center pb-24">
+          {/* Profile Avatar */}
+          <div className="w-28 h-28 rounded-full overflow-hidden mb-5">
+            {profile.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt={profile.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                <User className="w-14 h-14 text-white" />
+              </div>
+            )}
+          </div>
+
+          {/* Profile Info */}
+          <h1
+            className={clsx(
+              "text-[22px] font-bold tracking-tight mb-1",
+              textClass
+            )}
+          >
+            {profile.name || "username"}
+          </h1>
+          <p
+            className={clsx(
+              "text-sm text-center font-medium mb-6",
+              textClass,
+              "opacity-80"
+            )}
+          >
+            {profile.bio || "bio goes here"}
+          </p>
+
+          {/* Social Icons */}
+          {socialLinks.length > 0 && (
+            <div className="flex gap-5 mb-8 flex-wrap justify-center">
+              {socialLinks.map((link) => {
+                const Icon = getSocialIcon(link.platform);
+                if (!Icon) return null;
+                return (
+                  <a
+                    key={link.platform}
+                    href={getSocialUrl(link.platform, link.id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={socialIconClass}
+                    title={link.platform}
+                  >
+                    <Icon className="w-full h-full" />
+                  </a>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Custom Links */}
+          <div className="w-full space-y-4 mb-12">
+            {customLinks.map((link) => (
+              <a
+                key={link.id}
+                href={
+                  link.url.match(/^https?:\/\//)
+                    ? link.url
+                    : `https://${link.url}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClass}
+              >
+                <div className="w-8 h-8 rounded bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+                  <Link2 className="w-4 h-4 opacity-50" />
+                </div>
+                <span className="flex-1 text-center font-semibold text-[15px]">
+                  {link.title || "Link Title"}
+                </span>
+                <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
+                  <MoreHorizontal className="w-5 h-5 opacity-60" />
+                </div>
+              </a>
+            ))}
+            {customLinks.length === 0 && (
+              <div
+                className={clsx(
+                  "text-center py-4 opacity-50 text-sm font-medium",
+                  textClass
+                )}
+              >
+                No links added yet.
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Logo Pill */}
+          <div className="mt-auto pt-8 flex flex-col items-center">
+            <div className="mt-8 flex gap-3 text-[11px] font-medium opacity-60 text-center flex-wrap justify-center max-w-[80%]">
+              <span className="cursor-pointer hover:underline">
+                Cookie Preferences
+              </span>{" "}
+              •<span className="cursor-pointer hover:underline">Report</span> •
+              <span className="cursor-pointer hover:underline">Privacy</span> •
+              <span className="cursor-pointer hover:underline">
+                About this account
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Share Modal Overlay */}
+      {isShareModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={() => setIsShareModalOpen(false)}
+        >
+          <div
+            className="bg-white w-full sm:w-[420px] rounded-t-3xl sm:rounded-3xl p-6 relative animate-slide-up sm:animate-fade-in shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-6">
+              <div className="w-8" /> {/* Spacer for centering */}
+              <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+                Share Linktree
+              </h2>
+              <button
+                onClick={() => setIsShareModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Horizontal Scroll Share Options */}
+            <div className="flex overflow-x-auto gap-4 pb-4 mb-4 hide-scrollbar snap-x">
+              <button
+                onClick={handleCopy}
+                className="flex flex-col items-center gap-2 shrink-0 snap-start"
+              >
+                <div className="w-[60px] h-[60px] rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition shadow-sm border border-gray-200">
+                  <Link2 className="w-6 h-6 text-gray-700" />
+                </div>
+                <span className="text-xs font-medium text-gray-700">
+                  Copy Linktree
+                </span>
+              </button>
+
+              <a
+                href={`https://twitter.com/intent/tweet?url=${shareUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-2 shrink-0 snap-start"
+              >
+                <div className="w-[60px] h-[60px] rounded-full bg-black flex items-center justify-center hover:opacity-80 transition shadow-sm text-white">
+                  <FaTwitter className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-medium text-gray-700">X</span>
+              </a>
+
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-2 shrink-0 snap-start"
+              >
+                <div className="w-[60px] h-[60px] rounded-full bg-[#1877F2] flex items-center justify-center hover:opacity-80 transition shadow-sm text-white">
+                  <FaFacebook className="w-7 h-7" />
+                </div>
+                <span className="text-xs font-medium text-gray-700">
+                  Facebook
+                </span>
+              </a>
+
+              <a
+                href={`https://api.whatsapp.com/send?text=${shareUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-2 shrink-0 snap-start"
+              >
+                <div className="w-[60px] h-[60px] rounded-full bg-[#25D366] flex items-center justify-center hover:opacity-80 transition shadow-sm text-white">
+                  <FaWhatsapp className="w-7 h-7" />
+                </div>
+                <span className="text-xs font-medium text-gray-700">
+                  WhatsApp
+                </span>
+              </a>
+
+              <a
+                href={`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-2 shrink-0 snap-start"
+              >
+                <div className="w-[60px] h-[60px] rounded-full bg-[#0A66C2] flex items-center justify-center hover:opacity-80 transition shadow-sm text-white">
+                  <FaLinkedin className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-medium text-gray-700">
+                  LinkedIn
+                </span>
+              </a>
+            </div>
+
+            {/* Modal Footer / Upsell */}
+            <div className="border-t border-gray-100 pt-6">
+              <h3 className="font-bold text-gray-900 mb-1 text-[15px]">
+                Join {profile.username || "username"} on Linktree
+              </h3>
+              <p className="text-[13px] text-gray-500 mb-5 leading-relaxed pr-4">
+                Get your own free Linktree. The only link in bio trusted by 70M+
+                people.
+              </p>
+              {/* <div className="flex gap-3">
+                <a href="/" className="flex-1 py-3.5 bg-black text-white text-center rounded-full font-bold text-[15px] hover:bg-gray-800 transition">
+                  Sign up free
+                </a>
+                <a href="/" className="flex-1 py-3.5 bg-white text-black border border-gray-300 text-center rounded-full font-bold text-[15px] hover:bg-gray-50 transition">
+                  Find out more
+                </a>
+              </div> */}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default LinkTreePreview;
