@@ -11,8 +11,17 @@ const Landing = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      await signInWithGoogle();
-      navigate("/onboarding/template");
+      const user = await signInWithGoogle();
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      const docRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        navigate('/admin');
+      } else {
+        navigate('/onboarding/template');
+      }
     } catch (error) {
       console.error("Login failed", error);
       alert(
@@ -32,12 +41,14 @@ const Landing = () => {
       {/* Navbar */}
       <nav className="relative z-10 max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          {/* <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg">
             <Link2 className="w-6 h-6 text-white" />
-          </div> */}
-          <span className="text-xl font-bold tracking-tight">graintoon</span>
+          </div>
+          <span className="text-xl font-bold tracking-tight">
+            LinkZip
+          </span>
         </div>
-        {/* <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4">
           <button
             onClick={handleGoogleLogin}
             className="hidden md:block px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
@@ -50,29 +61,40 @@ const Landing = () => {
           >
             Sign up free
           </button>
-        </div> */}
+        </div>
       </nav>
 
       {/* Hero Section */}
       <main className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-32 flex flex-col items-center justify-center min-h-[calc(100vh-100px)] text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-8"></div>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-8">
+          <Sparkles className="w-4 h-4" />
+          <span>The ultimate bio link tool</span>
+        </div>
 
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
-          ㅎㅇ 전 쌀이에요
+          Everything you are. <br className="hidden md:block" />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-fuchsia-400 to-pink-400">
+            In one, simple link.
+          </span>
         </h1>
 
-        {/* <button 
+        <p className="text-lg md:text-xl text-gray-400 max-w-2xl mb-12 leading-relaxed">
+          Join thousands of creators using our platform to share their content,
+          build their audience, and showcase their portfolio in a beautiful way.
+        </p>
+
+        <button
           onClick={handleGoogleLogin}
           className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-bold text-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
         >
           <FaGoogle className="w-5 h-5 text-black" />
           <span>Get started for free</span>
           <ArrowRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
-        </button> */}
+        </button>
 
-        {/* <p className="mt-6 text-sm text-gray-500 font-medium">
+        <p className="mt-6 text-sm text-gray-500 font-medium">
           Free forever. No credit card required.
-        </p> */}
+        </p>
       </main>
     </div>
   );

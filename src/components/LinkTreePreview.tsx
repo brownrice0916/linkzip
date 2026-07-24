@@ -223,31 +223,91 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             </div>
           )}
 
-          {/* Custom Links */}
+          {/* Custom Links & Collections */}
           <div className="w-full space-y-4 mb-12">
-            {customLinks.map((link) => (
-              <a
-                key={link.id}
-                href={
-                  link.url.match(/^https?:\/\//)
-                    ? link.url
-                    : `https://${link.url}`
+            {customLinks.map((block) => {
+              if (block.type === 'collection') {
+                if (block.layout === 'grid') {
+                  const linkCount = block.links?.length || 0;
+                  const isEven = linkCount > 0 && linkCount % 2 === 0;
+                  const gridColsClass = isEven ? "grid-cols-2" : "grid-cols-3";
+
+                  return (
+                    <div key={block.id} className="w-full pt-2">
+                      {block.title && <h3 className={clsx("font-bold text-sm mb-3 pl-1", textClass)}>{block.title}</h3>}
+                      <div className={clsx("grid gap-3", gridColsClass)}>
+                        {block.links?.map(link => (
+                          <a
+                            key={link.id}
+                            href={link.url?.match(/^https?:\/\//) ? link.url : `https://${link.url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="aspect-square rounded-2xl flex flex-col items-center justify-center p-2 bg-white/20 backdrop-blur-md border border-white/20 hover:scale-105 transition-transform"
+                            style={isColor && templateValue !== '#0f172a' ? { backgroundColor: 'rgba(0,0,0,0.05)', borderColor: 'rgba(0,0,0,0.1)' } : {}}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-2">
+                              <Link2 className={clsx("w-5 h-5", textClass)} />
+                            </div>
+                            <span className={clsx("text-[10px] font-bold text-center line-clamp-2 leading-tight", textClass)}>
+                              {link.title || "Link Title"}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // List Layout
+                  return (
+                    <div key={block.id} className="w-full pt-2">
+                      {block.title && <h3 className={clsx("font-bold text-sm mb-3 pl-1", textClass)}>{block.title}</h3>}
+                      <div className="space-y-3">
+                        {block.links?.map(link => (
+                          <a
+                            key={link.id}
+                            href={link.url?.match(/^https?:\/\//) ? link.url : `https://${link.url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={buttonClass}
+                          >
+                            <div className="w-8 h-8 rounded bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+                              <Link2 className="w-4 h-4 opacity-50" />
+                            </div>
+                            <span className="flex-1 text-center font-semibold text-[15px]">
+                              {link.title || "Link Title"}
+                            </span>
+                            <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
+                              <MoreHorizontal className="w-5 h-5 opacity-60" />
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
                 }
-                target="_blank"
-                rel="noopener noreferrer"
-                className={buttonClass}
-              >
-                <div className="w-8 h-8 rounded bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
-                  <Link2 className="w-4 h-4 opacity-50" />
-                </div>
-                <span className="flex-1 text-center font-semibold text-[15px]">
-                  {link.title || "Link Title"}
-                </span>
-                <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
-                  <MoreHorizontal className="w-5 h-5 opacity-60" />
-                </div>
-              </a>
-            ))}
+              }
+
+              // Normal standalone link
+              return (
+                <a
+                  key={block.id}
+                  href={block.url?.match(/^https?:\/\//) ? block.url : `https://${block.url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={buttonClass}
+                >
+                  <div className="w-8 h-8 rounded bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+                    <Link2 className="w-4 h-4 opacity-50" />
+                  </div>
+                  <span className="flex-1 text-center font-semibold text-[15px]">
+                    {block.title || "Link Title"}
+                  </span>
+                  <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
+                    <MoreHorizontal className="w-5 h-5 opacity-60" />
+                  </div>
+                </a>
+              );
+            })}
             {customLinks.length === 0 && (
               <div
                 className={clsx(
@@ -290,7 +350,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             <div className="flex justify-between items-center mb-6">
               <div className="w-8" /> {/* Spacer for centering */}
               <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                Share Linktree
+                Share LinkZip
               </h2>
               <button
                 onClick={() => setIsShareModalOpen(false)}
@@ -310,7 +370,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                   <Link2 className="w-6 h-6 text-gray-700" />
                 </div>
                 <span className="text-xs font-medium text-gray-700">
-                  Copy Linktree
+                  Copy LinkZip
                 </span>
               </button>
 
@@ -372,20 +432,25 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             {/* Modal Footer / Upsell */}
             <div className="border-t border-gray-100 pt-6">
               <h3 className="font-bold text-gray-900 mb-1 text-[15px]">
-                Join {profile.username || "username"} on Linktree
+                Join {profile.username || "username"} on LinkZip
               </h3>
               <p className="text-[13px] text-gray-500 mb-5 leading-relaxed pr-4">
-                Get your own free Linktree. The only link in bio trusted by 70M+
-                people.
+                Get your own free LinkZip. The only link in bio trusted by millions.
               </p>
-              {/* <div className="flex gap-3">
-                <a href="/" className="flex-1 py-3.5 bg-black text-white text-center rounded-full font-bold text-[15px] hover:bg-gray-800 transition">
+              <div className="flex gap-3">
+                <a
+                  href="/"
+                  className="flex-1 py-3.5 bg-black text-white text-center rounded-full font-bold text-[15px] hover:bg-gray-800 transition"
+                >
                   Sign up free
                 </a>
-                <a href="/" className="flex-1 py-3.5 bg-white text-black border border-gray-300 text-center rounded-full font-bold text-[15px] hover:bg-gray-50 transition">
+                <a
+                  href="/"
+                  className="flex-1 py-3.5 bg-white text-black border border-gray-300 text-center rounded-full font-bold text-[15px] hover:bg-gray-50 transition"
+                >
                   Find out more
                 </a>
-              </div> */}
+              </div>
             </div>
           </div>
         </div>

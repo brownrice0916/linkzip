@@ -27,13 +27,36 @@ function App() {
   const setUser = useStore((state) => state.setUser);
   const [loading, setLoading] = useState(true);
 
+  const loadData = useStore((state) => state.loadData);
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (user) {
+        try {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const { db } = await import('./lib/firebase');
+          const docRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            loadData({
+              profile: data.profile || { name: '', username: '', bio: '', avatarUrl: '' },
+              templateType: data.template?.type || 'preset',
+              templateValue: data.template?.value || 'minimalist',
+              socialLinks: data.socialLinks || [],
+              customLinks: data.customLinks || []
+            });
+          }
+        } catch (error) {
+          console.error("Error loading user data", error);
+        }
+      }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [setUser]);
+  }, [setUser, loadData]);
 
   if (loading) {
     return (
