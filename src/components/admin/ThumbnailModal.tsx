@@ -286,7 +286,9 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                             : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black border border-gray-100 shadow-xs"
                         )}
                       >
-                        <IconComp className="w-6 h-6 mb-1" />
+                          <div className="w-7 h-7 flex items-center justify-center shrink-0 mb-1 overflow-hidden">
+                          <IconComp className="w-5 h-5 object-contain" />
+                        </div>
                         <span className="text-[10px] font-bold truncate max-w-full text-center opacity-90">
                           {item.name}
                         </span>
@@ -318,7 +320,9 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                                 : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black border border-gray-100 shadow-xs"
                             )}
                           >
-                            <IconComp className="w-6 h-6 mb-1" />
+                              <div className="w-7 h-7 flex items-center justify-center shrink-0 mb-1 overflow-hidden">
+                          <IconComp className="w-5 h-5 object-contain" />
+                        </div>
                             <span className="text-[10px] font-bold truncate max-w-full text-center opacity-90">
                               {item.name}
                             </span>
@@ -349,7 +353,9 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                                 : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black border border-gray-100 shadow-xs"
                             )}
                           >
-                            <IconComp className="w-6 h-6 mb-1" />
+                              <div className="w-7 h-7 flex items-center justify-center shrink-0 mb-1 overflow-hidden">
+                          <IconComp className="w-5 h-5 object-contain" />
+                        </div>
                             <span className="text-[10px] font-bold truncate max-w-full text-center opacity-90">
                               {item.name}
                             </span>

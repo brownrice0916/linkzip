@@ -431,11 +431,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                               className={buttonClass}
                             >
                               {!isNone && (
-                                <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+                                <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
                                   {isImage && link.icon ? (
                                     <img src={link.icon} alt={link.title} className="w-full h-full object-cover" />
                                   ) : (
-                                    <IconComp className="w-4 h-4 opacity-70" />
+                                    <IconComp className="w-5 h-5 opacity-85" />
                                   )}
                                 </div>
                               )}
@@ -471,13 +471,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                 >
                   {!isNone && (
                     <div className={clsx(
-                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
+                      "w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
                       templateValue.startsWith('neo-') ? "bg-amber-300 border-2 border-black text-black shadow-xs font-bold" : "bg-black/5"
                     )}>
                       {isImage && block.icon ? (
                         <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
                       ) : (
-                        <IconComp className={clsx("w-4 h-4", templateValue.startsWith('neo-') ? "text-black opacity-90" : "opacity-70")} />
+                        <IconComp className={clsx("w-5 h-5", templateValue.startsWith('neo-') ? "text-black opacity-90" : "opacity-85")} />
                       )}
                     </div>
                   )}
