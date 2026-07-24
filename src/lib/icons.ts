@@ -80,6 +80,14 @@ const NaverIcon: IconComponent = ({ className = "w-5 h-5" }) => (
   )
 );
 
+// Naver Blog Badge Icon (Green #03CF5D with white N)
+const NaverBlogIcon: IconComponent = ({ className = "w-5 h-5" }) => (
+  React.createElement('svg', { className, viewBox: "0 0 24 24" },
+    React.createElement('rect', { width: "24", height: "24", rx: "6", fill: "#03CF5D" }),
+    React.createElement('path', { d: "M16.273 12.845L7.376 4H4v16h4.727V11.155L15.624 20H20V4h-3.727v8.845z", fill: "#FFFFFF" })
+  )
+);
+
 const PostypeIcon: IconComponent = ({ className = "w-5 h-5" }) => (
   React.createElement('svg', { className, viewBox: "0 0 24 24", fill: "currentColor" },
     React.createElement('path', { d: "M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3ZM11 16H8V8H13.5C14.8807 8 16 9.11929 16 10.5C16 11.8807 14.8807 13 13.5 13H11V16ZM11 10.5H13.5C13.7761 10.5 14 10.7239 14 11C14 11.2761 13.7761 11.5 13.5 11.5H11V10.5Z" })
@@ -104,9 +112,9 @@ const TistoryIcon: IconComponent = ({ className = "w-5 h-5" }) => (
 
 export const iconRegistry: Record<string, IconComponent> = {
   // SNS & Platforms
+  naverblog: NaverBlogIcon,
   naver: NaverIcon,
   postype: PostypeIcon,
-  naverblog: NaverIcon,
   tistory: TistoryIcon,
   brunch: BrunchIcon,
   facebook: FaFacebook,
@@ -168,6 +176,7 @@ export const iconRegistry: Record<string, IconComponent> = {
 
 export const availableIcons: IconItem[] = [
   // SNS & Brand Icons
+  { id: 'naverblog', name: '네이버 블로그', icon: NaverBlogIcon, category: 'sns', tags: ['naver', 'blog', '네이버', '블로그', '네이버블로그'] },
   { id: 'naver', name: '네이버', icon: NaverIcon, category: 'sns', tags: ['naver', '네이버', 'blog', 'cafe'] },
   { id: 'postype', name: '포스타입', icon: PostypeIcon, category: 'sns', tags: ['postype', '포스타입', 'post'] },
   { id: 'youtube', name: 'YouTube', icon: FaYoutube, category: 'sns', tags: ['youtube', '유튜브', 'video'] },
