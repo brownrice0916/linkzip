@@ -6,6 +6,7 @@ import {
   Link2, 
   Palette, 
   User as UserIcon, 
+  Settings,
   LogOut, 
   Share2, 
   Check, 
@@ -21,8 +22,9 @@ import clsx from 'clsx';
 import LinksEditor from '../components/admin/LinksEditor';
 import ProfileEditor from '../components/admin/ProfileEditor';
 import AppearanceEditor from '../components/admin/AppearanceEditor';
+import SettingsEditor from '../components/admin/SettingsEditor';
 
-type TabType = 'links' | 'profile' | 'appearance';
+type TabType = 'links' | 'profile' | 'appearance' | 'settings';
 type TargetAction = TabType | 'home' | 'logout' | null;
 
 const Admin = () => {
@@ -113,7 +115,7 @@ const Admin = () => {
       handleLogout();
     } else if (target === 'home') {
       navigate('/');
-    } else if (target === 'links' || target === 'profile' || target === 'appearance') {
+    } else if (target === 'links' || target === 'profile' || target === 'appearance' || target === 'settings') {
       setActiveTab(target);
     }
   };
@@ -139,7 +141,8 @@ const Admin = () => {
   const sectionTitleMap: Record<TabType, string> = {
     links: 'Content',
     profile: 'Header',
-    appearance: 'Design'
+    appearance: 'Design',
+    settings: 'Settings'
   };
 
   return (
@@ -196,6 +199,19 @@ const Admin = () => {
           >
             <Palette className="w-5 h-5" />
             <span className="text-[10px] font-bold">Design</span>
+          </button>
+
+          <button
+            onClick={() => requestNavigation('settings')}
+            className={clsx(
+              "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
+              activeTab === 'settings' 
+                ? "bg-black text-white shadow-md" 
+                : "text-gray-500 hover:bg-gray-100 hover:text-black"
+            )}
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Settings</span>
           </button>
 
         </div>
@@ -311,6 +327,7 @@ const Admin = () => {
             {activeTab === 'links' && <LinksEditor />}
             {activeTab === 'profile' && <ProfileEditor />}
             {activeTab === 'appearance' && <AppearanceEditor />}
+            {activeTab === 'settings' && <SettingsEditor />}
           </div>
         </div>
 
@@ -327,6 +344,10 @@ const Admin = () => {
           <button onClick={() => requestNavigation('appearance')} className={clsx("flex flex-col items-center gap-1", activeTab === 'appearance' ? 'text-black font-bold' : 'text-gray-400')}>
             <Palette className="w-5 h-5" />
             <span className="text-[10px]">Design</span>
+          </button>
+          <button onClick={() => requestNavigation('settings')} className={clsx("flex flex-col items-center gap-1", activeTab === 'settings' ? 'text-black font-bold' : 'text-gray-400')}>
+            <Settings className="w-5 h-5" />
+            <span className="text-[10px]">Settings</span>
           </button>
           <button onClick={() => requestNavigation('logout')} className="flex flex-col items-center gap-1 text-gray-400 hover:text-red-500">
             <LogOut className="w-5 h-5" />
