@@ -279,14 +279,18 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
 
             {profile.profileLayout === 'hero' ? (
               <div className="w-full max-w-[320px] relative overflow-hidden mb-4 shrink-0 flex flex-col items-center">
-                <div className="relative w-full aspect-square max-h-[300px] overflow-hidden flex items-center justify-center">
+                <div 
+                  className="relative w-full aspect-square max-h-[300px] overflow-hidden flex items-center justify-center"
+                  style={{
+                    WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 98%)',
+                    maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 98%)'
+                  }}
+                >
                   {profile.avatarUrl ? (
                     <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
                   ) : (
                     <User className="w-24 h-24 text-gray-400" />
                   )}
-                  {/* Bottom fade mask gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/90 pointer-events-none" />
                 </div>
               </div>
             ) : profile.profileLayout === 'banner' ? (
