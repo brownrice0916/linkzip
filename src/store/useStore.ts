@@ -30,6 +30,23 @@ export interface UserProfile {
   bannerUrl?: string;
 }
 
+export interface AppStateSnapshot {
+  templateType: 'color' | 'preset';
+  templateValue: string;
+  socialLinks: SocialLink[];
+  customLinks: CustomLink[];
+  profile: UserProfile;
+  buttonStyle: 'solid' | 'glass' | 'outline';
+  buttonRoundness: 'none' | 'sm' | 'md' | 'full';
+  buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
+  buttonColor?: string;
+  buttonTextColor?: string;
+  fontFamily: string;
+  titleFontFamily?: string;
+  pageTextColor?: string;
+  sticker?: string;
+}
+
 interface AppState {
   // Authentication
   user: any | null;
@@ -53,6 +70,12 @@ interface AppState {
   pageTextColor?: string;
   sticker?: string;
 
+  // Change Tracking & History (Undo / Redo / Cancel / Save)
+  isDirty: boolean;
+  undoStack: AppStateSnapshot[];
+  redoStack: AppStateSnapshot[];
+  savedSnapshot: AppStateSnapshot | null;
+
   // Actions
   setTemplate: (type: 'color' | 'preset', value: string) => void;
   setDesignSettings: (settings: Partial<AppState>) => void;
@@ -64,11 +87,34 @@ interface AppState {
   loadData: (data: Partial<AppState>) => void;
   reorderLinks: (newLinks: CustomLink[]) => void;
 
+  // Undo / Redo / Cancel / Save Actions
+  undo: () => void;
+  redo: () => void;
+  cancelChanges: () => void;
+  markSaved: () => void;
+
   // Drag and Drop Actions
   moveItemToCollection: (itemId: string, targetCollectionId: string) => void;
   moveItemToRoot: (itemId: string) => void;
   moveItemRelative: (activeId: string, targetId: string) => void;
 }
+
+const getSnapshotFromState = (state: any): AppStateSnapshot => ({
+  templateType: state.templateType,
+  templateValue: state.templateValue,
+  socialLinks: JSON.parse(JSON.stringify(state.socialLinks || [])),
+  customLinks: JSON.parse(JSON.stringify(state.customLinks || [])),
+  profile: JSON.parse(JSON.stringify(state.profile || {})),
+  buttonStyle: state.buttonStyle,
+  buttonRoundness: state.buttonRoundness,
+  buttonShadow: state.buttonShadow,
+  buttonColor: state.buttonColor,
+  buttonTextColor: state.buttonTextColor,
+  fontFamily: state.fontFamily,
+  titleFontFamily: state.titleFontFamily,
+  pageTextColor: state.pageTextColor,
+  sticker: state.sticker,
+});
 
 const recursivelyUpdateLink = (links: CustomLink[], id: string, updates: Partial<CustomLink>): CustomLink[] => {
   return links.map(link => {
@@ -125,48 +171,177 @@ export const useStore = create<AppState>((set) => ({
   titleFontFamily: '',
   sticker: '',
 
-  setTemplate: (type, value) => set((state) => ({ 
-    templateType: type, 
-    templateValue: value,
-    buttonColor: '',
-    buttonTextColor: '',
-    pageTextColor: '',
-    fontFamily: themeFontMap[value] || state.fontFamily,
-    titleFontFamily: '',
-    profile: { ...state.profile, titleColor: '' }
-  })),
-  setDesignSettings: (settings) => set((state) => ({ ...state, ...settings })),
-  setSocialLinks: (links) => set({ socialLinks: links }),
+  // History & Change Tracking
+  isDirty: false,
+  undoStack: [],
+  redoStack: [],
+  savedSnapshot: null,
+
+  setTemplate: (type, value) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      templateType: type, 
+      templateValue: value,
+      buttonColor: '',
+      buttonTextColor: '',
+      pageTextColor: '',
+      fontFamily: themeFontMap[value] || state.fontFamily,
+      titleFontFamily: '',
+      profile: { ...state.profile, titleColor: '' },
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  setDesignSettings: (settings) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      ...state,
+      ...settings,
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  setSocialLinks: (links) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      socialLinks: links,
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
   
   addCustomLink: (link, collectionId) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    let newCustomLinks: CustomLink[];
+
     if (!collectionId) {
-      return { customLinks: [...state.customLinks, link] };
-    }
-    return {
-      customLinks: state.customLinks.map(c => {
+      newCustomLinks = [...state.customLinks, link];
+    } else {
+      newCustomLinks = state.customLinks.map(c => {
         if (c.id === collectionId) {
           return { ...c, links: [...(c.links || []), link] };
         }
         return c;
-      })
+      });
+    }
+
+    return {
+      customLinks: newCustomLinks,
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
     };
   }),
 
-  updateCustomLink: (id, updates) => set((state) => ({
-    customLinks: recursivelyUpdateLink(state.customLinks, id, updates)
-  })),
+  updateCustomLink: (id, updates) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      customLinks: recursivelyUpdateLink(state.customLinks, id, updates),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
 
-  removeCustomLink: (id) => set((state) => ({
-    customLinks: recursivelyRemoveLink(state.customLinks, id)
-  })),
+  removeCustomLink: (id) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      customLinks: recursivelyRemoveLink(state.customLinks, id),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
 
-  setProfile: (profile) => set({ profile }),
-  loadData: (data) => set((state) => ({ ...state, ...data })),
-  reorderLinks: (newLinks) => set({ customLinks: newLinks }),
+  setProfile: (profile) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      profile,
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  loadData: (data) => set((state) => {
+    const newState = { ...state, ...data };
+    const snap = getSnapshotFromState(newState);
+    return {
+      ...newState,
+      savedSnapshot: snap,
+      undoStack: [],
+      redoStack: [],
+      isDirty: false
+    };
+  }),
+
+  reorderLinks: (newLinks) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      customLinks: newLinks,
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  undo: () => set((state) => {
+    if (state.undoStack.length === 0) return state;
+    const previousSnapshot = state.undoStack[state.undoStack.length - 1];
+    const newUndoStack = state.undoStack.slice(0, state.undoStack.length - 1);
+    const currentSnapshot = getSnapshotFromState(state);
+
+    return {
+      ...previousSnapshot,
+      undoStack: newUndoStack,
+      redoStack: [currentSnapshot, ...state.redoStack],
+      isDirty: true
+    };
+  }),
+
+  redo: () => set((state) => {
+    if (state.redoStack.length === 0) return state;
+    const nextSnapshot = state.redoStack[0];
+    const newRedoStack = state.redoStack.slice(1);
+    const currentSnapshot = getSnapshotFromState(state);
+
+    return {
+      ...nextSnapshot,
+      undoStack: [...state.undoStack, currentSnapshot],
+      redoStack: newRedoStack,
+      isDirty: true
+    };
+  }),
+
+  cancelChanges: () => set((state) => {
+    if (!state.savedSnapshot) return state;
+    return {
+      ...state.savedSnapshot,
+      undoStack: [],
+      redoStack: [],
+      isDirty: false
+    };
+  }),
+
+  markSaved: () => set((state) => {
+    const currentSnap = getSnapshotFromState(state);
+    return {
+      savedSnapshot: currentSnap,
+      undoStack: [],
+      redoStack: [],
+      isDirty: false
+    };
+  }),
 
   moveItemToCollection: (itemId, targetCollectionId) => set((state) => {
     if (itemId === targetCollectionId) return state;
 
+    const snap = getSnapshotFromState(state);
     let extractedItem: CustomLink | null = null;
 
     const removeFromTree = (list: CustomLink[]): CustomLink[] => {
@@ -188,7 +363,6 @@ export const useStore = create<AppState>((set) => ({
     const newRoot = removeFromTree(state.customLinks);
     if (!extractedItem) return state;
 
-    // Convert to standard link if moving into a collection
     const itemToInsert: CustomLink = {
       ...(extractedItem as CustomLink),
       type: 'link'
@@ -209,10 +383,16 @@ export const useStore = create<AppState>((set) => ({
       });
     };
 
-    return { customLinks: addToTarget(newRoot) };
+    return { 
+      customLinks: addToTarget(newRoot),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
   }),
 
   moveItemToRoot: (itemId) => set((state) => {
+    const snap = getSnapshotFromState(state);
     let extractedItem: CustomLink | null = null;
 
     const removeFromCollections = (list: CustomLink[]): CustomLink[] => {
@@ -232,12 +412,18 @@ export const useStore = create<AppState>((set) => ({
     const newRoot = removeFromCollections(state.customLinks);
     if (!extractedItem) return state;
 
-    return { customLinks: [...newRoot, extractedItem] };
+    return { 
+      customLinks: [...newRoot, extractedItem],
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
   }),
 
   moveItemRelative: (activeId, targetId) => set((state) => {
     if (activeId === targetId) return state;
 
+    const snap = getSnapshotFromState(state);
     let activeItem: CustomLink | null = null;
 
     const removeActive = (list: CustomLink[]): CustomLink[] => {
@@ -274,6 +460,11 @@ export const useStore = create<AppState>((set) => ({
       });
     };
 
-    return { customLinks: insertNearTarget(cleanList) };
+    return { 
+      customLinks: insertNearTarget(cleanList),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
   }),
 }));
