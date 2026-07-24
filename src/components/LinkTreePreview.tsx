@@ -164,22 +164,22 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
       containerClass += " bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400";
       if (!pageTextColor) textClass = "text-amber-950";
       themeDefaultBtnClass = "bg-white/30 backdrop-blur-md text-amber-950 border border-white/50 hover:bg-white/40 shadow-md font-semibold";
-    } else if (templateValue === "grid" || templateValue === "neo-lime") {
-      containerClass += " bg-lime-300";
+    } else if (templateValue === "neo-pop") {
+      containerClass += " bg-gradient-to-tr from-yellow-300 via-pink-400 to-indigo-500";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]";
-    } else if (templateValue === "neo-pink") {
-      containerClass += " bg-pink-400";
+      themeDefaultBtnClass = "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+    } else if (templateValue === "neo-sunshine") {
+      containerClass += " bg-gradient-to-tr from-yellow-300 via-amber-400 to-lime-300";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-yellow-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]";
-    } else if (templateValue === "neo-cyan") {
-      containerClass += " bg-cyan-300";
+      themeDefaultBtnClass = "bg-lime-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+    } else if (templateValue === "neo-cyber") {
+      containerClass += " bg-gradient-to-tr from-cyan-300 via-blue-500 to-pink-500";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-pink-400 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]";
-    } else if (templateValue === "neo-yellow") {
-      containerClass += " bg-yellow-300";
+      themeDefaultBtnClass = "bg-yellow-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+    } else if (templateValue === "neo-mint") {
+      containerClass += " bg-gradient-to-tr from-emerald-300 via-teal-400 to-purple-500";
       if (!pageTextColor) textClass = "text-black";
-      themeDefaultBtnClass = "bg-cyan-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px]";
+      themeDefaultBtnClass = "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
     } else if (templateValue === "groove") {
       containerClass += " bg-gradient-to-r from-amber-500 via-red-500 to-purple-600";
       if (!pageTextColor) textClass = "text-white";
@@ -445,10 +445,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                   className={buttonClass}
                   style={customButtonStyle}
                 >
-                  <div className="w-8 h-8 rounded bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
-                    <Link2 className="w-4 h-4 opacity-50" />
+                  <div className={clsx(
+                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden",
+                    templateValue.startsWith('neo-') ? "bg-amber-300 border-2 border-black text-black shadow-xs font-bold" : "bg-black/5"
+                  )}>
+                    <Link2 className={clsx("w-4 h-4", templateValue.startsWith('neo-') ? "text-black opacity-90" : "opacity-50")} />
                   </div>
-                  <span className="flex-1 text-center font-semibold text-[15px]">
+                  <span className="flex-1 text-center font-bold text-[15px]">
                     {block.title || "Link Title"}
                   </span>
                   <div className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/5 rounded-full transition">
