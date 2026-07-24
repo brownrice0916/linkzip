@@ -7,6 +7,7 @@ import {
   Sparkles, 
   ChevronRight, 
   ChevronDown,
+  X,
   Square, 
   Smile, 
   Palette, 
@@ -109,6 +110,7 @@ const AppearanceEditor = () => {
   } = useStore();
 
   const [currentView, setCurrentView] = useState<'main' | 'theme' | 'buttons' | 'colors' | 'stickers'>('main');
+  const [activeFontModal, setActiveFontModal] = useState<'page' | 'title' | null>(null);
 
   const handleShuffleTheme = () => {
     const randomIndex = Math.floor(Math.random() * themes.length);
@@ -348,71 +350,159 @@ const AppearanceEditor = () => {
         </button>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-          {/* Page font Dropdown */}
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-gray-900">Page font</label>
-            <div className="relative">
-              <select
-                value={fontFamily}
-                onChange={(e) => setDesignSettings({ fontFamily: e.target.value })}
-                className="w-full p-3.5 pr-10 rounded-2xl border-2 border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:border-black focus:bg-white appearance-none cursor-pointer transition-all shadow-xs"
-                style={{ fontFamily: `'${fontFamily}', sans-serif` }}
-              >
-                <optgroup label="🇰🇷 한글 추천 폰트 (Free Korean Fonts)">
-                  {fonts.filter(f => f.category === 'korean').map((f) => (
-                    <option key={f.id} value={f.font} style={{ fontFamily: `'${f.font}', sans-serif` }}>
-                      {f.name} {f.badge ? '⚡' : ''}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="🌐 글로벌 폰트 (Free Global Fonts)">
-                  {fonts.filter(f => f.category !== 'korean').map((f) => (
-                    <option key={f.id} value={f.font} style={{ fontFamily: `'${f.font}', sans-serif` }}>
-                      {f.name} {f.badge ? '⚡' : ''}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                <ChevronDown className="w-5 h-5" />
-              </div>
-            </div>
+          {/* Page font Modal Trigger */}
+          <div className="flex items-center justify-between py-1">
+            <span className="text-sm font-bold text-gray-900">Page font</span>
+            <button
+              onClick={() => setActiveFontModal('page')}
+              className="px-5 py-2.5 rounded-2xl bg-[#F7F7F5] border border-gray-200 text-sm font-bold text-gray-900 hover:bg-gray-200 hover:border-gray-300 transition-all shadow-xs cursor-pointer flex items-center gap-2"
+            >
+              <span style={{ fontFamily: `'${fontFamily}', sans-serif` }}>
+                {fontFamily || 'Inter'}
+              </span>
+            </button>
           </div>
 
-          {/* Title font Dropdown */}
-          <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-bold text-gray-900">Title font</label>
-              <span className="text-xs text-gray-400">Profile title font override</span>
+          {/* Title font Modal Trigger */}
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <span className="text-sm font-bold text-gray-900 block">Alternative title font</span>
+              <span className="text-xs text-gray-400">Matches page font by default</span>
             </div>
-            <div className="relative">
-              <select
-                value={titleFontFamily || ''}
-                onChange={(e) => setDesignSettings({ titleFontFamily: e.target.value })}
-                className="w-full p-3.5 pr-10 rounded-2xl border-2 border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900 focus:outline-none focus:border-black focus:bg-white appearance-none cursor-pointer transition-all shadow-xs"
-                style={{ fontFamily: titleFontFamily ? `'${titleFontFamily}', sans-serif` : `'${fontFamily}', sans-serif` }}
-              >
-                <option value="">✨ Auto (Page font와 동일하게 적용)</option>
-                <optgroup label="🇰🇷 한글 추천 폰트 (Free Korean Fonts)">
-                  {fonts.filter(f => f.category === 'korean').map((f) => (
-                    <option key={`title-${f.id}`} value={f.font} style={{ fontFamily: `'${f.font}', sans-serif` }}>
-                      {f.name} {f.badge ? '⚡' : ''}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="🌐 글로벌 폰트 (Free Global Fonts)">
-                  {fonts.filter(f => f.category !== 'korean').map((f) => (
-                    <option key={`title-${f.id}`} value={f.font} style={{ fontFamily: `'${f.font}', sans-serif` }}>
-                      {f.name} {f.badge ? '⚡' : ''}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                <ChevronDown className="w-5 h-5" />
+            <button
+              onClick={() => setActiveFontModal('title')}
+              className="px-5 py-2.5 rounded-2xl bg-[#F7F7F5] border border-gray-200 text-sm font-bold text-gray-900 hover:bg-gray-200 hover:border-gray-300 transition-all shadow-xs cursor-pointer flex items-center gap-2"
+            >
+              <span style={{ fontFamily: titleFontFamily ? `'${titleFontFamily}', sans-serif` : `'${fontFamily}', sans-serif` }}>
+                {titleFontFamily || 'Auto'}
+              </span>
+            </button>
+          </div>
+
+          {/* Modal Overlay */}
+          {activeFontModal && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl w-full max-w-md max-h-[85vh] flex flex-col p-6 shadow-2xl relative animate-in fade-in zoom-in-95">
+                
+                {/* Modal Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4 shrink-0 relative">
+                  <h3 className="text-base font-bold text-gray-900 mx-auto">
+                    {activeFontModal === 'page' ? 'Page font' : 'Title font'}
+                  </h3>
+                  <button
+                    onClick={() => setActiveFontModal(null)}
+                    className="absolute right-0 top-0 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Scrollable Font Grid */}
+                <div className="overflow-y-auto flex-1 pr-1 space-y-4">
+                  {/* Title font Auto Option */}
+                  {activeFontModal === 'title' && (
+                    <button
+                      onClick={() => {
+                        setDesignSettings({ titleFontFamily: '' });
+                        setActiveFontModal(null);
+                      }}
+                      className={clsx(
+                        "w-full h-14 rounded-2xl flex items-center justify-center text-sm font-bold transition-all mb-3 cursor-pointer",
+                        !titleFontFamily ? "border-2 border-black bg-[#F5F5F0]" : "bg-[#F7F7F5] hover:bg-gray-200 border border-transparent"
+                      )}
+                    >
+                      Auto (Page font와 동일하게 적용)
+                    </button>
+                  )}
+
+                  {/* Korean Fonts Section */}
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 mb-2 px-1">
+                      🇰🇷 한글 추천 폰트
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {fonts.filter(f => f.category === 'korean').map((f) => {
+                        const isSelected = activeFontModal === 'page' 
+                          ? (fontFamily === f.font || fontFamily === f.id)
+                          : (titleFontFamily === f.font);
+                        return (
+                          <button
+                            key={f.id}
+                            onClick={() => {
+                              if (activeFontModal === 'page') {
+                                setDesignSettings({ fontFamily: f.font });
+                              } else {
+                                setDesignSettings({ titleFontFamily: f.font });
+                              }
+                              setActiveFontModal(null);
+                            }}
+                            className={clsx(
+                              "h-14 px-3 rounded-2xl flex items-center justify-center text-sm transition-all relative overflow-hidden cursor-pointer",
+                              isSelected 
+                                ? "border-2 border-black bg-[#F5F5F0] shadow-xs font-bold text-gray-900" 
+                                : "bg-[#F7F7F5] hover:bg-gray-200 text-gray-800 font-medium border border-transparent"
+                            )}
+                          >
+                            <span className="truncate pr-1 mx-auto text-center" style={{ fontFamily: `'${f.font}', sans-serif` }}>
+                              {f.name.split(' (')[0]}
+                            </span>
+                            {f.badge && (
+                              <span className="w-5 h-5 rounded-full bg-stone-400/50 text-white flex items-center justify-center text-[10px] shrink-0 absolute right-2">
+                                ⚡
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Global Fonts Section */}
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-purple-600 mb-2 px-1">
+                      🌐 글로벌 폰트
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {fonts.filter(f => f.category !== 'korean').map((f) => {
+                        const isSelected = activeFontModal === 'page' 
+                          ? (fontFamily === f.font || fontFamily === f.id)
+                          : (titleFontFamily === f.font);
+                        return (
+                          <button
+                            key={f.id}
+                            onClick={() => {
+                              if (activeFontModal === 'page') {
+                                setDesignSettings({ fontFamily: f.font });
+                              } else {
+                                setDesignSettings({ titleFontFamily: f.font });
+                              }
+                              setActiveFontModal(null);
+                            }}
+                            className={clsx(
+                              "h-14 px-3 rounded-2xl flex items-center justify-center text-sm transition-all relative overflow-hidden cursor-pointer",
+                              isSelected 
+                                ? "border-2 border-black bg-[#F5F5F0] shadow-xs font-bold text-gray-900" 
+                                : "bg-[#F7F7F5] hover:bg-gray-200 text-gray-800 font-medium border border-transparent"
+                            )}
+                          >
+                            <span className="truncate pr-1 mx-auto text-center" style={{ fontFamily: `'${f.font}', sans-serif` }}>
+                              {f.name}
+                            </span>
+                            {f.badge && (
+                              <span className="w-5 h-5 rounded-full bg-stone-400/50 text-white flex items-center justify-center text-[10px] shrink-0 absolute right-2">
+                                ⚡
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <hr className="border-gray-100" />
 
@@ -443,7 +533,6 @@ const AppearanceEditor = () => {
               <span className="text-xs font-mono font-bold uppercase">{templateValue}</span>
             </div>
           </div>
-
         </div>
       </div>
     );
