@@ -42,6 +42,7 @@ interface AppState {
   // Design Settings
   buttonStyle: 'solid' | 'glass' | 'outline';
   buttonRoundness: 'none' | 'sm' | 'md' | 'full';
+  buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
   buttonColor?: string;
   buttonTextColor?: string;
   fontFamily: string;
@@ -97,7 +98,8 @@ export const useStore = create<AppState>((set) => ({
   profile: { name: '', username: '', bio: '', avatarUrl: '' },
 
   buttonStyle: 'solid',
-  buttonRoundness: 'md',
+  buttonRoundness: 'full',
+  buttonShadow: 'soft',
   fontFamily: 'sans',
   sticker: '',
 

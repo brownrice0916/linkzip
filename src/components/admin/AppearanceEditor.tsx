@@ -131,69 +131,74 @@ const AppearanceEditor = () => {
       <div className="space-y-6 animate-fade-in pb-20 font-sans">
         <button 
           onClick={() => setCurrentView('main')}
-          className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-indigo-600 transition"
+          className="flex items-center gap-3 text-xl font-bold text-gray-900 hover:text-indigo-600 transition"
         >
-          <ArrowLeft className="w-5 h-5" /> Buttons
+          <ArrowLeft className="w-6 h-6" /> Buttons
         </button>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-8">
+        <div className="bg-white p-6 rounded-3xl shadow-xs border border-gray-100 space-y-8">
           
           {/* Button Style */}
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-900">Button style</h3>
+            <h3 className="text-base font-bold text-gray-900">Button style</h3>
             <div className="grid grid-cols-3 gap-3">
+              
+              {/* Solid */}
               <button
                 onClick={() => setDesignSettings({ buttonStyle: 'solid' })}
                 className={clsx(
-                  "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
-                  buttonStyle === 'solid' ? "border-black bg-gray-50 ring-1 ring-black" : "border-gray-200 hover:bg-gray-50"
+                  "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 bg-white",
+                  buttonStyle === 'solid' ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-300"
                 )}
               >
-                <div className="w-16 h-8 bg-gray-400 rounded-lg flex items-center justify-center">
-                  <div className="w-10 h-4 bg-white rounded-md" />
+                <div className="w-full h-16 bg-gray-300 rounded-xl flex items-center justify-center relative">
+                  <div className="w-14 h-6 bg-white rounded-full shadow-xs" />
                 </div>
-                <span className="text-xs font-bold text-gray-900">Solid</span>
+                <span className="text-xs font-bold text-gray-900 mt-1">Solid</span>
               </button>
 
+              {/* Glass */}
               <button
                 onClick={() => setDesignSettings({ buttonStyle: 'glass' })}
                 className={clsx(
-                  "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
-                  buttonStyle === 'glass' ? "border-black bg-gray-50 ring-1 ring-black" : "border-gray-200 hover:bg-gray-50"
+                  "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 bg-white",
+                  buttonStyle === 'glass' ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-300"
                 )}
               >
-                <div className="w-16 h-8 bg-gray-200/60 backdrop-blur-sm border border-gray-300 rounded-lg flex items-center justify-center">
-                  <div className="w-10 h-4 bg-gray-400/50 rounded-md" />
+                <div className="w-full h-16 bg-gray-300 rounded-xl flex items-center justify-center relative">
+                  <div className="w-14 h-6 bg-white/40 border border-white/60 rounded-full" />
+                  <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs">
+                    ⚡
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-gray-900">Glass</span>
+                <span className="text-xs font-bold text-gray-900 mt-1">Glass</span>
               </button>
 
+              {/* Outline */}
               <button
                 onClick={() => setDesignSettings({ buttonStyle: 'outline' })}
                 className={clsx(
-                  "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
-                  buttonStyle === 'outline' ? "border-black bg-gray-50 ring-1 ring-black" : "border-gray-200 hover:bg-gray-50"
+                  "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 bg-white",
+                  buttonStyle === 'outline' ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-300"
                 )}
               >
-                <div className="w-16 h-8 border-2 border-gray-400 rounded-lg flex items-center justify-center">
-                  <div className="w-10 h-4 bg-transparent border border-gray-400 rounded-md" />
+                <div className="w-full h-16 bg-gray-300 rounded-xl flex items-center justify-center">
+                  <div className="w-14 h-6 border-2 border-white rounded-full" />
                 </div>
-                <span className="text-xs font-bold text-gray-900">Outline</span>
+                <span className="text-xs font-bold text-gray-900 mt-1">Outline</span>
               </button>
             </div>
           </div>
-
-          <hr className="border-gray-100" />
 
           {/* Corner Roundness */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900">Corner roundness</h3>
             <div className="grid grid-cols-4 gap-3">
               {[
-                { id: 'none', label: 'Square', shape: 'rounded-none' },
-                { id: 'sm', label: 'Soft', shape: 'rounded-md' },
-                { id: 'md', label: 'Curved', shape: 'rounded-xl' },
-                { id: 'full', label: 'Pill', shape: 'rounded-full' },
+                { id: 'none', svgPath: "M5 19V5h14" },
+                { id: 'sm', svgPath: "M5 19V9a4 4 0 0 1 4-4h10" },
+                { id: 'md', svgPath: "M5 19V12a7 7 0 0 1 7-7h7" },
+                { id: 'full', svgPath: "M5 19C5 11 11 5 19 5" },
               ].map((r) => {
                 const isSelected = buttonRoundness === r.id;
                 return (
@@ -201,46 +206,85 @@ const AppearanceEditor = () => {
                     key={r.id}
                     onClick={() => setDesignSettings({ buttonRoundness: r.id as any })}
                     className={clsx(
-                      "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2",
-                      isSelected ? "border-black bg-gray-50 ring-1 ring-black" : "border-gray-200 hover:bg-gray-50"
+                      "flex items-center justify-center p-3 h-14 rounded-2xl border-2 transition-all bg-white",
+                      isSelected ? "border-blue-600 text-blue-600 ring-1 ring-blue-600" : "border-gray-200 text-gray-700 hover:border-gray-300"
                     )}
                   >
-                    <div className={clsx("w-8 h-8 border-2 border-gray-700", r.shape)} />
-                    <span className="text-[11px] font-bold text-gray-800">{r.label}</span>
+                    <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none">
+                      <path d={r.svgPath} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <hr className="border-gray-100" />
-
-          {/* Button Color & Text Color */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-700">Button color</span>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={buttonColor || '#000000'}
-                  onChange={(e) => setDesignSettings({ buttonColor: e.target.value })}
-                  className="w-8 h-8 rounded-xl cursor-pointer border border-gray-200"
-                />
-                <span className="text-xs font-mono font-bold uppercase">{buttonColor || '#000000'}</span>
-              </div>
+          {/* Button Shadow */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-gray-900">Button shadow</h3>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { id: 'none', label: 'None' },
+                { id: 'soft', label: 'Soft' },
+                { id: 'strong', label: 'Strong' },
+                { id: 'hard', label: 'Hard' },
+              ].map((s) => {
+                const isSelected = (useStore.getState().buttonShadow || 'soft') === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setDesignSettings({ buttonShadow: s.id as any })}
+                    className={clsx(
+                      "py-3 rounded-2xl border-2 transition-all text-xs font-bold bg-white text-center",
+                      isSelected ? "border-black text-black ring-1 ring-black" : "border-gray-200 text-gray-700 hover:border-gray-300"
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-700">Button text color</span>
-              <div className="flex items-center gap-3">
+          {/* Button Color */}
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-sm font-bold text-gray-900">Button color</span>
+            <div className="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-2xl bg-white shadow-xs">
+              <label className="w-6 h-6 rounded-lg cursor-pointer border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center" style={{ backgroundColor: buttonColor || '#FFFFFF' }}>
                 <input
                   type="color"
-                  value={buttonTextColor || '#FFFFFF'}
-                  onChange={(e) => setDesignSettings({ buttonTextColor: e.target.value })}
-                  className="w-8 h-8 rounded-xl cursor-pointer border border-gray-200"
+                  value={buttonColor || '#FFFFFF'}
+                  onChange={(e) => setDesignSettings({ buttonColor: e.target.value })}
+                  className="opacity-0 w-full h-full cursor-pointer"
                 />
-                <span className="text-xs font-mono font-bold uppercase">{buttonTextColor || '#FFFFFF'}</span>
-              </div>
+              </label>
+              <input
+                type="text"
+                value={buttonColor || '#FFFFFF'}
+                onChange={(e) => setDesignSettings({ buttonColor: e.target.value })}
+                className="w-20 text-xs font-mono font-bold text-gray-800 uppercase focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Button Text Color */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-gray-900">Button text color</span>
+            <div className="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-2xl bg-white shadow-xs">
+              <label className="w-6 h-6 rounded-lg cursor-pointer border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center" style={{ backgroundColor: buttonTextColor || '#000000' }}>
+                <input
+                  type="color"
+                  value={buttonTextColor || '#000000'}
+                  onChange={(e) => setDesignSettings({ buttonTextColor: e.target.value })}
+                  className="opacity-0 w-full h-full cursor-pointer"
+                />
+              </label>
+              <input
+                type="text"
+                value={buttonTextColor || '#000000'}
+                onChange={(e) => setDesignSettings({ buttonTextColor: e.target.value })}
+                className="w-20 text-xs font-mono font-bold text-gray-800 uppercase focus:outline-none"
+              />
             </div>
           </div>
 

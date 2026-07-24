@@ -51,6 +51,7 @@ const Admin = () => {
           design: {
             buttonStyle: state.buttonStyle,
             buttonRoundness: state.buttonRoundness,
+            buttonShadow: state.buttonShadow,
             buttonColor: state.buttonColor,
             buttonTextColor: state.buttonTextColor,
             fontFamily: state.fontFamily,

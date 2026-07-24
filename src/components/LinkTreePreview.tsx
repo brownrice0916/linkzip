@@ -90,7 +90,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
   const isColor = templateType === "color";
   const { 
     buttonStyle = 'solid', 
-    buttonRoundness = 'md', 
+    buttonRoundness = 'full', 
+    buttonShadow = 'soft',
     buttonColor, 
     buttonTextColor, 
     fontFamily = 'sans', 
@@ -102,11 +103,17 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
   if (fontFamily === 'mono') fontClass = "font-mono";
   if (fontFamily === 'serif') fontClass = "font-serif";
 
-  let roundnessClass = "rounded-xl";
+  let roundnessClass = "rounded-full";
   if (buttonRoundness === 'none') roundnessClass = "rounded-none";
-  if (buttonRoundness === 'sm') roundnessClass = "rounded-lg";
-  if (buttonRoundness === 'md') roundnessClass = "rounded-2xl";
+  if (buttonRoundness === 'sm') roundnessClass = "rounded-md";
+  if (buttonRoundness === 'md') roundnessClass = "rounded-xl";
   if (buttonRoundness === 'full') roundnessClass = "rounded-full";
+
+  let shadowClass = "shadow-sm";
+  if (buttonShadow === 'none') shadowClass = "shadow-none";
+  if (buttonShadow === 'soft') shadowClass = "shadow-sm";
+  if (buttonShadow === 'strong') shadowClass = "shadow-lg";
+  if (buttonShadow === 'hard') shadowClass = "border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
 
   let containerClass =
     `flex flex-col items-center w-full min-h-screen transition-all duration-300 relative ${fontClass}`;
@@ -169,21 +176,19 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
     }
   }
   let buttonClass =
-    `w-full py-4 px-4 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between ${roundnessClass}`;
+    `w-full py-4 px-4 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between ${roundnessClass} ${shadowClass}`;
   let customButtonStyle: React.CSSProperties = {};
   if (buttonColor) customButtonStyle.backgroundColor = buttonColor;
   if (buttonTextColor) customButtonStyle.color = buttonTextColor;
 
   if (buttonStyle === 'glass') {
-    buttonClass += " bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 shadow-md";
+    buttonClass += " bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30";
   } else if (buttonStyle === 'outline') {
     buttonClass += " bg-transparent border-2 border-current hover:bg-black/5";
   } else {
     // Solid: use theme default button class if no custom buttonColor
     if (!buttonColor) {
       buttonClass += ` ${themeDefaultBtnClass}`;
-    } else {
-      buttonClass += " shadow-sm";
     }
   }
 
