@@ -232,21 +232,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
         )}
         style={containerStyle}
       >
-        {/* Top Header Icons */}
-        <div className="w-full flex justify-between items-center p-6">
-          <div className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center cursor-pointer hover:bg-black/10 transition">
-            <Link2 className={clsx("w-5 h-5", textClass)} />
-          </div>
-          <div
-            onClick={() => setIsShareModalOpen(true)}
-            className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center cursor-pointer hover:bg-black/10 transition"
-          >
-            <Share className={clsx("w-5 h-5", textClass)} />
-          </div>
-        </div>
-        {/* Banner Header Image (Only for banner layout) */}
+        {/* Banner Header Image (Only for banner layout - flush to top edge) */}
         {profile.profileLayout === 'banner' && (
-          <div className="w-full h-44 bg-gray-200 relative shrink-0 overflow-hidden -mt-16">
+          <div className="w-full h-48 sm:h-52 bg-gray-200 relative shrink-0 overflow-hidden">
             {profile.bannerUrl ? (
               <img src={profile.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
             ) : (
@@ -256,6 +244,28 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             )}
           </div>
         )}
+
+        {/* Top Header Icons */}
+        <div className={clsx(
+          "w-full flex justify-between items-center p-6 z-30",
+          profile.profileLayout === 'banner' ? "absolute top-0 left-0 right-0" : "relative"
+        )}>
+          <div className={clsx(
+            "w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition shadow-2xs",
+            profile.profileLayout === 'banner' ? "bg-white/40 backdrop-blur-md hover:bg-white/60 text-gray-900" : "bg-black/5 hover:bg-black/10"
+          )}>
+            <Link2 className={clsx("w-5 h-5", profile.profileLayout === 'banner' ? "text-gray-900" : textClass)} />
+          </div>
+          <div
+            onClick={() => setIsShareModalOpen(true)}
+            className={clsx(
+              "w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition shadow-2xs",
+              profile.profileLayout === 'banner' ? "bg-white/40 backdrop-blur-md hover:bg-white/60 text-gray-900" : "bg-black/5 hover:bg-black/10"
+            )}
+          >
+            <Share className={clsx("w-5 h-5", profile.profileLayout === 'banner' ? "text-gray-900" : textClass)} />
+          </div>
+        </div>
 
         <div className="w-full px-6 flex flex-col items-center pb-24 relative z-10">
           
