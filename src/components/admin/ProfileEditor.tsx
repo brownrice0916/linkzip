@@ -74,42 +74,69 @@ const ProfileEditor = () => {
         {/* 1. Layout Picker */}
         <div className="space-y-4">
           <h3 className="text-base font-bold text-gray-900">Layout</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {layouts.map((l) => {
               const isSelected = activeLayout === l.id;
+              const hasBadge = l.id !== 'classic';
               return (
                 <button
                   key={l.id}
                   onClick={() => setProfile({ ...profile, profileLayout: l.id })}
                   className={clsx(
-                    "flex flex-col items-center justify-between p-4 rounded-2xl border-2 transition-all text-center aspect-[4/5] relative overflow-hidden",
-                    isSelected ? "border-black bg-gray-50/50 shadow-sm ring-1 ring-black" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/30"
+                    "flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all text-center relative overflow-hidden bg-white",
+                    isSelected ? "border-black ring-1 ring-black shadow-xs" : "border-gray-200 hover:border-gray-300"
                   )}
                 >
                   {/* Visual Layout Mockup Icon */}
-                  <div className="flex-1 w-full flex items-center justify-center">
+                  <div className="w-full h-24 bg-gray-100 rounded-xl flex items-center justify-center relative overflow-hidden p-2">
+                    {hasBadge && (
+                      <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-[10px] font-bold z-10 shadow-xs">
+                        ⚡
+                      </div>
+                    )}
+
                     {l.id === 'classic' && (
-                      <div className="w-12 h-12 rounded-full bg-red-600 shadow-sm border-2 border-white flex items-center justify-center text-white text-xs font-bold">
-                        👤
+                      <div className="w-12 h-12 rounded-full bg-red-600 shadow-sm flex items-center justify-center text-white text-xs font-bold">
+                        {profile.avatarUrl ? (
+                          <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          '👤'
+                        )}
                       </div>
                     )}
+
                     {l.id === 'hero' && (
-                      <div className="w-14 h-16 rounded-xl bg-red-600 shadow-md border border-gray-200 flex items-center justify-center text-white text-xs">
-                        📸
+                      <div className="w-full h-full rounded-xl bg-red-600 shadow-md flex items-center justify-center text-white text-xs overflow-hidden">
+                        {profile.avatarUrl ? (
+                          <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          '📸'
+                        )}
                       </div>
                     )}
+
                     {l.id === 'banner' && (
-                      <div className="w-full h-full flex flex-col items-center justify-center">
-                        <div className="w-full h-8 bg-red-200 rounded-t-lg" />
-                        <div className="w-10 h-10 rounded-full bg-red-600 -mt-5 border-2 border-white shadow-sm" />
+                      <div className="w-full h-full flex flex-col items-center justify-center relative">
+                        <div className="w-full h-10 bg-pink-200 rounded-t-lg absolute top-0" />
+                        <div className="w-10 h-10 rounded-full bg-red-600 z-10 border-2 border-white shadow-sm overflow-hidden mt-2">
+                          {profile.avatarUrl && <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />}
+                        </div>
                       </div>
                     )}
+
                     {l.id === 'cutout' && (
-                      <div className="w-12 h-14 bg-red-600 rounded-b-full shadow-lg border-2 border-black/10 transform rotate-3" />
+                      <div className="w-10 h-14 bg-red-600 rounded-b-full shadow-md overflow-hidden">
+                        {profile.avatarUrl && <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />}
+                      </div>
                     )}
+
                     {l.id === 'shape' && (
-                      <div className="w-12 h-12 bg-red-600 rounded-[1.25rem] shadow-sm flex items-center justify-center text-white text-xs">
-                        ★
+                      <div className="w-12 h-12 bg-red-600 rounded-[40%_60%_70%_30%/40%_50%_60%_50%] shadow-sm overflow-hidden flex items-center justify-center text-white text-xs">
+                        {profile.avatarUrl ? (
+                          <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          '★'
+                        )}
                       </div>
                     )}
                   </div>
