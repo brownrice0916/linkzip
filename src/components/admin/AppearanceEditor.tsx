@@ -21,6 +21,7 @@ const themes = [
   { id: 'air', name: 'Air', classes: 'bg-gray-100 border-gray-300 text-gray-900' },
   { id: 'blocks', name: 'Blocks', classes: 'bg-purple-600 border-purple-800 text-white' },
   { id: 'bloom', name: 'Bloom', classes: 'bg-gradient-to-br from-pink-500 to-rose-600 text-white' },
+  { id: 'sunbloom', name: 'Sunbloom', classes: 'bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400 border-amber-300 text-amber-950' },
   { id: 'grid', name: 'Grid', classes: 'bg-lime-200 border-black text-black' },
   { id: 'groove', name: 'Groove', classes: 'bg-gradient-to-r from-amber-500 via-red-500 to-purple-600 text-white' },
   { id: 'lake', name: 'Lake', classes: 'bg-slate-800 border-slate-700 text-white' },

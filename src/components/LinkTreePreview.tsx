@@ -159,6 +159,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
       containerClass += " bg-gradient-to-br from-pink-500 to-rose-600";
       if (!pageTextColor) textClass = "text-white";
       themeDefaultBtnClass = "bg-white/20 backdrop-blur-md text-white border border-white/40 hover:bg-white/30 shadow-md";
+    } else if (templateValue === "sunbloom") {
+      containerClass += " bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400";
+      if (!pageTextColor) textClass = "text-amber-950";
+      themeDefaultBtnClass = "bg-white/30 backdrop-blur-md text-amber-950 border border-white/50 hover:bg-white/40 shadow-md font-semibold";
     } else if (templateValue === "grid") {
       containerClass += " bg-lime-200";
       if (!pageTextColor) textClass = "text-black";
