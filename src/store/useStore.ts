@@ -39,8 +39,18 @@ interface AppState {
   customLinks: CustomLink[];
   profile: UserProfile;
 
+  // Design Settings
+  buttonStyle: 'solid' | 'glass' | 'outline';
+  buttonRoundness: 'none' | 'sm' | 'md' | 'full';
+  buttonColor?: string;
+  buttonTextColor?: string;
+  fontFamily: string;
+  pageTextColor?: string;
+  sticker?: string;
+
   // Actions
   setTemplate: (type: 'color' | 'preset', value: string) => void;
+  setDesignSettings: (settings: Partial<AppState>) => void;
   setSocialLinks: (links: SocialLink[]) => void;
   addCustomLink: (link: CustomLink, collectionId?: string) => void;
   updateCustomLink: (id: string, updates: Partial<CustomLink>) => void;
@@ -86,7 +96,13 @@ export const useStore = create<AppState>((set) => ({
   customLinks: [],
   profile: { name: '', username: '', bio: '', avatarUrl: '' },
 
+  buttonStyle: 'solid',
+  buttonRoundness: 'md',
+  fontFamily: 'sans',
+  sticker: '',
+
   setTemplate: (type, value) => set({ templateType: type, templateValue: value }),
+  setDesignSettings: (settings) => set((state) => ({ ...state, ...settings })),
   setSocialLinks: (links) => set({ socialLinks: links }),
   
   addCustomLink: (link, collectionId) => set((state) => {

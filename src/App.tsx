@@ -46,7 +46,14 @@ function App() {
               templateType: data.template?.type || 'preset',
               templateValue: data.template?.value || 'minimalist',
               socialLinks: data.socialLinks || [],
-              customLinks: data.customLinks || []
+              customLinks: data.customLinks || [],
+              buttonStyle: data.design?.buttonStyle || 'solid',
+              buttonRoundness: data.design?.buttonRoundness || 'md',
+              buttonColor: data.design?.buttonColor,
+              buttonTextColor: data.design?.buttonTextColor,
+              fontFamily: data.design?.fontFamily || 'sans',
+              pageTextColor: data.design?.pageTextColor,
+              sticker: data.design?.sticker || '',
             });
           }
         } catch (error) {

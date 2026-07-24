@@ -88,50 +88,67 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
 }) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const isColor = templateType === "color";
+  const { 
+    buttonStyle = 'solid', 
+    buttonRoundness = 'md', 
+    buttonColor, 
+    buttonTextColor, 
+    fontFamily = 'sans', 
+    pageTextColor, 
+    sticker 
+  } = useStore();
 
-  // Base background for the container
+  let fontClass = "font-sans";
+  if (fontFamily === 'mono') fontClass = "font-mono";
+  if (fontFamily === 'serif') fontClass = "font-serif";
+
+  let roundnessClass = "rounded-xl";
+  if (buttonRoundness === 'none') roundnessClass = "rounded-none";
+  if (buttonRoundness === 'sm') roundnessClass = "rounded-lg";
+  if (buttonRoundness === 'md') roundnessClass = "rounded-2xl";
+  if (buttonRoundness === 'full') roundnessClass = "rounded-full";
+
   let containerClass =
-    "flex flex-col items-center w-full min-h-screen transition-all duration-300 relative";
+    `flex flex-col items-center w-full min-h-screen transition-all duration-300 relative ${fontClass}`;
   let containerStyle: React.CSSProperties = {};
 
   let textClass = "text-gray-900";
+  if (pageTextColor) {
+    containerStyle.color = pageTextColor;
+  }
+
   let buttonClass =
-    "w-full py-4 px-4 rounded-xl font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between";
+    `w-full py-4 px-4 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between ${roundnessClass}`;
+  let customButtonStyle: React.CSSProperties = {};
+  if (buttonColor) customButtonStyle.backgroundColor = buttonColor;
+  if (buttonTextColor) customButtonStyle.color = buttonTextColor;
+
+  if (buttonStyle === 'glass') {
+    buttonClass += " bg-white/20 backdrop-blur-md border border-white/30 text-gray-900 hover:bg-white/30 shadow-md";
+  } else if (buttonStyle === 'outline') {
+    buttonClass += " bg-transparent border-2 border-gray-900 text-gray-900 hover:bg-black/5";
+  } else {
+    buttonClass += " bg-black text-white hover:bg-gray-800 shadow-sm";
+  }
+
   let socialIconClass = "w-7 h-7 hover:scale-110 transition-transform";
 
   // If it's a solid color, use it as background
   if (isColor) {
     containerStyle.backgroundColor = templateValue;
-    // Basic contrast logic (mock)
     const isDark = templateValue === "#0f172a";
-    textClass = isDark ? "text-white" : "text-gray-900";
-    buttonClass += isDark
-      ? " bg-white/10 text-white border border-white/20 hover:bg-white/20"
-      : " bg-transparent text-gray-900 border border-gray-300 hover:bg-black/5";
-    socialIconClass += isDark
-      ? " text-gray-300 hover:text-white"
-      : " text-gray-800 hover:text-black";
+    if (!pageTextColor) textClass = isDark ? "text-white" : "text-gray-900";
   } else {
     // Preset classes
     if (templateValue === "minimalist") {
-      containerClass += " bg-[#FAF9F6]"; // Off-white beige like the image
-      textClass = "text-gray-900";
-      buttonClass +=
-        " bg-transparent border border-gray-300 hover:bg-gray-100 text-gray-900";
-      socialIconClass += " text-gray-800 hover:text-black";
+      containerClass += " bg-[#FAF9F6]";
     } else if (templateValue === "neon-dark") {
       containerClass += " bg-gray-900";
-      textClass = "text-white";
-      buttonClass +=
-        " bg-transparent border-2 border-indigo-500 text-indigo-400 hover:bg-indigo-500 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]";
-      socialIconClass += " text-indigo-400 hover:text-indigo-300";
+      if (!pageTextColor) textClass = "text-white";
     } else if (templateValue === "soft-gradient") {
       containerClass +=
         " bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400";
-      textClass = "text-white";
-      buttonClass +=
-        " bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-white/30 shadow-xl";
-      socialIconClass += " text-white hover:text-gray-200";
+      if (!pageTextColor) textClass = "text-white";
     }
   }
 
@@ -179,58 +196,66 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
         <div className="w-full px-6 flex flex-col items-center pb-24 relative z-10">
           
           {/* Profile Avatar based on Layout */}
-          {profile.profileLayout === 'hero' ? (
-            <div className="w-full max-w-[300px] h-[200px] rounded-3xl overflow-hidden mb-5 shadow-xl border-2 border-white/20">
-              {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                  <User className="w-16 h-16 text-white" />
-                </div>
-              )}
-            </div>
-          ) : profile.profileLayout === 'banner' ? (
-            <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-white shadow-lg -mt-12 bg-white shrink-0">
-              {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                  <User className="w-12 h-12 text-white" />
-                </div>
-              )}
-            </div>
-          ) : profile.profileLayout === 'cutout' ? (
-            <div className="w-28 h-32 rounded-b-full overflow-hidden mb-5 shadow-2xl border-4 border-white/40 transform rotate-1 bg-white">
-              {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                  <User className="w-14 h-14 text-white" />
-                </div>
-              )}
-            </div>
-          ) : profile.profileLayout === 'shape' ? (
-            <div className="w-28 h-28 rounded-[2rem] overflow-hidden mb-5 shadow-lg border-2 border-white/30 transform -rotate-3 bg-white">
-              {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                  <User className="w-14 h-14 text-white" />
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Classic Default */
-            <div className="w-28 h-28 rounded-full overflow-hidden mb-5 shadow-md">
-              {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                  <User className="w-14 h-14 text-white" />
-                </div>
-              )}
-            </div>
-          )}
+          <div className="relative">
+            {sticker && (
+              <div className="absolute -top-2 -right-2 text-3xl z-30 animate-bounce drop-shadow-md">
+                {sticker}
+              </div>
+            )}
+
+            {profile.profileLayout === 'hero' ? (
+              <div className="w-full max-w-[300px] h-[200px] rounded-3xl overflow-hidden mb-5 shadow-xl border-2 border-white/20">
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                    <User className="w-16 h-16 text-white" />
+                  </div>
+                )}
+              </div>
+            ) : profile.profileLayout === 'banner' ? (
+              <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-white shadow-lg -mt-12 bg-white shrink-0">
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                    <User className="w-12 h-12 text-white" />
+                  </div>
+                )}
+              </div>
+            ) : profile.profileLayout === 'cutout' ? (
+              <div className="w-28 h-32 rounded-b-full overflow-hidden mb-5 shadow-2xl border-4 border-white/40 transform rotate-1 bg-white">
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                    <User className="w-14 h-14 text-white" />
+                  </div>
+                )}
+              </div>
+            ) : profile.profileLayout === 'shape' ? (
+              <div className="w-28 h-28 rounded-[2rem] overflow-hidden mb-5 shadow-lg border-2 border-white/30 transform -rotate-3 bg-white">
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                    <User className="w-14 h-14 text-white" />
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Classic Default */
+              <div className="w-28 h-28 rounded-full overflow-hidden mb-5 shadow-md">
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                    <User className="w-14 h-14 text-white" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Profile Title / Logo */}
           {profile.titleStyle === 'logo' && profile.logoUrl ? (

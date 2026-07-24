@@ -48,6 +48,15 @@ const Admin = () => {
           username: state.profile.username || state.user.uid,
           profile: state.profile,
           template: { type: state.templateType, value: state.templateValue },
+          design: {
+            buttonStyle: state.buttonStyle,
+            buttonRoundness: state.buttonRoundness,
+            buttonColor: state.buttonColor,
+            buttonTextColor: state.buttonTextColor,
+            fontFamily: state.fontFamily,
+            pageTextColor: state.pageTextColor,
+            sticker: state.sticker,
+          },
           socialLinks: state.socialLinks,
           customLinks: state.customLinks,
           updatedAt: new Date()
@@ -60,7 +69,21 @@ const Admin = () => {
     }, 1000);
     
     return () => clearTimeout(timeout);
-  }, [state.profile, state.templateType, state.templateValue, state.socialLinks, state.customLinks, state.user]);
+  }, [
+    state.profile, 
+    state.templateType, 
+    state.templateValue, 
+    state.buttonStyle, 
+    state.buttonRoundness, 
+    state.buttonColor, 
+    state.buttonTextColor, 
+    state.fontFamily, 
+    state.pageTextColor, 
+    state.sticker, 
+    state.socialLinks, 
+    state.customLinks, 
+    state.user
+  ]);
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden font-sans">
