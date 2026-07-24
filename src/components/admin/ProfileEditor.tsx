@@ -88,15 +88,15 @@ const ProfileEditor = () => {
                   )}
                 >
                   {/* Visual Layout Mockup Icon */}
-                  <div className="w-full h-24 bg-gray-100 rounded-xl flex items-center justify-center relative overflow-hidden p-2">
+                  <div className="w-full h-24 bg-[#F7F7F5] rounded-xl flex items-center justify-center relative overflow-hidden p-2">
                     {hasBadge && (
-                      <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-[10px] font-bold z-10 shadow-xs">
+                      <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-stone-700 text-white rounded-full flex items-center justify-center text-[10px] font-bold z-20 shadow-xs">
                         ⚡
                       </div>
                     )}
 
                     {l.id === 'classic' && (
-                      <div className="w-12 h-12 rounded-full bg-red-600 shadow-sm flex items-center justify-center text-white text-xs font-bold">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-rose-500 to-indigo-500 shadow-sm flex items-center justify-center text-white text-xs font-bold ring-2 ring-white">
                         {profile.avatarUrl ? (
                           <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
                         ) : (
@@ -106,32 +106,32 @@ const ProfileEditor = () => {
                     )}
 
                     {l.id === 'hero' && (
-                      <div className="w-full h-full rounded-xl bg-red-600 shadow-md flex items-center justify-center text-white text-xs overflow-hidden">
+                      <div className="w-full h-full rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-rose-500 shadow-sm flex items-center justify-center text-white text-xs overflow-hidden">
                         {profile.avatarUrl ? (
                           <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
-                          '📸'
+                          <span className="font-bold text-[10px] text-white/90">HERO</span>
                         )}
                       </div>
                     )}
 
                     {l.id === 'banner' && (
-                      <div className="w-full h-full flex flex-col items-center justify-center relative">
-                        <div className="w-full h-10 bg-pink-200 rounded-t-lg absolute top-0" />
-                        <div className="w-10 h-10 rounded-full bg-red-600 z-10 border-2 border-white shadow-sm overflow-hidden mt-2">
-                          {profile.avatarUrl && <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />}
+                      <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden rounded-lg">
+                        <div className="w-full h-10 bg-gradient-to-r from-pink-300 to-indigo-300 absolute top-0" />
+                        <div className="w-9 h-9 rounded-full bg-indigo-600 z-10 border-2 border-white shadow-sm overflow-hidden mt-3">
+                          {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-rose-500" />}
                         </div>
                       </div>
                     )}
 
                     {l.id === 'cutout' && (
-                      <div className="w-10 h-14 bg-red-600 rounded-b-full shadow-md overflow-hidden">
-                        {profile.avatarUrl && <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />}
+                      <div className="w-10 h-14 bg-gradient-to-tr from-rose-400 to-pink-600 rounded-b-full rounded-t-lg shadow-md overflow-hidden flex items-center justify-center">
+                        {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : <span className="text-white text-[10px]">✨</span>}
                       </div>
                     )}
 
                     {l.id === 'shape' && (
-                      <div className="w-12 h-12 bg-red-600 rounded-[40%_60%_70%_30%/40%_50%_60%_50%] shadow-sm overflow-hidden flex items-center justify-center text-white text-xs">
+                      <div className="w-11 h-11 bg-gradient-to-tr from-amber-400 to-rose-500 rounded-[40%_60%_70%_30%/40%_50%_60%_50%] shadow-sm overflow-hidden flex items-center justify-center text-white text-xs">
                         {profile.avatarUrl ? (
                           <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (

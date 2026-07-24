@@ -265,53 +265,53 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             )}
 
             {profile.profileLayout === 'hero' ? (
-              <div className="w-full max-w-[320px] aspect-[4/3] rounded-3xl overflow-hidden mb-5 shadow-lg">
+              <div className="w-full max-w-[280px] h-[190px] rounded-[2.2rem] overflow-hidden mb-5 shadow-2xl border-4 border-white/80 shrink-0 transform hover:scale-[1.02] transition-all duration-300">
                 {profile.avatarUrl ? (
                   <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-tr from-rose-400 via-purple-400 to-indigo-500 flex items-center justify-center">
-                    <User className="w-16 h-16 text-white/80" />
+                  <div className="w-full h-full bg-gradient-to-tr from-rose-500 via-purple-500 to-indigo-600 flex items-center justify-center">
+                    <User className="w-16 h-16 text-white/90" />
                   </div>
                 )}
               </div>
             ) : profile.profileLayout === 'banner' ? (
-              <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-white/60 shadow-lg -mt-12 shrink-0">
+              <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-white/90 shadow-2xl -mt-12 shrink-0 z-20">
                 {profile.avatarUrl ? (
                   <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-tr from-indigo-400 to-purple-500 flex items-center justify-center">
-                    <User className="w-12 h-12 text-white/80" />
+                  <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <User className="w-12 h-12 text-white/90" />
                   </div>
                 )}
               </div>
             ) : profile.profileLayout === 'cutout' ? (
-              <div className="w-28 h-36 rounded-b-full rounded-t-2xl overflow-hidden mb-5 shadow-xl">
+              <div className="w-28 h-36 rounded-b-[3.5rem] rounded-t-2xl overflow-hidden mb-5 shadow-2xl border-4 border-white/70 shrink-0">
                 {profile.avatarUrl ? (
                   <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-tr from-pink-400 to-rose-500 flex items-center justify-center">
-                    <User className="w-14 h-14 text-white/80" />
+                  <div className="w-full h-full bg-gradient-to-tr from-pink-500 to-rose-600 flex items-center justify-center">
+                    <User className="w-14 h-14 text-white/90" />
                   </div>
                 )}
               </div>
             ) : profile.profileLayout === 'shape' ? (
-              <div className="w-28 h-28 rounded-[40%_60%_70%_30%/40%_50%_60%_50%] overflow-hidden mb-5 shadow-lg">
+              <div className="w-28 h-28 rounded-[42%_58%_70%_30%/45%_45%_55%_55%] overflow-hidden mb-5 shadow-xl border-3 border-white/70 shrink-0">
                 {profile.avatarUrl ? (
                   <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center">
-                    <User className="w-14 h-14 text-white/80" />
+                  <div className="w-full h-full bg-gradient-to-tr from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center">
+                    <User className="w-14 h-14 text-white/90" />
                   </div>
                 )}
               </div>
             ) : (
               /* Classic Default */
-              <div className="w-24 h-24 rounded-full overflow-hidden mb-4 shadow-md">
+              <div className="w-24 h-24 rounded-full overflow-hidden mb-4 shadow-xl ring-4 ring-black/5 border-2 border-white/60 shrink-0">
                 {profile.avatarUrl ? (
                   <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-tr from-gray-400 to-gray-600 flex items-center justify-center">
-                    <User className="w-12 h-12 text-white/80" />
+                  <div className="w-full h-full bg-gradient-to-tr from-gray-700 via-gray-800 to-gray-900 flex items-center justify-center">
+                    <User className="w-12 h-12 text-white/90" />
                   </div>
                 )}
               </div>
