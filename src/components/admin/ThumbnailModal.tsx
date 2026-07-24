@@ -268,31 +268,99 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
             </div>
 
             {/* Icon Grid (Matching Image 3) */}
-            <div className="overflow-y-auto flex-1 pr-1 bg-[#F7F7F5] p-3 rounded-2xl border border-gray-200">
-              <div className="grid grid-cols-4 gap-3">
-                {filteredIcons.map((item) => {
-                  const IconComp = item.icon;
-                  const isSelected = currentIconName === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleSelectIcon(item.id)}
-                      className={clsx(
-                        "aspect-square rounded-2xl flex flex-col items-center justify-center p-2 transition-all cursor-pointer",
-                        isSelected
-                          ? "bg-black text-white shadow-md ring-2 ring-black"
-                          : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black border border-gray-100 shadow-xs"
-                      )}
-                    >
-                      <IconComp className="w-6 h-6 mb-1" />
-                      <span className="text-[10px] font-bold truncate max-w-full text-center opacity-90">
-                        {item.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="overflow-y-auto flex-1 pr-1 bg-[#F7F7F5] p-3 rounded-2xl border border-gray-200 space-y-4">
+              {searchQuery ? (
+                /* Search Results */
+                <div className="grid grid-cols-4 gap-3">
+                  {filteredIcons.map((item) => {
+                    const IconComp = item.icon;
+                    const isSelected = currentIconName === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleSelectIcon(item.id)}
+                        className={clsx(
+                          "aspect-square rounded-2xl flex flex-col items-center justify-center p-2 transition-all cursor-pointer",
+                          isSelected
+                            ? "bg-black text-white shadow-md ring-2 ring-black"
+                            : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black border border-gray-100 shadow-xs"
+                        )}
+                      >
+                        <IconComp className="w-6 h-6 mb-1" />
+                        <span className="text-[10px] font-bold truncate max-w-full text-center opacity-90">
+                          {item.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Categorized View */
+                <>
+                  {/* Category 1: SNS & Platforms */}
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 mb-2 px-1 flex items-center gap-1">
+                      <span>🇰🇷</span> 주요 SNS & 플랫폼
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {filteredIcons.filter(i => i.category === 'sns').map((item) => {
+                        const IconComp = item.icon;
+                        const isSelected = currentIconName === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleSelectIcon(item.id)}
+                            className={clsx(
+                              "aspect-square rounded-2xl flex flex-col items-center justify-center p-2 transition-all cursor-pointer",
+                              isSelected
+                                ? "bg-black text-white shadow-md ring-2 ring-black"
+                                : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black border border-gray-100 shadow-xs"
+                            )}
+                          >
+                            <IconComp className="w-6 h-6 mb-1" />
+                            <span className="text-[10px] font-bold truncate max-w-full text-center opacity-90">
+                              {item.name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Category 2: General Icons */}
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-purple-600 mb-2 px-1 pt-2 flex items-center gap-1">
+                      <span>🌐</span> 일반 아이콘
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {filteredIcons.filter(i => i.category !== 'sns').map((item) => {
+                        const IconComp = item.icon;
+                        const isSelected = currentIconName === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleSelectIcon(item.id)}
+                            className={clsx(
+                              "aspect-square rounded-2xl flex flex-col items-center justify-center p-2 transition-all cursor-pointer",
+                              isSelected
+                                ? "bg-black text-white shadow-md ring-2 ring-black"
+                                : "bg-white text-gray-700 hover:bg-gray-100 hover:text-black border border-gray-100 shadow-xs"
+                            )}
+                          >
+                            <IconComp className="w-6 h-6 mb-1" />
+                            <span className="text-[10px] font-bold truncate max-w-full text-center opacity-90">
+                              {item.name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {filteredIcons.length === 0 && (
                 <div className="text-center py-8 text-xs font-semibold text-gray-400">
