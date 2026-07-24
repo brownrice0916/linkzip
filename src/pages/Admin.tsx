@@ -11,7 +11,9 @@ import {
   Check, 
   Copy, 
   Undo2, 
-  Redo2 
+  Redo2,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { auth, logout } from '../lib/firebase';
 import clsx from 'clsx';
@@ -20,15 +22,33 @@ import LinksEditor from '../components/admin/LinksEditor';
 import ProfileEditor from '../components/admin/ProfileEditor';
 import AppearanceEditor from '../components/admin/AppearanceEditor';
 
+type TabType = 'links' | 'profile' | 'appearance';
+type TargetAction = TabType | 'home' | 'logout' | null;
+
 const Admin = () => {
   const navigate = useNavigate();
   const state = useStore();
-  const [activeTab, setActiveTab] = useState<'links' | 'profile' | 'appearance'>('links');
+  const [activeTab, setActiveTab] = useState<TabType>('links');
   const [saveStatus, setSaveStatus] = useState<'Saved' | 'Saving...'>('Saved');
   const [copied, setCopied] = useState(false);
 
+  // Unsaved changes navigation prompt state
+  const [pendingTarget, setPendingTarget] = useState<TargetAction>(null);
+
   const username = state.profile.username || 'preview';
   const profileUrl = `${window.location.origin}/${username}`;
+
+  // Prevent browser refresh/close if unsaved changes exist
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (state.isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [state.isDirty]);
 
   const handleLogout = async () => {
     try {
@@ -78,7 +98,45 @@ const Admin = () => {
     }
   };
 
-  const sectionTitleMap = {
+  // Safe navigation interceptor
+  const requestNavigation = (target: TargetAction) => {
+    if (target === activeTab) return;
+    if (state.isDirty) {
+      setPendingTarget(target);
+    } else {
+      executeNavigation(target);
+    }
+  };
+
+  const executeNavigation = (target: TargetAction) => {
+    if (target === 'logout') {
+      handleLogout();
+    } else if (target === 'home') {
+      navigate('/');
+    } else if (target === 'links' || target === 'profile' || target === 'appearance') {
+      setActiveTab(target);
+    }
+  };
+
+  const handleConfirmSaveAndContinue = async () => {
+    await handleManualSave();
+    const target = pendingTarget;
+    setPendingTarget(null);
+    executeNavigation(target);
+  };
+
+  const handleConfirmDiscardAndContinue = () => {
+    state.cancelChanges();
+    const target = pendingTarget;
+    setPendingTarget(null);
+    executeNavigation(target);
+  };
+
+  const handleCancelPrompt = () => {
+    setPendingTarget(null);
+  };
+
+  const sectionTitleMap: Record<TabType, string> = {
     links: 'Content',
     profile: 'Header',
     appearance: 'Design'
@@ -91,7 +149,7 @@ const Admin = () => {
       <div className="hidden sm:flex flex-col items-center justify-between w-20 bg-white border-r border-gray-200 py-6 z-20 shrink-0 shadow-sm">
         
         {/* Brand Logo */}
-        <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => navigate('/')}>
+        <div className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => requestNavigation('home')}>
           <div className="w-10 h-10 rounded-2xl bg-black flex items-center justify-center text-white shadow-md font-black text-base tracking-tighter">
             LZ
           </div>
@@ -102,7 +160,7 @@ const Admin = () => {
         <div className="flex flex-col gap-6 w-full px-2">
           
           <button
-            onClick={() => setActiveTab('links')}
+            onClick={() => requestNavigation('links')}
             className={clsx(
               "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === 'links' 
@@ -115,7 +173,7 @@ const Admin = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('profile')}
+            onClick={() => requestNavigation('profile')}
             className={clsx(
               "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === 'profile' 
@@ -128,7 +186,7 @@ const Admin = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('appearance')}
+            onClick={() => requestNavigation('appearance')}
             className={clsx(
               "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === 'appearance' 
@@ -144,7 +202,7 @@ const Admin = () => {
 
         {/* Logout */}
         <button
-          onClick={handleLogout}
+          onClick={() => requestNavigation('logout')}
           title="Logout"
           className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-colors cursor-pointer"
         >
@@ -258,19 +316,19 @@ const Admin = () => {
 
         {/* Mobile Bottom Navigation */}
         <div className="sm:hidden border-t border-gray-200 bg-white flex justify-around p-3 pb-safe">
-          <button onClick={() => setActiveTab('links')} className={clsx("flex flex-col items-center gap-1", activeTab === 'links' ? 'text-black font-bold' : 'text-gray-400')}>
+          <button onClick={() => requestNavigation('links')} className={clsx("flex flex-col items-center gap-1", activeTab === 'links' ? 'text-black font-bold' : 'text-gray-400')}>
             <Link2 className="w-5 h-5" />
             <span className="text-[10px]">Content</span>
           </button>
-          <button onClick={() => setActiveTab('profile')} className={clsx("flex flex-col items-center gap-1", activeTab === 'profile' ? 'text-black font-bold' : 'text-gray-400')}>
+          <button onClick={() => requestNavigation('profile')} className={clsx("flex flex-col items-center gap-1", activeTab === 'profile' ? 'text-black font-bold' : 'text-gray-400')}>
             <UserIcon className="w-5 h-5" />
             <span className="text-[10px]">Header</span>
           </button>
-          <button onClick={() => setActiveTab('appearance')} className={clsx("flex flex-col items-center gap-1", activeTab === 'appearance' ? 'text-black font-bold' : 'text-gray-400')}>
+          <button onClick={() => requestNavigation('appearance')} className={clsx("flex flex-col items-center gap-1", activeTab === 'appearance' ? 'text-black font-bold' : 'text-gray-400')}>
             <Palette className="w-5 h-5" />
             <span className="text-[10px]">Design</span>
           </button>
-          <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-gray-400 hover:text-red-500">
+          <button onClick={() => requestNavigation('logout')} className="flex flex-col items-center gap-1 text-gray-400 hover:text-red-500">
             <LogOut className="w-5 h-5" />
             <span className="text-[10px]">Logout</span>
           </button>
@@ -290,6 +348,50 @@ const Admin = () => {
           />
         </div>
       </div>
+
+      {/* Unsaved Changes Prompt Modal */}
+      {pendingTarget !== null && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in-95 font-sans">
+            <div className="flex items-center gap-3 mb-4 text-amber-500">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">저장되지 않은 변경사항</h3>
+                <p className="text-xs text-gray-500 font-medium">Unsaved Changes</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-700 font-medium mb-6 leading-relaxed">
+              페이지를 이동하기 전에 변경한 내용을 저장하시겠습니까? 저장하지 않으면 작성한 내용이 손실될 수 있습니다.
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleConfirmSaveAndContinue}
+                className="w-full py-3 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-bold shadow-md shadow-purple-500/20 transition cursor-pointer"
+              >
+                저장하고 이동 (Save & Continue)
+              </button>
+
+              <button
+                onClick={handleConfirmDiscardAndContinue}
+                className="w-full py-3 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-sm font-bold text-gray-800 transition cursor-pointer"
+              >
+                저장하지 않고 이동 (Discard Changes)
+              </button>
+
+              <button
+                onClick={handleCancelPrompt}
+                className="w-full py-2.5 text-xs font-bold text-gray-400 hover:text-gray-700 transition cursor-pointer"
+              >
+                취소 (Keep Editing)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
