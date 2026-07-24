@@ -83,15 +83,15 @@ const NaverIcon: IconComponent = ({ className = "w-5 h-5" }) => (
   )
 );
 
-// Naver Blog b| Icon matching user's second image exactly (Green b| logo)
+// Naver Blog b| Icon using currentColor to unify with all other icons
 const NaverBlogIcon: IconComponent = ({ className = "w-5 h-5" }) => (
-  React.createElement('svg', { className, viewBox: "0 0 100 100", fill: "none" },
+  React.createElement('svg', { className, viewBox: "0 0 100 100", fill: "currentColor" },
     React.createElement('g', { transform: "translate(5, 5) scale(0.9)" },
       React.createElement('path', {
         d: "M8 16H22V39C26 33.5 32.5 30.5 41.5 30.5C57.5 30.5 68 42.5 68 57.5C68 72.5 57 84 41 84C32.5 84 26 80.5 21.5 74.5V82H8V16ZM38 43C28.5 43 21 49.5 21 57.5C21 65.5 28.5 72 38 72C47.5 72 55 65.5 55 57.5C55 49.5 47.5 43 38 43Z",
-        fill: "#03CF5D"
+        fill: "currentColor"
       }),
-      React.createElement('rect', { x: "84", y: "10", width: "7.5", height: "74", rx: "2", fill: "#03CF5D" })
+      React.createElement('rect', { x: "84", y: "10", width: "7.5", height: "74", rx: "2", fill: "currentColor" })
     )
   )
 );
