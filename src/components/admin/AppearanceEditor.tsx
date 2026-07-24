@@ -32,6 +32,22 @@ const themes = [
 ];
 
 const fonts = [
+  // Korean Fonts (한글 폰트)
+  { id: 'Pretendard', name: '프리텐다드 (Pretendard)', font: 'Pretendard', badge: 'bolt' },
+  { id: 'Gowun Batang', name: '고운 바탕 (Gowun Batang)', font: 'Gowun Batang', badge: 'bolt' },
+  { id: 'Gowun Dodum', name: '고운 도돋 (Gowun Dodum)', font: 'Gowun Dodum', badge: 'bolt' },
+  { id: 'Black Han Sans', name: '블랙한상스 (Black Han)', font: 'Black Han Sans', badge: 'bolt' },
+  { id: 'Do Hyeon', name: '도현 (Do Hyeon)', font: 'Do Hyeon', badge: 'bolt' },
+  { id: 'Jua', name: '주아 (Jua)', font: 'Jua', badge: 'bolt' },
+  { id: 'Gamja Flower', name: '감자꽃 (Gamja Flower)', font: 'Gamja Flower', badge: 'bolt' },
+  { id: 'Nanum Gothic', name: '나눔고딕 (Nanum Gothic)', font: 'Nanum Gothic' },
+  { id: 'Nanum Myeongjo', name: '나눔명조 (Nanum Myeongjo)', font: 'Nanum Myeongjo' },
+  { id: 'Nanum Pen Script', name: '나눔펜 (Nanum Pen)', font: 'Nanum Pen Script', badge: 'bolt' },
+  { id: 'Sunflower', name: '해바라기 (Sunflower)', font: 'Sunflower' },
+  { id: 'Dongle', name: '동글 (Dongle)', font: 'Dongle', badge: 'bolt' },
+  { id: 'Song Myung', name: '송명 (Song Myung)', font: 'Song Myung' },
+
+  // English & Global Fonts
   { id: 'Albert Sans', name: 'Albert Sans', font: 'Albert Sans' },
   { id: 'Belanosima', name: 'Belanosima', font: 'Belanosima', badge: 'bolt' },
   { id: 'Bricolage Grotesque', name: 'Bricolage Grotesque', font: 'Bricolage Grotesque', badge: 'bolt' },
@@ -40,7 +56,6 @@ const fonts = [
   { id: 'IBM Plex Sans', name: 'IBM Plex Sans', font: 'IBM Plex Sans' },
   { id: 'Inter', name: 'Inter', font: 'Inter' },
   { id: 'Lato', name: 'Lato', font: 'Lato', badge: 'bolt' },
-  { id: 'Link Sans', name: 'Link Sans', font: 'Inter' },
   { id: 'Manrope', name: 'Manrope', font: 'Manrope' },
   { id: 'Oxanium', name: 'Oxanium', font: 'Oxanium' },
   { id: 'Poppins', name: 'Poppins', font: 'Poppins', badge: 'pro' },
@@ -86,6 +101,7 @@ const AppearanceEditor = () => {
     buttonColor, 
     buttonTextColor,
     fontFamily,
+    titleFontFamily,
     pageTextColor,
     sticker,
     setDesignSettings 
@@ -361,6 +377,46 @@ const AppearanceEditor = () => {
                         ⚡
                       </span>
                     ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {/* Title Font Family (Optional Override) */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Title font</h3>
+                <p className="text-xs text-gray-400">Set a unique font specifically for profile title</p>
+              </div>
+              <button
+                onClick={() => setDesignSettings({ titleFontFamily: '' })}
+                className={clsx(
+                  "px-3 py-1.5 rounded-full text-xs font-bold transition-all",
+                  !titleFontFamily ? "bg-black text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                )}
+              >
+                Auto (Page font)
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {fonts.map((f) => {
+                const isSelected = titleFontFamily === f.font;
+                return (
+                  <button
+                    key={`title-${f.id}`}
+                    onClick={() => setDesignSettings({ titleFontFamily: f.font })}
+                    className={clsx(
+                      "h-12 px-3 rounded-2xl flex items-center justify-between text-xs transition-all relative overflow-hidden",
+                      isSelected 
+                        ? "border-2 border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600 font-bold text-indigo-900" 
+                        : "bg-gray-50 hover:bg-gray-100 text-gray-800 font-medium border border-gray-200"
+                    )}
+                  >
+                    <span className="truncate pr-1" style={{ fontFamily: `'${f.font}', sans-serif` }}>
+                      {f.name}
+                    </span>
                   </button>
                 );
               })}

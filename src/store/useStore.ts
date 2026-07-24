@@ -46,6 +46,7 @@ interface AppState {
   buttonColor?: string;
   buttonTextColor?: string;
   fontFamily: string;
+  titleFontFamily?: string;
   pageTextColor?: string;
   sticker?: string;
 
@@ -118,6 +119,7 @@ export const useStore = create<AppState>((set) => ({
   buttonRoundness: 'full',
   buttonShadow: 'soft',
   fontFamily: 'Inter',
+  titleFontFamily: '',
   sticker: '',
 
   setTemplate: (type, value) => set((state) => ({ 
@@ -127,6 +129,7 @@ export const useStore = create<AppState>((set) => ({
     buttonTextColor: '',
     pageTextColor: '',
     fontFamily: themeFontMap[value] || state.fontFamily,
+    titleFontFamily: '',
     profile: { ...state.profile, titleColor: '' }
   })),
   setDesignSettings: (settings) => set((state) => ({ ...state, ...settings })),

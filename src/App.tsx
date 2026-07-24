@@ -52,7 +52,8 @@ function App() {
               buttonShadow: data.design?.buttonShadow || 'soft',
               buttonColor: data.design?.buttonColor,
               buttonTextColor: data.design?.buttonTextColor,
-              fontFamily: data.design?.fontFamily || 'sans',
+              fontFamily: data.design?.fontFamily || 'Inter',
+              titleFontFamily: data.design?.titleFontFamily || '',
               pageTextColor: data.design?.pageTextColor,
               sticker: data.design?.sticker || '',
             });

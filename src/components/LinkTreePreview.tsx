@@ -95,6 +95,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
     buttonColor, 
     buttonTextColor, 
     fontFamily = 'sans', 
+    titleFontFamily,
     pageTextColor, 
     sticker 
   } = useStore();
@@ -328,7 +329,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                 "text-[22px] font-bold tracking-tight mb-1 text-center",
                 textClass
               )}
-              style={profile.titleColor ? { color: profile.titleColor } : {}}
+              style={{
+                ...(profile.titleColor ? { color: profile.titleColor } : {}),
+                ...(titleFontFamily ? { fontFamily: `'${titleFontFamily}', sans-serif` } : {})
+              }}
             >
               {profile.name || profile.username || "username"}
             </h1>

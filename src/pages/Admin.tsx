@@ -55,6 +55,7 @@ const Admin = () => {
             buttonColor: state.buttonColor,
             buttonTextColor: state.buttonTextColor,
             fontFamily: state.fontFamily,
+            titleFontFamily: state.titleFontFamily,
             pageTextColor: state.pageTextColor,
             sticker: state.sticker,
           },
