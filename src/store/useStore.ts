@@ -104,6 +104,9 @@ export const useStore = create<AppState>((set) => ({
   setTemplate: (type, value) => set((state) => ({ 
     templateType: type, 
     templateValue: value,
+    buttonColor: '',
+    buttonTextColor: '',
+    pageTextColor: '',
     profile: { ...state.profile, titleColor: '' }
   })),
   setDesignSettings: (settings) => set((state) => ({ ...state, ...settings })),

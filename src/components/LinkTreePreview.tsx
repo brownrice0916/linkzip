@@ -117,6 +117,57 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
     containerStyle.color = pageTextColor;
   }
 
+  let themeDefaultBtnClass = "bg-black text-white hover:bg-gray-800 shadow-sm";
+
+  // Preset & Color Theme Styles
+  if (isColor) {
+    containerStyle.backgroundColor = templateValue;
+    const isDark = templateValue === "#0f172a";
+    if (!pageTextColor) textClass = isDark ? "text-white" : "text-gray-900";
+    themeDefaultBtnClass = isDark 
+      ? "bg-white/10 text-white border border-white/20 hover:bg-white/20" 
+      : "bg-white text-gray-900 border border-gray-200 hover:bg-gray-100 shadow-sm";
+  } else {
+    if (templateValue === "minimalist") {
+      containerClass += " bg-[#FAF9F6]";
+      themeDefaultBtnClass = "bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 shadow-sm";
+    } else if (templateValue === "neon-dark") {
+      containerClass += " bg-gray-900";
+      if (!pageTextColor) textClass = "text-white";
+      themeDefaultBtnClass = "bg-gray-800 border-2 border-indigo-500 text-indigo-400 hover:bg-indigo-500 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]";
+    } else if (templateValue === "soft-gradient") {
+      containerClass += " bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400";
+      if (!pageTextColor) textClass = "text-white";
+      themeDefaultBtnClass = "bg-white/25 backdrop-blur-md border border-white/30 text-white hover:bg-white/35 shadow-lg";
+    } else if (templateValue === "air") {
+      containerClass += " bg-gray-100";
+      themeDefaultBtnClass = "bg-white text-gray-900 border border-gray-200 shadow-sm hover:bg-gray-50";
+    } else if (templateValue === "blocks") {
+      containerClass += " bg-purple-600";
+      if (!pageTextColor) textClass = "text-white";
+      themeDefaultBtnClass = "bg-pink-500 text-white font-bold hover:bg-pink-600 shadow-md";
+    } else if (templateValue === "bloom") {
+      containerClass += " bg-gradient-to-br from-pink-500 to-rose-600";
+      if (!pageTextColor) textClass = "text-white";
+      themeDefaultBtnClass = "bg-white/20 backdrop-blur-md text-white border border-white/40 hover:bg-white/30 shadow-md";
+    } else if (templateValue === "grid") {
+      containerClass += " bg-lime-200";
+      if (!pageTextColor) textClass = "text-black";
+      themeDefaultBtnClass = "bg-white text-black border-2 border-black font-bold shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]";
+    } else if (templateValue === "groove") {
+      containerClass += " bg-gradient-to-r from-amber-500 via-red-500 to-purple-600";
+      if (!pageTextColor) textClass = "text-white";
+      themeDefaultBtnClass = "bg-black/40 backdrop-blur-sm border border-white/20 text-white hover:bg-black/60 shadow-md";
+    } else if (templateValue === "lake") {
+      containerClass += " bg-slate-800";
+      if (!pageTextColor) textClass = "text-slate-100";
+      themeDefaultBtnClass = "bg-slate-700/80 border border-slate-600 text-slate-100 hover:bg-slate-700 shadow-md";
+    } else if (templateValue === "nourish") {
+      containerClass += " bg-emerald-700";
+      if (!pageTextColor) textClass = "text-emerald-50";
+      themeDefaultBtnClass = "bg-amber-100 text-emerald-950 font-bold hover:bg-amber-200 shadow-md";
+    }
+  }
   let buttonClass =
     `w-full py-4 px-4 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between ${roundnessClass}`;
   let customButtonStyle: React.CSSProperties = {};
@@ -124,33 +175,19 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
   if (buttonTextColor) customButtonStyle.color = buttonTextColor;
 
   if (buttonStyle === 'glass') {
-    buttonClass += " bg-white/20 backdrop-blur-md border border-white/30 text-gray-900 hover:bg-white/30 shadow-md";
+    buttonClass += " bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 shadow-md";
   } else if (buttonStyle === 'outline') {
-    buttonClass += " bg-transparent border-2 border-gray-900 text-gray-900 hover:bg-black/5";
+    buttonClass += " bg-transparent border-2 border-current hover:bg-black/5";
   } else {
-    buttonClass += " bg-black text-white hover:bg-gray-800 shadow-sm";
+    // Solid: use theme default button class if no custom buttonColor
+    if (!buttonColor) {
+      buttonClass += ` ${themeDefaultBtnClass}`;
+    } else {
+      buttonClass += " shadow-sm";
+    }
   }
 
   let socialIconClass = "w-7 h-7 hover:scale-110 transition-transform";
-
-  // If it's a solid color, use it as background
-  if (isColor) {
-    containerStyle.backgroundColor = templateValue;
-    const isDark = templateValue === "#0f172a";
-    if (!pageTextColor) textClass = isDark ? "text-white" : "text-gray-900";
-  } else {
-    // Preset classes
-    if (templateValue === "minimalist") {
-      containerClass += " bg-[#FAF9F6]";
-    } else if (templateValue === "neon-dark") {
-      containerClass += " bg-gray-900";
-      if (!pageTextColor) textClass = "text-white";
-    } else if (templateValue === "soft-gradient") {
-      containerClass +=
-        " bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400";
-      if (!pageTextColor) textClass = "text-white";
-    }
-  }
 
   const shareUrl = `${window.location.origin}/${profile.username || "preview"}`;
 
@@ -378,6 +415,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={buttonClass}
+                  style={customButtonStyle}
                 >
                   <div className="w-8 h-8 rounded bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
                     <Link2 className="w-4 h-4 opacity-50" />
