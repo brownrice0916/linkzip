@@ -29,8 +29,9 @@ import { ThumbnailModal } from './ThumbnailModal';
 import { SocialModal } from './SocialModal';
 import { AddBlockModal } from './AddBlockModal';
 import { ProfitAccountModal } from './ProfitAccountModal';
+import { NoticeModal } from './NoticeModal';
 import clsx from 'clsx';
-import type { DonationConfig } from '../../store/useStore';
+import type { DonationConfig, NoticeConfig } from '../../store/useStore';
 
 const getSocialIconComp = (platform: string) => {
   switch (platform) {
@@ -195,6 +196,20 @@ const LinksEditor = () => {
         url: '',
         isVisible: true,
         iconName: 'minus'
+      });
+    } else if (blockType === 'notice') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        type: 'notice',
+        title: '📢 공지사항 (Notice)',
+        url: `/${profile.username || 'preview'}/notice`,
+        isVisible: true,
+        iconName: 'megaphone',
+        noticeConfig: {
+          title: '📢 8월 주요 공지사항',
+          content: '팬미팅 일정 및 신규 굿즈 출시 안내입니다.',
+          date: new Date().toLocaleDateString('ko-KR')
+        }
       });
     } else if (blockType === 'guestbook') {
       addCustomLink({
@@ -956,6 +971,89 @@ const LinksEditor = () => {
     );
   };
 
+  const [activeNoticeModalLink, setActiveNoticeModalLink] = useState<CustomLink | null>(null);
+
+  const renderNoticeCard = (link: CustomLink) => {
+    const notice = link.noticeConfig || {
+      title: '📢 8월 주요 공지사항',
+      content: '팬미팅 일정 및 신규 굿즈 출시 안내입니다.',
+      date: new Date().toLocaleDateString('ko-KR')
+    };
+
+    return (
+      <div 
+        key={link.id}
+        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+      >
+        {/* Header Row: Toggle, Title, Controls */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            {/* ON/OFF Switch */}
+            <button
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+              )}
+            >
+              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                {link.isVisible !== false ? "ON" : "OFF"}
+              </span>
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
+                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            {/* Title */}
+            <div className="font-black text-base text-gray-900">
+              <span>notice (공지사항)</span>
+            </div>
+          </div>
+
+          {/* Right Controls: reservation 🕒, ..., delete */}
+          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
+              <span>reservation</span>
+              <span className="text-gray-900">🕒</span>
+            </button>
+
+            <button 
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              title="Delete block"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Inputs / Content Snippet */}
+        <div className="space-y-3">
+          <div className="p-4 bg-amber-50/50 border border-amber-200/60 rounded-2xl space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-amber-800">{notice.title}</span>
+              <span className="text-[10px] font-semibold text-amber-600">{notice.date}</span>
+            </div>
+            <p className="text-xs text-gray-600 font-medium line-clamp-2">{notice.content}</p>
+          </div>
+
+          {/* Edit Notice Button */}
+          <button
+            type="button"
+            onClick={() => setActiveNoticeModalLink(link)}
+            className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+          >
+            <span>📢 공지사항 입력 / 수정하기</span>
+          </button>
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
@@ -1030,6 +1128,9 @@ const LinksEditor = () => {
           if (block.type === 'sns') {
             return renderSNSCard(block);
           }
+          if (block.type === 'notice') {
+            return renderNoticeCard(block);
+          }
           return renderLinkItem(block);
         })}
       </div>
@@ -1077,6 +1178,23 @@ const LinksEditor = () => {
               }
             });
             setActiveProfitAccountLink(null);
+          }}
+        />
+      )}
+
+      {/* Notice Editor Modal */}
+      {activeNoticeModalLink && (
+        <NoticeModal
+          isOpen={!!activeNoticeModalLink}
+          onClose={() => setActiveNoticeModalLink(null)}
+          initialNotice={activeNoticeModalLink.noticeConfig}
+          onSave={(noticeData) => {
+            updateCustomLink(activeNoticeModalLink.id, {
+              title: `📢 ${noticeData.title}`,
+              url: `/${profile.username || 'preview'}/notice`,
+              noticeConfig: noticeData
+            });
+            setActiveNoticeModalLink(null);
           }}
         />
       )}

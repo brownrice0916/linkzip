@@ -782,8 +782,17 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 block.title?.toLowerCase().includes('guestbook') ||
                 block.url?.includes('guestbook');
 
+              const isNoticeBlock = 
+                block.type === 'notice' ||
+                block.iconName === 'megaphone' || 
+                block.title?.includes('공지') || 
+                block.title?.toLowerCase().includes('notice') ||
+                block.url?.includes('notice');
+
               const hrefTarget = isGuestbookBlock
                 ? `/${profile.username || 'preview'}/guestbook`
+                : isNoticeBlock
+                ? `/${profile.username || 'preview'}/notice`
                 : block.url?.match(/^https?:\/\//)
                 ? block.url
                 : `https://${block.url}`;
@@ -792,7 +801,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 <a
                   key={block.id}
                   href={hrefTarget}
-                  target={isGuestbookBlock ? "_self" : "_blank"}
+                  target={isGuestbookBlock || isNoticeBlock ? "_self" : "_blank"}
                   rel="noopener noreferrer"
                   className={buttonClass}
                   style={customButtonStyle}

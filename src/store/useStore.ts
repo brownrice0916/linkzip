@@ -35,9 +35,16 @@ export interface SNSItem {
   countryCode?: string;
 }
 
+export interface NoticeConfig {
+  title: string;
+  content: string;
+  date?: string;
+  isPinned?: boolean;
+}
+
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns';
+  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice';
   title: string;
   url?: string;
   layout?: 'list' | 'grid';
@@ -49,6 +56,7 @@ export interface CustomLink {
   donationConfig?: DonationConfig;
   fileConfig?: FileConfig;
   snsLinks?: SNSItem[];
+  noticeConfig?: NoticeConfig;
 }
 
 export interface UserProfile {
