@@ -145,11 +145,14 @@ const LinksEditor = () => {
   };
 
   const handleSelectBlockType = (blockType: string) => {
+    const userHandle = profile.username || 'preview';
+
     if (blockType === 'link') {
       addCustomLink({
         id: `link-${Date.now()}`,
-        title: 'New Link',
-        url: 'https://',
+        type: 'link',
+        title: '내 공식 사이트 바로가기',
+        url: 'https://naver.com',
         isVisible: true,
         iconName: 'link'
       });
@@ -162,68 +165,85 @@ const LinksEditor = () => {
         title: 'SNS',
         isVisible: true,
         snsLinks: [
-          { id: `sns-${Date.now()}-1`, platform: 'phone', value: '', countryCode: 'KR' }
+          { id: `sns-${Date.now()}-1`, platform: 'phone', value: '010-1234-5678', countryCode: 'KR' },
+          { id: `sns-${Date.now()}-2`, platform: 'instagram', value: userHandle }
         ]
       });
-    } else if (blockType === 'video') {
+    } else if (blockType === 'file') {
       addCustomLink({
         id: `link-${Date.now()}`,
-        title: 'Video Stream',
-        url: 'https://youtube.com',
+        type: 'file',
+        title: '자료집 및 대표 파일 다운로드',
+        url: 'https://images.unsplash.com/photo-1542435503-956c469947f6',
         isVisible: true,
-        iconName: 'youtube'
-      });
-    } else if (blockType === 'text') {
-      addCustomLink({
-        id: `link-${Date.now()}`,
-        title: 'Text / Announcement',
-        url: '',
-        isVisible: true,
-        iconName: 'file-text'
-      });
-    } else if (blockType === 'gallery') {
-      addCustomLink({
-        id: `link-${Date.now()}`,
-        title: 'Image Gallery',
-        url: '',
-        isVisible: true,
-        iconName: 'image'
-      });
-    } else if (blockType === 'space') {
-      addCustomLink({
-        id: `link-${Date.now()}`,
-        title: '--- Spacing / Divider ---',
-        url: '',
-        isVisible: true,
-        iconName: 'minus'
+        iconName: 'download',
+        fileConfig: {
+          title: '자료집 및 대표 파일 다운로드',
+          description: '누구나 자유롭게 다운로드하실 수 있습니다.',
+          fileUrl: 'https://images.unsplash.com/photo-1542435503-956c469947f6',
+          fileName: 'linkzip_presentation.pdf',
+          fileSize: '2.4MB'
+        }
       });
     } else if (blockType === 'notice') {
       addCustomLink({
         id: `link-${Date.now()}`,
         type: 'notice',
-        title: '📢 공지사항 (Notice)',
-        url: `/${profile.username || 'preview'}/notice`,
+        title: '📢 8월 주요 공지사항',
+        url: `/${userHandle}/notice`,
         isVisible: true,
         iconName: 'megaphone',
         noticeConfig: {
-          title: '📢 8월 주요 공지사항',
-          content: '팬미팅 일정 및 신규 굿즈 출시 안내입니다.',
+          title: '📢 8월 주요 공지사항 및 안내',
+          content: '팬미팅 일정 및 신규 굿즈 출시 안내입니다. 많은 관심 부탁드립니다!',
           date: new Date().toLocaleDateString('ko-KR')
         }
       });
     } else if (blockType === 'guestbook') {
       addCustomLink({
         id: `link-${Date.now()}`,
-        title: '✏️ 방명록 (응원 메시지 남기기)',
-        url: `/${profile.username || 'preview'}/guestbook`,
+        title: '✏️ 팬 방명록 (응원 메시지 남기기)',
+        url: `/${userHandle}/guestbook`,
         isVisible: true,
         iconName: 'pen-tool'
+      });
+    } else if (blockType === 'customer_info') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        type: 'customer_info',
+        title: 'Customer info (뉴스레터 구독 신청)',
+        url: `/${userHandle}/customer_info`,
+        isVisible: true,
+        iconName: 'credit-card',
+        customerInfoConfig: {
+          mainText: 'subscribe to our letter',
+          detailText: 'sent every monday',
+          receiveEmail: true,
+          receivePhone: false,
+          receiveName: false
+        }
+      });
+    } else if (blockType === 'sales') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: '🛍️ 공식 굿즈 & 디지털 상품 마켓',
+        url: 'https://smartstore.naver.com',
+        isVisible: true,
+        iconName: 'shopping-bag'
+      });
+    } else if (blockType === 'booking') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: '📅 1:1 컨설팅 & 일정 예약하기',
+        url: 'https://booking.naver.com',
+        isVisible: true,
+        iconName: 'calendar-check'
       });
     } else if (blockType === 'customer_inquiry' || blockType === 'contact') {
       addCustomLink({
         id: `link-${Date.now()}`,
-        title: 'Contact / Inquiry',
-        url: 'https://open.kakao.com',
+        title: '📞 비즈니스 섭외 & 1:1 오픈채팅 문의',
+        url: 'https://open.kakao.com/o/linkzip',
         isVisible: true,
         iconName: 'message-circle'
       });
@@ -231,7 +251,7 @@ const LinksEditor = () => {
       addCustomLink({
         id: `link-${Date.now()}`,
         title: `${blockType.replace('_', ' ')} block`,
-        url: 'https://',
+        url: `https://${userHandle}.linkzip.me`,
         isVisible: true,
         iconName: 'sparkles'
       });
