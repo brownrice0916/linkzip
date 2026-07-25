@@ -590,8 +590,27 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: delete */}
+          {/* Right Controls: Color Picker & Delete */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <div className="flex items-center gap-1" title="특정 카드 색상 지정 (기본은 전체 통일)">
+              <input
+                type="color"
+                value={link.buttonColor || '#ffffff'}
+                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              />
+              {link.buttonColor && (
+                <button
+                  type="button"
+                  onClick={() => updateCustomLink(link.id, { buttonColor: undefined, buttonTextColor: undefined })}
+                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
+                  title="기본 통일 색상으로 복원"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
@@ -751,8 +770,27 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: delete */}
+          {/* Right Controls: Color Picker & Delete */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <div className="flex items-center gap-1" title="특정 카드 색상 지정 (기본은 전체 통일)">
+              <input
+                type="color"
+                value={link.buttonColor || '#ffffff'}
+                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              />
+              {link.buttonColor && (
+                <button
+                  type="button"
+                  onClick={() => updateCustomLink(link.id, { buttonColor: undefined, buttonTextColor: undefined })}
+                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
+                  title="기본 통일 색상으로 복원"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
@@ -1033,8 +1071,27 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: delete */}
+          {/* Right Controls: Color Picker & Delete */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <div className="flex items-center gap-1" title="특정 카드 색상 지정 (기본은 전체 통일)">
+              <input
+                type="color"
+                value={link.buttonColor || '#ffffff'}
+                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              />
+              {link.buttonColor && (
+                <button
+                  type="button"
+                  onClick={() => updateCustomLink(link.id, { buttonColor: undefined, buttonTextColor: undefined })}
+                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
+                  title="기본 통일 색상으로 복원"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
@@ -1120,8 +1177,27 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: delete */}
+          {/* Right Controls: Color Picker & Delete */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <div className="flex items-center gap-1" title="특정 카드 색상 지정 (기본은 전체 통일)">
+              <input
+                type="color"
+                value={link.buttonColor || '#ffffff'}
+                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              />
+              {link.buttonColor && (
+                <button
+                  type="button"
+                  onClick={() => updateCustomLink(link.id, { buttonColor: undefined, buttonTextColor: undefined })}
+                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
+                  title="기본 통일 색상으로 복원"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
