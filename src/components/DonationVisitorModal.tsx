@@ -32,66 +32,27 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
   const mainText = donationConfig?.mainText || '후원하기 (Donation)';
   const detailText = donationConfig?.detailText || "If you'd like to make an additional donation, please adjust the amount!";
 
-  const handleNextStep = () => {
+  const handleDirectInicisPayment = () => {
     if (amount < minAmount) {
       alert(`최소 후원 금액은 ${minAmount.toLocaleString()}원입니다.`);
-      return;
-    }
-    setStep(2);
-  };
-
-  const handleProcessPayment = () => {
-    if (!email.trim()) {
-      alert('결제 영수증 수신을 위한 이메일을 입력해주세요.');
-      return;
-    }
-    if (!isConsentChecked) {
-      alert('개인정보 수집 및 이용 동의가 필요합니다.');
       return;
     }
 
     setPaying(true);
 
     const win = window as any;
-    
-    // 1. Direct Toss Payments SDK Integration
-    if (win.TossPayments) {
-      try {
-        const tossPayments = win.TossPayments('test_ck_D5b3Mad8W1M66y0113843r447b2d'); // Toss Payments Standard Test Client Key
-        tossPayments.requestPayment(
-          paymentMethod === 'toss' ? '토스페이' : paymentMethod === 'kakao' ? '카카오페이' : '카드',
-          {
-            amount: amount,
-            orderId: `don_${Date.now()}`,
-            orderName: `${creatorName} 님 후원금`,
-            customerName: '후원자',
-            customerEmail: email,
-            successUrl: `${window.location.origin}/?payment=success`,
-            failUrl: `${window.location.origin}/?payment=fail`
-          }
-        ).catch((err: any) => {
-          setPaying(false);
-          if (err.code !== 'USER_CANCEL') {
-            alert(`❌ 토스페이먼츠 결제 안내: ${err.message || '결제가 취소되었습니다.'}`);
-          }
-        });
-        return;
-      } catch (e) {
-        // Fallback to PortOne Toss PG
-      }
-    }
-
-    // 2. PortOne Toss PG Fallback
     const IMP = win.IMP;
+
     if (IMP) {
-      IMP.init("imp19424728");
+      IMP.init("imp19424728"); // KG Inicis Standard Merchant ID
+
       IMP.request_pay({
-        pg: paymentMethod === 'toss' ? 'tosspay' : paymentMethod === 'kakao' ? 'kakaopay.TC0ONETIME' : 'html5_inicis',
+        pg: 'html5_inicis',
         pay_method: 'card',
         merchant_uid: `don_${Date.now()}`,
         name: `${creatorName} 님 후원금`,
         amount: amount,
-        buyer_email: email,
+        buyer_email: 'donor@linkzip.kr',
         buyer_name: '후원자'
       }, (rsp: any) => {
         setPaying(false);
@@ -100,16 +61,15 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
           setTimeout(() => {
             setPaidSuccess(false);
             onClose();
-            setStep(1);
           }, 3000);
         } else {
           const failReason = rsp?.error_msg || '결제 창이 닫혔거나 결제가 취소되었습니다.';
-          alert(`❌ 결제 미완료: ${failReason}`);
+          alert(`❌ 이니시스 결제 미완료: ${failReason}`);
         }
       });
     } else {
       setPaying(false);
-      alert('⚠️ 토스페이먼츠 결제 모듈(SDK)을 로드하지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.');
+      alert('⚠️ KG 이니시스 결제 모듈(SDK)을 로드하지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.');
     }
   };
 
@@ -135,8 +95,8 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
               <p className="text-xs text-gray-500">{creatorName} 님에게 따뜻한 마음이 전달되었습니다.</p>
             </div>
           </div>
-        ) : step === 1 ? (
-          /* Step 1: Donation Amount & Optional Message */
+        ) : (
+          /* Donation Amount & Optional Message */
           <div className="space-y-6 text-center pt-2">
             <div className="space-y-2">
               <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">{mainText}</h2>
@@ -188,119 +148,14 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
               />
             </div>
 
-            {/* Donate Button */}
+            {/* Direct KG Inicis Payment Trigger Button */}
             <button
-              onClick={handleNextStep}
-              className="w-full py-4 bg-[#333333] hover:bg-black text-white rounded-2xl font-bold text-sm transition cursor-pointer shadow-md"
-            >
-              Donate
-            </button>
-          </div>
-        ) : (
-          /* Step 2: Payment Info & Method Selection */
-          <div className="space-y-6 pt-1">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">Payment info</h2>
-            </div>
-
-            {/* Email Input */}
-            <div>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email*"
-                className="w-full p-4 border border-gray-200 rounded-2xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
-              />
-            </div>
-
-            {/* Payment Method Selector Grid */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-gray-700">Payment method</label>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('app_card')}
-                  className={clsx(
-                    "p-3.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer",
-                    paymentMethod === 'app_card' ? "bg-black text-white border-black" : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
-                  )}
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>Payment by app card</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('direct_card')}
-                  className={clsx(
-                    "p-3.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer text-center",
-                    paymentMethod === 'direct_card' ? "bg-black text-white border-black" : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
-                  )}
-                >
-                  <span>Direct input of card number</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('naver')}
-                  className={clsx(
-                    "p-3.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer",
-                    paymentMethod === 'naver' ? "bg-[#03C75A] text-white border-[#03C75A]" : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
-                  )}
-                >
-                  <span className="bg-white text-[#03C75A] text-[10px] px-1.5 py-0.5 rounded font-black">N pay</span>
-                  <span>간편결제</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('toss')}
-                  className={clsx(
-                    "p-3.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer col-span-2",
-                    paymentMethod === 'toss' ? "bg-[#0051FF] text-white border-[#0051FF] shadow-sm" : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
-                  )}
-                >
-                  <span className="bg-white text-[#0051FF] text-[10px] px-1.5 py-0.5 rounded font-black">toss</span>
-                  <span>토스페이먼츠 (토스페이 / 신용카드 / 계좌이체)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('kakao')}
-                  className={clsx(
-                    "p-3.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer",
-                    paymentMethod === 'kakao' ? "bg-[#FEE500] text-black border-[#FEE500]" : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
-                  )}
-                >
-                  <span className="bg-black text-[#FEE500] text-[10px] px-1.5 py-0.5 rounded font-black">pay</span>
-                  <span>카카오페이</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Pay Button */}
-            <button
-              onClick={handleProcessPayment}
+              onClick={handleDirectInicisPayment}
               disabled={paying}
-              className="w-full py-4 bg-[#8C9AA8] hover:bg-[#788796] text-white rounded-2xl font-bold text-sm transition cursor-pointer shadow-sm"
+              className="w-full py-4 bg-[#333333] hover:bg-black text-white rounded-2xl font-bold text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
             >
-              {paying ? "결제 승인 처리 중..." : `Pay ${amount.toLocaleString()}KRW`}
+              {paying ? "KG 이니시스 결제창 호출 중..." : `Donate (${amount.toLocaleString()}원 이니시스 결제)`}
             </button>
-
-            {/* Required Consent Checkbox */}
-            <label className="flex items-start gap-2 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={isConsentChecked}
-                onChange={(e) => setIsConsentChecked(e.target.checked)}
-                className="w-4 h-4 mt-0.5 text-black rounded focus:ring-black cursor-pointer"
-              />
-              <span className="text-[11px] font-medium text-gray-500 leading-tight">
-                [Required] Consent to the Collection and Use of Personal Information and to Receive Promotional Information
-              </span>
-            </label>
           </div>
         )}
 
