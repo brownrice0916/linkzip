@@ -23,7 +23,7 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
   const [amount, setAmount] = useState<number>(minAmount);
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'app_card' | 'direct_card' | 'naver' | 'kakao'>('app_card');
+  const [paymentMethod, setPaymentMethod] = useState<'app_card' | 'direct_card' | 'naver' | 'kakao' | 'toss'>('toss');
   const [isConsentChecked, setIsConsentChecked] = useState(true);
 
   const [paying, setPaying] = useState(false);
@@ -53,21 +53,40 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
     setPaying(true);
 
     const win = window as any;
-    const IMP = win.IMP;
-
-    if (IMP) {
-      // Initialize PortOne Standard Public Test Merchant ID
-      IMP.init("imp19424728");
-
-      let pgProvider = 'html5_inicis';
-      if (paymentMethod === 'kakao') {
-        pgProvider = 'kakaopay.TC0ONETIME';
-      } else if (paymentMethod === 'naver') {
-        pgProvider = 'naverpay';
+    
+    // 1. Direct Toss Payments SDK Integration
+    if (win.TossPayments) {
+      try {
+        const tossPayments = win.TossPayments('test_ck_D5b3Mad8W1M66y0113843r447b2d'); // Toss Payments Standard Test Client Key
+        tossPayments.requestPayment(
+          paymentMethod === 'toss' ? '토스페이' : paymentMethod === 'kakao' ? '카카오페이' : '카드',
+          {
+            amount: amount,
+            orderId: `don_${Date.now()}`,
+            orderName: `${creatorName} 님 후원금`,
+            customerName: '후원자',
+            customerEmail: email,
+            successUrl: `${window.location.origin}/?payment=success`,
+            failUrl: `${window.location.origin}/?payment=fail`
+          }
+        ).catch((err: any) => {
+          setPaying(false);
+          if (err.code !== 'USER_CANCEL') {
+            alert(`❌ 토스페이먼츠 결제 안내: ${err.message || '결제가 취소되었습니다.'}`);
+          }
+        });
+        return;
+      } catch (e) {
+        // Fallback to PortOne Toss PG
       }
+    }
 
+    // 2. PortOne Toss PG Fallback
+    const IMP = win.IMP;
+    if (IMP) {
+      IMP.init("imp19424728");
       IMP.request_pay({
-        pg: pgProvider,
+        pg: paymentMethod === 'toss' ? 'tosspay' : paymentMethod === 'kakao' ? 'kakaopay.TC0ONETIME' : 'html5_inicis',
         pay_method: 'card',
         merchant_uid: `don_${Date.now()}`,
         name: `${creatorName} 님 후원금`,
@@ -77,7 +96,6 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
       }, (rsp: any) => {
         setPaying(false);
         if (rsp && rsp.success) {
-          // REAL PAYMENT SUCCESSFUL!
           setPaidSuccess(true);
           setTimeout(() => {
             setPaidSuccess(false);
@@ -85,14 +103,13 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
             setStep(1);
           }, 3000);
         } else {
-          // USER CANCELLED OR PAYMENT FAILED
           const failReason = rsp?.error_msg || '결제 창이 닫혔거나 결제가 취소되었습니다.';
-          alert(`❌ PG 결제 미완료: ${failReason}`);
+          alert(`❌ 결제 미완료: ${failReason}`);
         }
       });
     } else {
       setPaying(false);
-      alert('⚠️ 포트원 결제 모듈(SDK)을 로드하지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.');
+      alert('⚠️ 토스페이먼츠 결제 모듈(SDK)을 로드하지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.');
     }
   };
 
@@ -239,6 +256,18 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
 
                 <button
                   type="button"
+                  onClick={() => setPaymentMethod('toss')}
+                  className={clsx(
+                    "p-3.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer col-span-2",
+                    paymentMethod === 'toss' ? "bg-[#0051FF] text-white border-[#0051FF] shadow-sm" : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
+                  )}
+                >
+                  <span className="bg-white text-[#0051FF] text-[10px] px-1.5 py-0.5 rounded font-black">toss</span>
+                  <span>토스페이먼츠 (토스페이 / 신용카드 / 계좌이체)</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setPaymentMethod('kakao')}
                   className={clsx(
                     "p-3.5 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer",
@@ -246,7 +275,7 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
                   )}
                 >
                   <span className="bg-black text-[#FEE500] text-[10px] px-1.5 py-0.5 rounded font-black">pay</span>
-                  <span>간편결제</span>
+                  <span>카카오페이</span>
                 </button>
               </div>
             </div>
