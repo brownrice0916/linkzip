@@ -130,26 +130,6 @@ export const GrowthEditor: React.FC = () => {
           
           <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-lime-500 text-white flex items-center justify-center">
-                <MessageCircle className="w-4 h-4" />
-              </div>
-              <span className="text-gray-900">Customer inquiry</span>
-            </div>
-            <span className="text-gray-400 font-extrabold">0 items</span>
-          </div>
-
-          <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center">
-                <Calendar className="w-4 h-4" />
-              </div>
-              <span className="text-gray-900">Appointments</span>
-            </div>
-            <span className="text-gray-400 font-extrabold">0 items</span>
-          </div>
-
-          <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
-            <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-cyan-500 text-white flex items-center justify-center">
                 <Download className="w-4 h-4" />
               </div>
@@ -168,16 +148,6 @@ export const GrowthEditor: React.FC = () => {
             <span className={clsx("font-extrabold", collectedData.length > 0 ? "text-purple-600" : "text-gray-400")}>
               {collectedData.length} items
             </span>
-          </div>
-
-          <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center">
-                <Bell className="w-4 h-4" />
-              </div>
-              <span className="text-gray-900">Subscription</span>
-            </div>
-            <span className="text-gray-400 font-extrabold">0 items</span>
           </div>
 
         </div>
@@ -221,26 +191,6 @@ export const GrowthEditor: React.FC = () => {
                 <Heart className="w-4 h-4" />
               </div>
               <span className="text-gray-900">Donation</span>
-            </div>
-            <span className="text-gray-400 font-extrabold">0KRW</span>
-          </div>
-
-          <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center">
-                <Calendar className="w-4 h-4" />
-              </div>
-              <span className="text-gray-900">booking</span>
-            </div>
-            <span className="text-gray-400 font-extrabold">0KRW</span>
-          </div>
-
-          <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center">
-                <Users className="w-4 h-4" />
-              </div>
-              <span className="text-gray-900">Membership</span>
             </div>
             <span className="text-gray-400 font-extrabold">0KRW</span>
           </div>

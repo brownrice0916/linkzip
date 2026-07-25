@@ -570,18 +570,8 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: highlight, reservation, menu, delete */}
+          {/* Right Controls: delete */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
-              <span>highlight</span>
-              <span className="text-gray-900">★</span>
-            </button>
-
-            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
-              <span>reservation</span>
-              <span className="text-gray-900">🕒</span>
-            </button>
-
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
@@ -741,13 +731,8 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: reservation 🕒, ..., delete */}
+          {/* Right Controls: delete */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
-              <span>reservation</span>
-              <span className="text-gray-900">🕒</span>
-            </button>
-
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
@@ -888,13 +873,8 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Controls: reservation, trashcan */}
+          {/* Controls: trashcan */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
-              <span>reservation</span>
-              <span className="text-gray-900">🕒</span>
-            </button>
-
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
@@ -1033,13 +1013,8 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: reservation 🕒, ..., delete */}
+          {/* Right Controls: delete */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
-              <span>reservation</span>
-              <span className="text-gray-900">🕒</span>
-            </button>
-
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
@@ -1125,18 +1100,8 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: highlight, reservation, menu, delete */}
+          {/* Right Controls: delete */}
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
-              <span>highlight</span>
-              <span className="text-gray-900">★</span>
-            </button>
-
-            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
-              <span>reservation</span>
-              <span className="text-gray-900">🕒</span>
-            </button>
-
             <button 
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
