@@ -194,6 +194,9 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
     onClose();
   };
 
+  const idValidation = idNumber.trim() ? validateIdentityNumber(idNumber, accountType) : { valid: true };
+  const hasIdError = !idValidation.valid;
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans overflow-y-auto">
       <div className="bg-[#EBF0F5] rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 border border-gray-300 my-auto p-6 sm:p-8 space-y-6">
@@ -233,10 +236,23 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
             <input
               type="text"
               value={idNumber}
-              onChange={(e) => setIdNumber(e.target.value)}
+              onChange={(e) => {
+                setIdNumber(e.target.value);
+                setIsCertified(false);
+              }}
               placeholder={accountType === 'personal' ? 'enter ID number (-Excluded)' : 'business registration number(-excluded)'}
-              className="w-full p-3.5 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+              className={clsx(
+                "w-full p-3.5 bg-white border rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 placeholder-gray-400 transition-all",
+                hasIdError
+                  ? "border-red-500 text-red-600 bg-red-50/50 focus:ring-red-500 focus:border-red-500"
+                  : "border-gray-300 focus:ring-black focus:border-black"
+              )}
             />
+            {hasIdError && (
+              <p className="text-[11px] font-bold text-red-500 mt-1 flex items-center gap-1 animate-in fade-in">
+                <span>⚠️ {idValidation.error}</span>
+              </p>
+            )}
           </div>
 
           {/* Bank Name & Account Owner Name Grid */}
