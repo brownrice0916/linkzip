@@ -37,21 +37,21 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Step 1: Selected Post
-  const [selectedPostId, setSelectedPostId] = useState<string>('post-1');
+  const [selectedPostId, setSelectedPostId] = useState<string>('');
   const [postType, setPostType] = useState<'uploaded' | 'upcoming'>('uploaded');
 
   // Step 2: Keywords
   const [keywordMode, setKeywordMode] = useState<'all' | 'specific'>('specific');
   const [keywordInput, setKeywordInput] = useState('');
-  const [keywords, setKeywords] = useState<string[]>(['리포데이']);
+  const [keywords, setKeywords] = useState<string[]>([]);
 
   // Step 3: DM Message & Buttons
   const [message, setMessage] = useState('');
-  const [buttonCount, setButtonCount] = useState<0 | 1 | 2 | 3>(3);
+  const [buttonCount, setButtonCount] = useState<0 | 1 | 2 | 3>(0);
 
   // Step 4: Button Links Config (up to 3 buttons)
   const [buttons, setButtons] = useState<Array<{ name: string; url: string }>>([
-    { name: 'ㄴㅇㄹㄹㅇㄴㄹ', url: 'https://www.naver.com' },
+    { name: '', url: '' },
     { name: '', url: '' },
     { name: '', url: '' }
   ]);
@@ -60,10 +60,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
 
   // Step 5: Comment Reply Option
   const [wantCommentReply, setWantCommentReply] = useState<'no' | 'yes'>('no');
-  const [commentReplies, setCommentReplies] = useState<string[]>([
-    '전달드렸어요! 감사해요 ❤️',
-    '항상 응원해요 ><💕'
-  ]);
+  const [commentReplies, setCommentReplies] = useState<string[]>([]);
   const [newReplyInput, setNewReplyInput] = useState('');
 
   if (!isOpen) return null;
@@ -440,7 +437,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     type="text"
                     value={buttons[currentButtonIndex]?.name || ''}
                     onChange={(e) => handleUpdateButtonName(currentButtonIndex, e.target.value)}
-                    placeholder="ㄴㅇㄹㄹㅇㄴㄹ"
+                    placeholder="Please enter the button name"
                     className="w-full p-3.5 rounded-2xl border border-gray-300 text-xs font-extrabold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
                   />
                 </div>
