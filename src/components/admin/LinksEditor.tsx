@@ -89,6 +89,12 @@ const LinksEditor = () => {
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverTargetId(null);
+    setIsOverRootArea(false);
+  };
+
   const handleDragOver = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -146,6 +152,7 @@ const LinksEditor = () => {
         key={link.id}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
+        onDragEnd={handleDragEnd}
         onDragOver={(e) => handleDragOver(e, link.id)}
         onDragLeave={() => setDragOverTargetId(null)}
         onDrop={(e) => handleDropOnItem(e, link.id)}
@@ -230,6 +237,7 @@ const LinksEditor = () => {
         key={collection.id}
         draggable
         onDragStart={(e) => handleDragStart(e, collection.id)}
+        onDragEnd={handleDragEnd}
         onDragOver={(e) => handleDragOver(e, collection.id)}
         onDragLeave={() => setDragOverTargetId(null)}
         onDrop={(e) => handleDropOnItem(e, collection.id)}
