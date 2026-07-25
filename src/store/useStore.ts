@@ -76,6 +76,7 @@ export interface AppStateSnapshot {
   dmRules?: DMAutomationRule[];
   alimtalkSettings?: AlimtalkSettings;
   metaAccessToken?: string;
+  instagramAccount?: string;
 }
 
 interface AppState {
@@ -106,6 +107,7 @@ interface AppState {
   dmRules: DMAutomationRule[];
   alimtalkSettings: AlimtalkSettings;
   metaAccessToken?: string;
+  instagramAccount?: string;
 
   // Change Tracking & History (Undo / Redo / Cancel / Save)
   isDirty: boolean;
@@ -135,6 +137,7 @@ interface AppState {
   removeDMRule: (id: string) => void;
   setAlimtalkSettings: (settings: Partial<AlimtalkSettings>) => void;
   setMetaAccessToken: (token: string) => void;
+  setInstagramAccount: (account: string | null) => void;
 
   // Undo / Redo / Cancel / Save Actions
   undo: () => void;
@@ -167,6 +170,7 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   dmRules: JSON.parse(JSON.stringify(state.dmRules || [])),
   alimtalkSettings: JSON.parse(JSON.stringify(state.alimtalkSettings || {})),
   metaAccessToken: state.metaAccessToken || '',
+  instagramAccount: state.instagramAccount || '',
 });
 
 const recursivelyUpdateLink = (links: CustomLink[], id: string, updates: Partial<CustomLink>): CustomLink[] => {
@@ -242,6 +246,7 @@ export const useStore = create<AppState>((set) => ({
     isEnabled: false
   },
   metaAccessToken: '',
+  instagramAccount: '',
 
   // History & Change Tracking
   isDirty: false,
@@ -456,6 +461,16 @@ export const useStore = create<AppState>((set) => ({
     const snap = getSnapshotFromState(state);
     return {
       metaAccessToken: token,
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  setInstagramAccount: (account) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      instagramAccount: account || '',
       undoStack: [...state.undoStack, snap],
       redoStack: [],
       isDirty: true

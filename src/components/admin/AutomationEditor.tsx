@@ -21,10 +21,14 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
+import { InstagramDmWizardModal } from './InstagramDmWizardModal';
 import clsx from 'clsx';
 
 const AutomationEditor = () => {
   const state = useStore();
+
+  // Wizard Modal State
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Meta Instagram Token State
   const [metaToken, setMetaToken] = useState(state.metaAccessToken || '');
@@ -110,24 +114,42 @@ const AutomationEditor = () => {
 
       {/* 1. Instagram DM Automation Card */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500 via-pink-500 to-amber-400 text-white flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500 via-pink-500 to-amber-400 text-white flex items-center justify-center shadow-md shrink-0">
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-gray-900">무제한 인스타그램 DM 자동화</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-gray-900">무제한 인스타그램 DM 자동화</h3>
+                {state.instagramAccount ? (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {state.instagramAccount} 연결됨
+                  </span>
+                ) : null}
+              </div>
               <p className="text-xs text-gray-500">팔로워 댓글/DM 키워드 감지 시 자동 반응 메시지 발송</p>
             </div>
           </div>
 
-          <button
-            onClick={() => setIsDmModalOpen(true)}
-            className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            자동화 규칙 추가
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsWizardOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <FaInstagram className="w-4 h-4" />
+              <span>DM 연동 시작 (5단계)</span>
+            </button>
+
+            <button
+              onClick={() => setIsDmModalOpen(true)}
+              className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              규칙 추가
+            </button>
+          </div>
         </div>
 
         {/* Meta Graph API Access Token Input Card */}
@@ -369,7 +391,14 @@ const AutomationEditor = () => {
         </div>
       </div>
 
-      {/* DM Rule Modal */}
+      {/* Instagram 5-Step DM Onboarding Wizard Modal */}
+      <InstagramDmWizardModal
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onOpenRuleModal={() => setIsDmModalOpen(true)}
+      />
+
+      {/* DM Rule Creation Modal */}
       {isDmModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 font-sans">
