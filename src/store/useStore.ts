@@ -20,9 +20,17 @@ export interface DonationConfig {
   accountNumber?: string;
 }
 
+export interface FileConfig {
+  title: string;
+  description?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: string;
+}
+
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation';
+  type?: 'link' | 'collection' | 'donation' | 'file';
   title: string;
   url?: string;
   layout?: 'list' | 'grid';
@@ -32,6 +40,7 @@ export interface CustomLink {
   thumbnailType?: 'image' | 'icon' | 'none'; // thumbnail mode
   iconName?: string; // selected icon key e.g. 'link', 'globe', 'instagram', etc.
   donationConfig?: DonationConfig;
+  fileConfig?: FileConfig;
 }
 
 export interface UserProfile {

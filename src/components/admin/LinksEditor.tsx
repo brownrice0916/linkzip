@@ -634,6 +634,152 @@ const LinksEditor = () => {
     );
   };
 
+  const renderFileSharingCard = (link: CustomLink) => {
+    const config = link.fileConfig || {
+      title: '자유로운 주제 문구 입력',
+      description: '추가 설명을 남길 수 있습니다',
+      fileUrl: '',
+      fileName: '',
+      fileSize: ''
+    };
+
+    const updateConfig = (updates: Partial<import('../../store/useStore').FileConfig>) => {
+      const newConfig = { ...config, ...updates };
+      updateCustomLink(link.id, {
+        title: newConfig.title || link.title,
+        fileConfig: newConfig
+      });
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const fakeUrl = URL.createObjectURL(file);
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      updateConfig({
+        fileUrl: fakeUrl,
+        fileName: file.name,
+        fileSize: `${sizeMb}MB`
+      });
+    };
+
+    return (
+      <div 
+        key={link.id}
+        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+      >
+        {/* Header Row: Toggle, Title, Controls */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            {/* ON/OFF Switch */}
+            <button
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+              )}
+            >
+              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                {link.isVisible !== false ? "ON" : "OFF"}
+              </span>
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
+                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            {/* Title */}
+            <div className="font-black text-base text-gray-900">
+              <span>파일 공유</span>
+            </div>
+          </div>
+
+          {/* Right Controls: reservation 🕒, ..., delete */}
+          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
+              <span>reservation</span>
+              <span className="text-gray-900">🕒</span>
+            </button>
+
+            <button 
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              title="Delete block"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Inputs */}
+
+        {/* 1. 대표문구* + Image Button */}
+        <div className="space-y-1">
+          <label className="block text-xs font-bold text-gray-600">대표문구<span className="text-red-500">*</span></label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={config.title}
+              onChange={(e) => updateConfig({ title: e.target.value })}
+              placeholder="자유로운 주제 문구 입력"
+              className="flex-1 p-3.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+            />
+            <button
+              onClick={() => setActiveThumbnailLink(link)}
+              className="w-16 bg-[#8C9AA8] hover:bg-gray-600 text-white rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer shrink-0"
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span className="text-[9px] font-bold">image</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2. 상세설명 */}
+        <div className="space-y-1">
+          <label className="block text-xs font-bold text-gray-600">상세설명</label>
+          <input
+            type="text"
+            value={config.description || ''}
+            onChange={(e) => updateConfig({ description: e.target.value })}
+            placeholder="추가 설명을 남길 수 있습니다"
+            className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+          />
+        </div>
+
+        {/* 3. Upload Files* Button & Uploaded File Badge */}
+        <div className="space-y-2 pt-1">
+          <label className="block text-xs font-bold text-gray-600">Upload Files<span className="text-red-500">*</span></label>
+
+          {config.fileName && (
+            <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between text-xs font-bold text-gray-800">
+              <span className="truncate">📄 {config.fileName} ({config.fileSize || 'FILE'})</span>
+              <button
+                type="button"
+                onClick={() => updateConfig({ fileUrl: '', fileName: '', fileSize: '' })}
+                className="text-gray-400 hover:text-red-500 transition ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          <label className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2">
+            <span>+ Add File</span>
+            <input
+              type="file"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
@@ -682,19 +828,11 @@ const LinksEditor = () => {
         </div>
       </div>
 
-      {/* Action Pill Buttons Row (Matching User Screenshot: Add collection + Add) */}
+      {/* Action Pill Buttons Row (Only Add Button) */}
       <div className="flex items-center gap-3">
         <button
-          onClick={handleAddCollection}
-          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#EBEBEB] hover:bg-gray-200 text-gray-900 rounded-full font-bold text-sm transition cursor-pointer"
-        >
-          <Folder className="w-4 h-4 text-gray-700" />
-          <span>Add collection</span>
-        </button>
-
-        <button
           onClick={() => setIsAddBlockModalOpen(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-black hover:bg-gray-800 text-white rounded-full font-bold text-sm transition cursor-pointer shadow-md"
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-black hover:bg-gray-800 text-white rounded-full font-bold text-sm transition cursor-pointer shadow-md"
         >
           <Plus className="w-4 h-4" />
           <span>Add</span>
@@ -709,6 +847,9 @@ const LinksEditor = () => {
           }
           if (block.type === 'donation') {
             return renderDonationCard(block);
+          }
+          if (block.type === 'file') {
+            return renderFileSharingCard(block);
           }
           return renderLinkItem(block);
         })}

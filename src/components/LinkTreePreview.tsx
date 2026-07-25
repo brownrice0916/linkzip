@@ -698,6 +698,56 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 );
               }
 
+              if (block.type === 'file') {
+                const downloadUrl = block.fileConfig?.fileUrl || block.url || '#';
+                return (
+                  <a
+                    key={block.id}
+                    href={downloadUrl}
+                    download={block.fileConfig?.fileName || 'download'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonClass}
+                    style={customButtonStyle}
+                  >
+                    {!isNone && (
+                      <div
+                        className={clsx(
+                          "w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
+                          templateValue.startsWith("neo-")
+                            ? "bg-cyan-500 text-white border-2 border-black font-bold"
+                            : "bg-cyan-50 text-cyan-600"
+                        )}
+                      >
+                        {isImage && block.icon ? (
+                          <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <IconComp className="w-5 h-5 opacity-90" />
+                        )}
+                      </div>
+                    )}
+                    <div className="flex-1 text-center truncate">
+                      <span className="font-bold text-[15px] block truncate">
+                        📁 {block.fileConfig?.title || block.title || "파일 다운로드"}
+                      </span>
+                      {block.fileConfig?.fileName && (
+                        <span className="text-[11px] opacity-70 block truncate">
+                          {block.fileConfig.fileName} ({block.fileConfig.fileSize || 'FILE'})
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenShareModal(e, block)}
+                      className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
+                      title="Share link"
+                    >
+                      <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
+                    </button>
+                  </a>
+                );
+              }
+
               const isGuestbookBlock = 
                 block.iconName === 'pen-tool' || 
                 block.title?.includes('방명록') || 

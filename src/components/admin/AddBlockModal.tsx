@@ -1,4 +1,3 @@
-import React from 'react';
 import { 
   X, 
   Link2, 
@@ -9,7 +8,8 @@ import {
   ShoppingBag, 
   Heart, 
   CalendarCheck, 
-  Phone
+  Phone,
+  Download
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 
@@ -39,10 +39,26 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
         },
         { 
           id: 'link', 
-          label: 'Link / Group link (링크 & 그룹 링크)', 
-          desc: '협찬/공구 진행 링크, 내 최신 블로그 글, 포트폴리오 사이트 등을 모아서 보여줄 때 필수입니다.', 
+          label: 'Link (단일 링크)', 
+          desc: '단일 URL 링크 추가하기', 
           icon: Link2, 
           bgColor: 'bg-emerald-500', 
+          iconColor: 'text-white' 
+        },
+        { 
+          id: 'group_link', 
+          label: 'Group link (그룹 링크 / 컬렉션)', 
+          desc: '여러 링크를 묶어주는 그룹 컬렉션 추가하기 (add collection)', 
+          icon: Folder, 
+          bgColor: 'bg-[#7C3AED]', 
+          iconColor: 'text-white' 
+        },
+        { 
+          id: 'file', 
+          label: 'File sharing (파일 공유)', 
+          desc: 'PDF 및 이미지, 문서 파일 업로드 및 공유하기', 
+          icon: Download, 
+          bgColor: 'bg-cyan-500', 
           iconColor: 'text-white' 
         },
       ]
