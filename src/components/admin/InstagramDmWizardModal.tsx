@@ -76,7 +76,13 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
 
   const handleCreateAutomationRule = () => {
     setIsAccountDropdownOpen(false);
-    setIsCreateRuleWizardOpen(true);
+    if (!state.instagramAccount) {
+      // 미연동 상태일 때는 계정 연동 단계(Step 2 모달)를 먼저 실행!
+      setWizardStep(2);
+    } else {
+      // 이미 연동 완료된 상태일 때만 규칙 생성 모달 실행!
+      setIsCreateRuleWizardOpen(true);
+    }
   };
 
   const handleUnlinkAccount = () => {
