@@ -14,9 +14,13 @@ import {
   MessageCircle,
   Send,
   Heart,
-  Plus
+  Plus,
+  RotateCw,
+  LogOut,
+  UserPlus
 } from 'lucide-react';
-import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
+import { FaInstagram } from 'react-icons/fa';
+import { InstagramDmRuleCreateWizardModal } from './InstagramDmRuleCreateWizardModal';
 import clsx from 'clsx';
 
 interface InstagramDmWizardModalProps {
@@ -37,6 +41,12 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
   const [verificationCode, setVerificationCode] = useState('');
   const [trustDevice, setTrustDevice] = useState(true);
 
+  // Account Dropdown State (Matching Screenshot 5)
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+
+  // Create Rule 5-Step Wizard Modal State (Matching Screenshots 2, 3, 4)
+  const [isCreateRuleWizardOpen, setIsCreateRuleWizardOpen] = useState(false);
+
   // Permission Toggles (Step 4)
   const [permComments, setPermComments] = useState(true);
   const [permMessages, setPermMessages] = useState(true);
@@ -46,6 +56,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
   if (!isOpen) return null;
 
   const handleStartLinking = () => {
+    setIsAccountDropdownOpen(false);
     setWizardStep(2);
   };
 
@@ -64,9 +75,15 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
   };
 
   const handleCreateAutomationRule = () => {
-    onClose();
-    if (onOpenRuleModal) {
-      onOpenRuleModal();
+    setIsAccountDropdownOpen(false);
+    setIsCreateRuleWizardOpen(true);
+  };
+
+  const handleUnlinkAccount = () => {
+    if (confirm('정말로 인스타그램 계정 연동을 해제하시겠습니까?')) {
+      state.setInstagramAccount(null);
+      setIsAccountDropdownOpen(false);
+      setWizardStep(1);
     }
   };
 
@@ -75,31 +92,78 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
       <div className="bg-[#EDF2F7] rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl relative overflow-hidden my-auto border border-gray-200">
         
         {/* Top Sticky Header */}
-        <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0 z-20">
+        <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0 z-20 relative">
           <div className="flex items-center gap-2">
             <FaInstagram className="w-5 h-5 text-pink-600" />
             <h3 className="text-base font-bold text-gray-900 tracking-tight">Instagram DM Automation</h3>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Connected Account Dropdown Badge (Step 5 or if account exists) */}
+            {/* Connected Account Dropdown Badge (Matching Screenshot 5) */}
             {state.instagramAccount ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 shadow-2xs">
-                <img 
-                  src={state.profile.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"} 
-                  alt="avatar" 
-                  className="w-5 h-5 rounded-full object-cover border border-amber-300"
-                />
-                <span className="text-xs font-bold text-gray-900">{state.instagramAccount}</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              <div className="relative">
+                <button
+                  onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
+                  className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white border border-gray-200 hover:bg-gray-50 shadow-2xs transition cursor-pointer"
+                >
+                  <img 
+                    src={state.profile.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"} 
+                    alt="avatar" 
+                    className="w-6 h-6 rounded-full object-cover border border-amber-300 shadow-xs"
+                  />
+                  <span className="text-xs font-bold text-blue-600">{state.instagramAccount}</span>
+                  <ChevronDown className={clsx("w-3.5 h-3.5 text-gray-500 transition-transform duration-200", isAccountDropdownOpen ? "rotate-180" : "rotate-0")} />
+                </button>
+
+                {/* Account Dropdown Menu Popup (Matching Screenshot 5) */}
+                {isAccountDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-in fade-in zoom-in-95 font-sans">
+                    {/* Account Item */}
+                    <div className="px-4 py-2.5 flex items-center gap-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                      <img 
+                        src={state.profile.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"} 
+                        alt="avatar" 
+                        className="w-7 h-7 rounded-full object-cover border border-amber-300"
+                      />
+                      <span className="text-xs font-bold text-blue-600 flex-1 truncate">{state.instagramAccount}</span>
+                      <Check className="w-4 h-4 text-blue-600 shrink-0" />
+                    </div>
+
+                    {/* Actions */}
+                    <button
+                      onClick={handleStartLinking}
+                      className="w-full px-4 py-2.5 flex items-center gap-3 text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer"
+                    >
+                      <UserPlus className="w-4 h-4 text-gray-900" />
+                      <span>Add account</span>
+                    </button>
+
+                    <button
+                      onClick={handleStartLinking}
+                      className="w-full px-4 py-2.5 flex items-center gap-3 text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer"
+                    >
+                      <RotateCw className="w-4 h-4 text-gray-900" />
+                      <span>Reconnect account</span>
+                    </button>
+
+                    <div className="border-t border-gray-100 my-1" />
+
+                    <button
+                      onClick={handleUnlinkAccount}
+                      className="w-full px-4 py-2.5 flex items-center gap-3 text-xs font-bold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4 text-red-600" />
+                      <span>Unlink account</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : null}
 
             {/* Top Action Button */}
             <button
-              onClick={state.instagramAccount ? handleCreateAutomationRule : handleStartLinking}
-              className="px-4 py-2 bg-[#4285F4] hover:bg-[#3367D6] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer flex items-center gap-1"
+              onClick={handleCreateAutomationRule}
+              className="px-4 py-2 bg-[#4285F4] hover:bg-[#3367D6] text-white rounded-xl text-xs font-extrabold transition shadow-sm cursor-pointer flex items-center gap-1"
             >
               +Create automation for free
             </button>
@@ -463,6 +527,12 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
         )}
 
       </div>
+
+      {/* Create Automation Rule 5-Step Wizard Modal */}
+      <InstagramDmRuleCreateWizardModal
+        isOpen={isCreateRuleWizardOpen}
+        onClose={() => setIsCreateRuleWizardOpen(false)}
+      />
     </div>
   );
 };
