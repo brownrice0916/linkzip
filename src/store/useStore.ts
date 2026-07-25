@@ -112,20 +112,32 @@ export interface CustomLink {
   salesConfig?: SalesConfig;
 }
 
+export interface VerifiedAccountInfo {
+  accountType: 'personal' | 'corporate';
+  idNumber: string;
+  bankName: string;
+  accountOwnerName: string;
+  accountNumber: string;
+  accountConnected: boolean;
+}
+
 export interface UserProfile {
   name: string;
   username: string;
   bio: string;
   avatarUrl: string;
   email?: string;
+  phone?: string;
+  countryCode?: string;
   showEmail?: boolean;
   showBio?: boolean;
-  profileLayout?: 'classic' | 'hero' | 'banner' | 'cutout' | 'shape';
+  profileLayout?: 'classic' | 'hero' | 'avatar-hero' | 'banner' | 'cutout' | 'shape';
   titleStyle?: 'text' | 'logo';
   logoUrl?: string;
   titleColor?: string;
   bannerUrl?: string;
   hideWatermark?: boolean;
+  verifiedAccount?: VerifiedAccountInfo;
 }
 
 export interface TeamMember {

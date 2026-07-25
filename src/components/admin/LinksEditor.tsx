@@ -55,6 +55,7 @@ const getSocialIconComp = (platform: string) => {
 const LinksEditor = () => {
   const { 
     profile,
+    setDesignSettings,
     socialLinks,
     addSocialLink,
     updateSocialLink,
@@ -185,11 +186,11 @@ const LinksEditor = () => {
           detailText: '응원 메시지와 함께 후원금을 보낼 수 있습니다.',
           minAmount: 3000,
           buttonText: '후원하기',
-          bankName: '',
-          accountNumber: '',
-          accountOwnerName: '',
-          idNumber: '',
-          accountConnected: false
+          bankName: profile.verifiedAccount?.bankName || '',
+          accountNumber: profile.verifiedAccount?.accountNumber || '',
+          accountOwnerName: profile.verifiedAccount?.accountOwnerName || '',
+          idNumber: profile.verifiedAccount?.idNumber || '',
+          accountConnected: !!profile.verifiedAccount?.accountConnected
         }
       });
     } else if (blockType === 'file') {
@@ -1767,20 +1768,42 @@ const LinksEditor = () => {
         <ProfitAccountModal
           isOpen={!!activeProfitAccountLink}
           onClose={() => setActiveProfitAccountLink(null)}
-          initialData={activeProfitAccountLink.donationConfig}
+          initialData={activeProfitAccountLink.donationConfig || profile.verifiedAccount}
           onSave={(accountData) => {
-            const currentConfig = activeProfitAccountLink.donationConfig || {
-              mainText: 'Please Donation!',
-              detailText: 'leave additional comments',
-              minAmount: 3000,
-              buttonText: 'donation'
-            };
-            updateCustomLink(activeProfitAccountLink.id, {
-              donationConfig: {
-                ...currentConfig,
-                ...accountData
-              }
-            });
+            // 1. Save globally to User Profile so it can be recalled anytime!
+            setDesignSettings({ profile: { ...profile, verifiedAccount: accountData } });
+
+            // 2. Update current active link config (Donation / Sales)
+            if (activeProfitAccountLink.type === 'sales' || activeProfitAccountLink.salesConfig) {
+              const currentSalesConfig = activeProfitAccountLink.salesConfig || {
+                mainText: '디지털 상품 판매',
+                description: '',
+                products: []
+              };
+              updateCustomLink(activeProfitAccountLink.id, {
+                salesConfig: {
+                  ...currentSalesConfig,
+                  bankName: accountData.bankName,
+                  accountNumber: accountData.accountNumber,
+                  accountOwner: accountData.accountOwnerName
+                }
+              });
+            } else {
+              const currentConfig = activeProfitAccountLink.donationConfig || {
+                mainText: 'Please Donation!',
+                detailText: 'leave additional comments',
+                minAmount: 3000,
+                buttonText: 'donation'
+              };
+              updateCustomLink(activeProfitAccountLink.id, {
+                donationConfig: {
+                  ...currentConfig,
+                  ...accountData
+                }
+              });
+            }
+
+            alert('✅ 정산 계좌가 프로필에 성공적으로 저장되었습니다! 앞으로 모든 기능에서 자동으로 불러옵니다.');
             setActiveProfitAccountLink(null);
           }}
         />
