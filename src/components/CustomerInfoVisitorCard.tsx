@@ -118,9 +118,12 @@ export const CustomerInfoVisitorCard: React.FC<CustomerInfoVisitorCardProps> = (
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3.5 bg-black hover:bg-gray-800 text-white rounded-full text-xs font-black transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+              className="w-full py-3.5 text-white rounded-full text-xs font-black transition cursor-pointer shadow-md flex items-center justify-center gap-2 hover:opacity-90"
+              style={{
+                backgroundColor: config.submitButtonColor || '#000000'
+              }}
             >
-              <span>{submitting ? "제출 중..." : "Submit"}</span>
+              <span>{submitting ? "제출 중..." : (config.submitButtonText || "Submit")}</span>
             </button>
           </div>
         </form>

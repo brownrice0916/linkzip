@@ -48,6 +48,8 @@ export interface CustomerInfoConfig {
   receiveEmail?: boolean;
   receivePhone?: boolean;
   receiveName?: boolean;
+  submitButtonText?: string;
+  submitButtonColor?: string;
 }
 
 export interface CollectedCustomerData {

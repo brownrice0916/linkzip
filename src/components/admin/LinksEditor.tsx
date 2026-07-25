@@ -1274,6 +1274,33 @@ const LinksEditor = () => {
           </div>
         </div>
 
+        {/* 4. Submit Button Text & Custom Color Picker */}
+        <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-4">
+          <div className="flex-1 space-y-1">
+            <label className="block text-xs font-bold text-gray-600">submit button text</label>
+            <input
+              type="text"
+              value={config.submitButtonText || 'Submit'}
+              onChange={(e) => updateConfig({ submitButtonText: e.target.value })}
+              placeholder="Submit"
+              className="w-full p-3 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black"
+            />
+          </div>
+
+          <div className="space-y-1 shrink-0">
+            <label className="block text-xs font-bold text-gray-600">submit button color</label>
+            <div className="flex items-center gap-2 p-1.5 border border-gray-300 rounded-xl bg-white">
+              <input
+                type="color"
+                value={config.submitButtonColor || '#000000'}
+                onChange={(e) => updateConfig({ submitButtonColor: e.target.value })}
+                className="w-7 h-7 rounded-lg border border-gray-200 cursor-pointer p-0 bg-transparent"
+              />
+              <span className="text-xs font-bold text-gray-700 uppercase pr-1">{config.submitButtonColor || '#000000'}</span>
+            </div>
+          </div>
+        </div>
+
       </div>
     );
   };
