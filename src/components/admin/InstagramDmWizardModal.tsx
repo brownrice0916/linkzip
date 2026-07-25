@@ -506,7 +506,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
           </div>
         )}
 
-        {/* STEP 5 MODAL OVERLAY: Connected Complete State (Screenshot 5) */}
+        {/* STEP 5 MODAL OVERLAY: Connected Complete State */}
         {wizardStep === 5 && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl animate-in fade-in zoom-in-95 font-sans relative border border-gray-100">
@@ -522,11 +522,13 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
               </div>
 
               <button
-                onClick={handleCreateAutomationRule}
+                onClick={() => {
+                  setWizardStep(1);
+                  onClose();
+                }}
                 className="w-full py-4 bg-[#4285F4] hover:bg-[#3367D6] text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
               >
-                <Plus className="w-5 h-5" />
-                + DM 자동화 규칙 만들기
+                확인
               </button>
             </div>
           </div>
