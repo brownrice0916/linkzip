@@ -70,6 +70,8 @@ export interface CustomLink {
   icon?: string; // image thumbnail URL
   thumbnailType?: 'image' | 'icon' | 'none'; // thumbnail mode
   iconName?: string; // selected icon key e.g. 'link', 'globe', 'instagram', etc.
+  buttonColor?: string; // Custom button background color
+  buttonTextColor?: string; // Custom button text color
   donationConfig?: DonationConfig;
   fileConfig?: FileConfig;
   snsLinks?: SNSItem[];

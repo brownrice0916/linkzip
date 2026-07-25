@@ -379,8 +379,28 @@ const LinksEditor = () => {
             />
           </div>
 
-          {/* Actions: Visibility Toggle & Delete */}
+          {/* Actions: Color Picker, Visibility Toggle & Delete */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Custom Button Color Picker */}
+            <div className="flex items-center gap-1" title="특정 버튼 색상 지정 (기본은 전체 통일)">
+              <input
+                type="color"
+                value={link.buttonColor || '#ffffff'}
+                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              />
+              {link.buttonColor && (
+                <button
+                  type="button"
+                  onClick={() => updateCustomLink(link.id, { buttonColor: undefined, buttonTextColor: undefined })}
+                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
+                  title="기본 통일 색상으로 복원"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <button
               onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
               className={clsx(

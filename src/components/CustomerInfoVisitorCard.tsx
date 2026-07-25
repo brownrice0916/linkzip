@@ -57,8 +57,14 @@ export const CustomerInfoVisitorCard: React.FC<CustomerInfoVisitorCardProps> = (
     }
   };
 
+  const customBg = block.buttonColor ? { backgroundColor: block.buttonColor } : {};
+  const customText = block.buttonTextColor ? { color: block.buttonTextColor } : {};
+
   return (
-    <div className="w-full bg-[#FFEAEB] p-6 rounded-3xl border border-pink-100 shadow-sm space-y-4 text-center text-gray-900 font-sans my-2 animate-in fade-in">
+    <div 
+      className="w-full bg-white/95 backdrop-blur-md p-6 rounded-3xl border border-gray-200/80 shadow-xs space-y-4 text-center text-gray-900 font-sans my-2 animate-in fade-in transition"
+      style={{ ...customBg, ...customText }}
+    >
       {submitted ? (
         <div className="py-6 space-y-2 animate-in zoom-in-95">
           <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
