@@ -12,10 +12,38 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { getLinkIcon } from '../../lib/icons';
+import { 
+  FaInstagram, 
+  FaTwitter, 
+  FaYoutube, 
+  FaGithub, 
+  FaLinkedin, 
+  FaEnvelope, 
+  FaGlobe, 
+  FaFigma, 
+  FaFacebook, 
+  FaTiktok 
+} from 'react-icons/fa';
 import { ThumbnailModal } from './ThumbnailModal';
 import { SocialModal } from './SocialModal';
 import { AddBlockModal } from './AddBlockModal';
 import clsx from 'clsx';
+
+const getSocialIconComp = (platform: string) => {
+  switch (platform) {
+    case 'instagram': return FaInstagram;
+    case 'twitter': return FaTwitter;
+    case 'youtube': return FaYoutube;
+    case 'github': return FaGithub;
+    case 'linkedin': return FaLinkedin;
+    case 'mail': return FaEnvelope;
+    case 'globe': return FaGlobe;
+    case 'figma': return FaFigma;
+    case 'tiktok': return FaTiktok;
+    case 'facebook': return FaFacebook;
+    default: return FaGlobe;
+  }
+};
 
 const LinksEditor = () => {
   const { 
@@ -438,31 +466,67 @@ const LinksEditor = () => {
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Content &amp; Links</h2>
-          <p className="text-sm text-gray-500">Add, organize, and group your link blocks.</p>
+      {/* Top User Profile Header with Social Icons (Matching User Screenshot) */}
+      <div className="flex items-center gap-4 py-1">
+        {/* Avatar */}
+        <div className="w-14 h-14 rounded-full bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
+          {profile.avatarUrl ? (
+            <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+          ) : (
+            <span className="text-2xl">👤</span>
+          )}
         </div>
 
-        {/* Add Social Icon Link Header Button */}
-        <button
-          onClick={handleAddSocial}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl text-xs font-bold transition cursor-pointer shadow-2xs"
-        >
-          <Plus className="w-4 h-4 text-purple-600" />
-          <span>Social Icons</span>
-        </button>
+        {/* Username & Social Icons Row */}
+        <div className="space-y-1.5 min-w-0">
+          <h3 className="text-lg font-bold text-gray-900 tracking-tight leading-none">
+            {profile.username || profile.name || "brownrice0916"}
+          </h3>
+
+          {/* Social Icons Inline List */}
+          <div className="flex items-center gap-2.5 flex-wrap pt-0.5">
+            {socialLinks.map((s) => {
+              const Icon = getSocialIconComp(s.platform);
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => handleEditSocial(s)}
+                  className="text-gray-800 hover:text-black transition cursor-pointer hover:scale-110"
+                  title={`Edit ${s.platform}`}
+                >
+                  <Icon className="w-5 h-5" />
+                </button>
+              );
+            })}
+
+            {/* Plus Button to Add Social Link */}
+            <button
+              onClick={handleAddSocial}
+              className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center cursor-pointer transition shadow-2xs hover:scale-105"
+              title="Add social icon"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Main Add Block Button (Matching Littly) */}
+      {/* Action Pill Buttons Row (Matching User Screenshot: Add collection + Add) */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => setIsAddBlockModalOpen(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-4 px-6 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-full font-extrabold text-sm shadow-md hover:shadow-lg transition cursor-pointer"
+          onClick={handleAddCollection}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#EBEBEB] hover:bg-gray-200 text-gray-900 rounded-full font-bold text-sm transition cursor-pointer"
         >
-          <Plus className="w-5 h-5" />
-          Add a block
+          <Folder className="w-4 h-4 text-gray-700" />
+          <span>Add collection</span>
+        </button>
+
+        <button
+          onClick={() => setIsAddBlockModalOpen(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-black hover:bg-gray-800 text-white rounded-full font-bold text-sm transition cursor-pointer shadow-md"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add</span>
         </button>
       </div>
 
