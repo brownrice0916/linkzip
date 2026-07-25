@@ -718,23 +718,49 @@ const LinksEditor = () => {
         </div>
 
         {/* 4. Account Connection Row */}
-        <div className="space-y-2 pt-1">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-gray-600">Account connection<span className="text-red-500">*</span></label>
-            <span className={clsx("text-xs font-bold flex items-center gap-1", config.accountConnected ? "text-emerald-600" : "text-[#2563EB]")}>
-              {config.accountConnected ? "✓ Account connected" : "❗Account connection is required"}
-            </span>
-          </div>
+        {(() => {
+          const isConnected = config.accountConnected || !!profile.verifiedAccount?.accountConnected || (!!config.accountNumber && !!config.bankName);
+          const bank = config.bankName || profile.verifiedAccount?.bankName || 'NH농협은행';
+          const accNum = config.accountNumber || profile.verifiedAccount?.accountNumber || '';
+          const owner = config.accountOwnerName || profile.verifiedAccount?.accountOwnerName || profile.name || '';
 
-          {/* Register Profit Account Button */}
-          <button
-            type="button"
-            onClick={() => setActiveProfitAccountLink(link)}
-            className="w-full py-4 bg-[#E54D26] hover:bg-[#D43D17] text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md tracking-wide"
-          >
-            + Register a profit account
-          </button>
-        </div>
+          return (
+            <div className="space-y-2 pt-1 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-gray-600">Account connection<span className="text-red-500">*</span></label>
+                <span className={clsx("text-xs font-bold flex items-center gap-1", isConnected ? "text-emerald-600 font-extrabold" : "text-[#2563EB]")}>
+                  {isConnected ? "✓ Account connected" : "❗Account connection is required"}
+                </span>
+              </div>
+
+              {isConnected ? (
+                /* Connected State: Hide big register button, show connected badge with edit option */
+                <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-900 shadow-2xs">
+                  <div className="flex items-center gap-2.5 truncate">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                    <span className="truncate">{bank} {accNum} ({owner}) 연동 완료</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveProfitAccountLink(link)}
+                    className="text-gray-500 hover:text-black text-xs font-bold underline shrink-0 cursor-pointer pl-2"
+                  >
+                    계좌 변경
+                  </button>
+                </div>
+              ) : (
+                /* Not Connected State: Show big register button */
+                <button
+                  type="button"
+                  onClick={() => setActiveProfitAccountLink(link)}
+                  className="w-full py-4 bg-[#E54D26] hover:bg-[#D43D17] text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md tracking-wide"
+                >
+                  + Register a profit account
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
       </div>
     );
@@ -1611,20 +1637,49 @@ const LinksEditor = () => {
         </div>
 
         {/* 6. Account Connect* */}
-        <div className="space-y-2 pt-2 border-t border-gray-100">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-gray-600">Account connect<span className="text-red-500">*</span></label>
-            <span className="text-[11px] font-bold text-blue-600">! Link profit account (required)</span>
-          </div>
+        {(() => {
+          const isConnected = !!profile.verifiedAccount?.accountConnected || (!!config.accountNumber && !!config.bankName);
+          const bank = config.bankName || profile.verifiedAccount?.bankName || 'NH농협은행';
+          const accNum = config.accountNumber || profile.verifiedAccount?.accountNumber || '';
+          const owner = config.accountOwner || profile.verifiedAccount?.accountOwnerName || profile.name || '';
 
-          <button
-            type="button"
-            onClick={() => setActiveProfitAccountLink(link)}
-            className="w-full py-4 bg-[#F24E1E] hover:bg-orange-600 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
-          >
-            <span>+ Register a profit account</span>
-          </button>
-        </div>
+          return (
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-gray-600">Account connect<span className="text-red-500">*</span></label>
+                <span className={clsx("text-xs font-bold flex items-center gap-1", isConnected ? "text-emerald-600 font-extrabold" : "text-blue-600")}>
+                  {isConnected ? "✓ Account connected" : "! Link profit account (required)"}
+                </span>
+              </div>
+
+              {isConnected ? (
+                /* Connected State: Hide big register button, show connected badge with edit option */
+                <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-900 shadow-2xs">
+                  <div className="flex items-center gap-2.5 truncate">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                    <span className="truncate">{bank} {accNum} ({owner}) 연동 완료</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveProfitAccountLink(link)}
+                    className="text-gray-500 hover:text-black text-xs font-bold underline shrink-0 cursor-pointer pl-2"
+                  >
+                    계좌 변경
+                  </button>
+                </div>
+              ) : (
+                /* Not Connected State: Show big register button */
+                <button
+                  type="button"
+                  onClick={() => setActiveProfitAccountLink(link)}
+                  className="w-full py-4 bg-[#F24E1E] hover:bg-orange-600 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+                >
+                  <span>+ Register a profit account</span>
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
       </div>
     );
