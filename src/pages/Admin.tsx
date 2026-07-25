@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useStore } from "../store/useStore";
 import LinkTreePreview from "../components/LinkTreePreview";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Link2,
   Palette,
@@ -32,9 +32,23 @@ type TargetAction = TabType | "home" | "logout" | null;
 const Admin = () => {
   const state = useStore();
   const navigate = useNavigate();
+  const { tab: urlTab } = useParams<{ tab?: string }>();
+
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const [copied, setCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  // Sync URL parameter to activeTab
+  useEffect(() => {
+    if (urlTab) {
+      const tabLower = urlTab.toLowerCase();
+      if (tabLower === 'content' || tabLower === 'links') setActiveTab('links');
+      else if (tabLower === 'header' || tabLower === 'profile') setActiveTab('profile');
+      else if (tabLower === 'design' || tabLower === 'appearance') setActiveTab('appearance');
+      else if (tabLower === 'growth' || tabLower === 'automation') setActiveTab('automation');
+      else if (tabLower === 'settings') setActiveTab('settings');
+    }
+  }, [urlTab]);
 
   // Unsaved changes modal state
   const [pendingTarget, setPendingTarget] = useState<TargetAction>(null);
@@ -132,6 +146,12 @@ const Admin = () => {
       target === "settings"
     ) {
       setActiveTab(target);
+      const urlAlias = target === 'links' ? 'content'
+        : target === 'profile' ? 'header'
+        : target === 'appearance' ? 'design'
+        : target === 'automation' ? 'growth'
+        : 'settings';
+      navigate(`/admin/${urlAlias}`);
     }
   };
 

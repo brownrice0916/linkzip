@@ -25,6 +25,8 @@ export interface UserProfile {
   bio: string;
   avatarUrl: string;
   email?: string;
+  showEmail?: boolean;
+  showBio?: boolean;
   profileLayout?: 'classic' | 'hero' | 'banner' | 'cutout' | 'shape';
   titleStyle?: 'text' | 'logo';
   logoUrl?: string;

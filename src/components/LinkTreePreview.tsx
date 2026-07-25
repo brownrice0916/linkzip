@@ -422,18 +422,21 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
             </h1>
           )}
 
-          <p
-            className={clsx(
-              "text-sm text-center font-medium mb-2 max-w-xs",
-              textClass,
-              "opacity-80"
-            )}
-          >
-            {profile.bio || "bio goes here"}
-          </p>
+          {/* Bio */}
+          {profile.showBio !== false && (
+            <p
+              className={clsx(
+                "text-sm text-center font-medium mb-2 max-w-xs",
+                textClass,
+                "opacity-80"
+              )}
+            >
+              {profile.bio || "bio goes here"}
+            </p>
+          )}
 
           {/* Contact Email Badge (Click to Copy) */}
-          {profile.email && (
+          {profile.showEmail !== false && profile.email && (
             <button
               type="button"
               onClick={handleCopyEmail}

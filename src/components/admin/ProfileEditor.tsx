@@ -223,8 +223,19 @@ const ProfileEditor = () => {
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="block text-xs font-bold text-gray-700">Bio</label>
-              <span className="text-[11px] text-gray-400">{profile.bio.length}/160</span>
+              <label className="block text-xs font-bold text-gray-700">Bio (자기소개)</label>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-gray-400">{profile.bio.length}/160</span>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
+                  <input
+                    type="checkbox"
+                    checked={profile.showBio !== false}
+                    onChange={(e) => setProfile({ ...profile, showBio: e.target.checked })}
+                    className="w-3.5 h-3.5 text-black rounded focus:ring-black cursor-pointer"
+                  />
+                  <span>{profile.showBio !== false ? "👁️ 공개 중" : "🙈 숨김"}</span>
+                </label>
+              </div>
             </div>
             <textarea
               name="bio"
@@ -238,7 +249,18 @@ const ProfileEditor = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-700">Contact Email (이메일 주소)</label>
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-bold text-gray-700">Contact Email (이메일 주소)</label>
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
+                <input
+                  type="checkbox"
+                  checked={profile.showEmail !== false}
+                  onChange={(e) => setProfile({ ...profile, showEmail: e.target.checked })}
+                  className="w-3.5 h-3.5 text-black rounded focus:ring-black cursor-pointer"
+                />
+                <span>{profile.showEmail !== false ? "👁️ 공개 중" : "🙈 숨김"}</span>
+              </label>
+            </div>
             <input
               type="email"
               name="email"

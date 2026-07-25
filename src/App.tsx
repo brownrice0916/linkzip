@@ -123,6 +123,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/:tab"
+          element={
+            <ProtectedRoute>
+              <Admin />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Public Profile - Matches anything not defined above */}
         <Route path="/:username" element={<PublicProfile />} />
