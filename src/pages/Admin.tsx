@@ -15,6 +15,7 @@ import {
   Redo2,
   AlertTriangle,
   X,
+  Zap
 } from "lucide-react";
 import { auth, logout } from "../lib/firebase";
 import clsx from "clsx";
@@ -23,19 +24,21 @@ import LinksEditor from "../components/admin/LinksEditor";
 import ProfileEditor from "../components/admin/ProfileEditor";
 import AppearanceEditor from "../components/admin/AppearanceEditor";
 import SettingsEditor from "../components/admin/SettingsEditor";
+import AutomationEditor from "../components/admin/AutomationEditor";
 
-type TabType = "links" | "profile" | "appearance" | "settings";
+type TabType = "links" | "profile" | "appearance" | "automation" | "settings";
 type TargetAction = TabType | "home" | "logout" | null;
 
 const Admin = () => {
-  const navigate = useNavigate();
   const state = useStore();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("links");
-  const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving...">("Saved");
   const [copied, setCopied] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
-  // Unsaved changes navigation prompt state
+  // Unsaved changes modal state
   const [pendingTarget, setPendingTarget] = useState<TargetAction>(null);
+  const [isUnsavedModalOpen, setIsUnsavedModalOpen] = useState(false);
 
   const username = state.profile.username || "preview";
   const profileUrl = `${window.location.origin}/${username}`;
@@ -90,21 +93,27 @@ const Admin = () => {
         },
         socialLinks: state.socialLinks,
         customLinks: state.customLinks,
-        updatedAt: new Date(),
+        teamMembers: state.teamMembers,
+        dmRules: state.dmRules,
+        alimtalkSettings: state.alimtalkSettings,
+        updatedAt: new Date().toISOString(),
       });
+
       state.markSaved();
-      setSaveStatus("Saved");
+      setSaveStatus("Saved!");
+      setTimeout(() => setSaveStatus(null), 2000);
     } catch (error) {
-      console.error("Save failed", error);
-      setSaveStatus("Saved");
+      console.error("Failed to save", error);
+      setSaveStatus("Error saving!");
+      setTimeout(() => setSaveStatus(null), 3000);
     }
   };
 
-  // Safe navigation interceptor
+  // Interceptor for Tab Navigation or Page Exit
   const requestNavigation = (target: TargetAction) => {
-    if (target === activeTab) return;
     if (state.isDirty) {
       setPendingTarget(target);
+      setIsUnsavedModalOpen(true);
     } else {
       executeNavigation(target);
     }
@@ -119,56 +128,92 @@ const Admin = () => {
       target === "links" ||
       target === "profile" ||
       target === "appearance" ||
+      target === "automation" ||
       target === "settings"
     ) {
       setActiveTab(target);
     }
   };
 
-  const handleConfirmSaveAndContinue = async () => {
+  const handleSaveAndContinue = async () => {
     await handleManualSave();
-    const target = pendingTarget;
-    setPendingTarget(null);
-    executeNavigation(target);
+    setIsUnsavedModalOpen(false);
+    if (pendingTarget) {
+      executeNavigation(pendingTarget);
+      setPendingTarget(null);
+    }
   };
 
-  const handleConfirmDiscardAndContinue = () => {
+  const handleDiscardAndContinue = () => {
     state.cancelChanges();
-    const target = pendingTarget;
-    setPendingTarget(null);
-    executeNavigation(target);
-  };
-
-  const handleCancelPrompt = () => {
-    setPendingTarget(null);
-  };
-
-  const sectionTitleMap: Record<TabType, string> = {
-    links: "Content",
-    profile: "Header",
-    appearance: "Design",
-    settings: "Settings",
+    setIsUnsavedModalOpen(false);
+    if (pendingTarget) {
+      executeNavigation(pendingTarget);
+      setPendingTarget(null);
+    }
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden font-sans">
-      {/* 1. Leftmost Vertical Navigation Bar (Icon Sidebar) */}
-      <div className="hidden sm:flex flex-col items-center justify-between w-20 bg-white border-r border-gray-200 py-6 z-20 shrink-0 shadow-sm">
-        {/* Brand Logo */}
+    <div className="flex h-screen bg-[#F8F9FA] overflow-hidden select-none font-sans">
+      {/* Sidebar Navigation */}
+      <div className="w-18 bg-white border-r border-gray-200 flex flex-col items-center py-6 gap-6 z-20 shrink-0 shadow-xs">
         <div
-          className="flex flex-col items-center gap-1 cursor-pointer"
           onClick={() => requestNavigation("home")}
+          className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center font-bold text-xl shadow-md cursor-pointer hover:scale-105 transition"
         >
-          <div className="w-10 h-10 rounded-2xl bg-black flex items-center justify-center text-white shadow-md font-black text-base tracking-tighter">
-            LZ
-          </div>
-          <span className="text-[10px] font-black tracking-wider text-gray-900 uppercase">
-            LinkZip
-          </span>
+          <Link2 className="w-5 h-5 text-indigo-400" />
         </div>
 
-        {/* Navigation Items */}
-        <div className="flex flex-col gap-6 w-full px-2">
+        {/* Action Controls: Save / Undo / Redo */}
+        <div className="flex flex-col items-center gap-3 w-full px-2 py-3 bg-gray-50 border-y border-gray-100 my-1">
+          {/* Save Button */}
+          <button
+            onClick={handleManualSave}
+            disabled={!state.isDirty}
+            className={clsx(
+              "w-12 h-12 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer font-bold text-[10px]",
+              state.isDirty
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md ring-2 ring-indigo-300"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            )}
+            title="Save changes"
+          >
+            <span className="text-xs">💾</span>
+            <span>Save</span>
+          </button>
+
+          {/* Undo / Redo Row */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={state.undo}
+              disabled={state.undoStack.length === 0}
+              className={clsx(
+                "p-1.5 rounded-xl transition cursor-pointer",
+                state.undoStack.length > 0
+                  ? "hover:bg-gray-200 text-gray-700"
+                  : "text-gray-300 cursor-not-allowed"
+              )}
+              title="Undo"
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={state.redo}
+              disabled={state.redoStack.length === 0}
+              className={clsx(
+                "p-1.5 rounded-xl transition cursor-pointer",
+                state.redoStack.length > 0
+                  ? "hover:bg-gray-200 text-gray-700"
+                  : "text-gray-300 cursor-not-allowed"
+              )}
+              title="Redo"
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <nav className="flex flex-col gap-4 w-full px-3">
           <button
             onClick={() => requestNavigation("links")}
             className={clsx(
@@ -209,6 +254,19 @@ const Admin = () => {
           </button>
 
           <button
+            onClick={() => requestNavigation("automation")}
+            className={clsx(
+              "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
+              activeTab === "automation"
+                ? "bg-black text-white shadow-md"
+                : "text-gray-500 hover:bg-gray-100 hover:text-black"
+            )}
+          >
+            <Zap className="w-5 h-5 text-purple-400" />
+            <span className="text-[10px] font-bold">Growth</span>
+          </button>
+
+          <button
             onClick={() => requestNavigation("settings")}
             className={clsx(
               "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
@@ -220,121 +278,70 @@ const Admin = () => {
             <Settings className="w-5 h-5" />
             <span className="text-[10px] font-bold">Settings</span>
           </button>
-        </div>
+        </nav>
 
-        {/* Logout */}
-        <button
-          onClick={() => requestNavigation("logout")}
-          title="Logout"
-          className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-colors cursor-pointer"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
+        <div className="mt-auto flex flex-col gap-3">
+          <button
+            onClick={() => requestNavigation("logout")}
+            className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition cursor-pointer"
+            title="Logout"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
-      {/* 2. Main Editor Panel */}
-      <div className="flex-1 flex flex-col h-full bg-white relative z-10 overflow-hidden">
+      {/* Main Workspace Area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#F8F9FA]">
         {/* Top Header Bar */}
-        <div className="h-16 flex items-center justify-between p-4 px-6 border-b border-gray-200 bg-white transition-all">
-          {state.isDirty ? (
-            /* Dirty State Bar (Matching User Screenshot: SectionTitle Undo Redo Cancel Save) */
-            <div className="w-full flex items-center justify-between animate-in fade-in duration-200">
-              <div className="flex items-center gap-4">
-                <span className="text-xl font-bold text-gray-900 tracking-tight">
-                  {sectionTitleMap[activeTab]}
-                </span>
+        <div className="h-16 bg-white border-b border-gray-200 px-8 flex items-center justify-between z-10 shrink-0">
+          <div className="flex items-center gap-4">
+            <span className="font-bold text-sm text-gray-900 tracking-tight">
+              My LinkZip:
+            </span>
+            <a
+              href={profileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-semibold text-gray-500 hover:text-black underline underline-offset-4 decoration-gray-300 transition truncate max-w-xs"
+            >
+              {profileUrl}
+            </a>
+          </div>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => state.undo()}
-                    disabled={state.undoStack.length === 0}
-                    className={clsx(
-                      "p-2 rounded-xl transition cursor-pointer",
-                      state.undoStack.length > 0
-                        ? "text-gray-900 hover:bg-gray-100"
-                        : "text-gray-300 cursor-not-allowed"
-                    )}
-                    title="Undo"
-                  >
-                    <Undo2 className="w-5 h-5" />
-                  </button>
+          <div className="flex items-center gap-3">
+            {saveStatus && (
+              <span className="text-xs font-bold text-indigo-600 animate-pulse bg-indigo-50 px-3 py-1 rounded-full">
+                {saveStatus}
+              </span>
+            )}
 
-                  <button
-                    onClick={() => state.redo()}
-                    disabled={state.redoStack.length === 0}
-                    className={clsx(
-                      "p-2 rounded-xl transition cursor-pointer",
-                      state.redoStack.length > 0
-                        ? "text-gray-900 hover:bg-gray-100"
-                        : "text-gray-300 cursor-not-allowed"
-                    )}
-                    title="Redo"
-                  >
-                    <Redo2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+            {state.isDirty && (
+              <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+                ● Unsaved Changes
+              </span>
+            )}
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => state.cancelChanges()}
-                  className="px-5 py-2.5 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-sm font-bold text-gray-900 transition shadow-2xs cursor-pointer"
-                >
-                  Cancel
-                </button>
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 border border-gray-200 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-green-600" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+              {copied ? "Copied!" : "Copy"}
+            </button>
 
-                <button
-                  onClick={handleManualSave}
-                  className="px-6 py-2.5 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-bold shadow-md shadow-purple-500/20 transition cursor-pointer"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Clean Saved State Bar */
-            <>
-              <div className="flex items-center gap-3 truncate">
-                <span className="text-xs font-semibold text-gray-500">
-                  Your LinkZip:
-                </span>
-                <a
-                  href={`/${username}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-bold text-black hover:underline truncate"
-                >
-                  {window.location.host}/{username}
-                </a>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-medium text-gray-400">
-                  {saveStatus}
-                </span>
-
-                <button
-                  onClick={handleCopyLink}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-xs font-bold transition cursor-pointer"
-                >
-                  {copied ? (
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                  {copied ? "Copied!" : "Copy"}
-                </button>
-
-                <button
-                  onClick={() => window.open(`/${username}`, "_blank")}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-black text-white rounded-full text-xs font-bold hover:bg-gray-800 transition cursor-pointer"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  Share
-                </button>
-              </div>
-            </>
-          )}
+            <button
+              onClick={() => window.open(`/${username}`, "_blank")}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-black text-white rounded-full text-xs font-bold hover:bg-gray-800 transition cursor-pointer"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              Share
+            </button>
+          </div>
         </div>
 
         {/* Editor Content Body */}
@@ -343,6 +350,7 @@ const Admin = () => {
             {activeTab === "links" && <LinksEditor />}
             {activeTab === "profile" && <ProfileEditor />}
             {activeTab === "appearance" && <AppearanceEditor />}
+            {activeTab === "automation" && <AutomationEditor />}
             {activeTab === "settings" && <SettingsEditor />}
           </div>
         </div>
@@ -382,6 +390,18 @@ const Admin = () => {
             <span className="text-[10px]">Design</span>
           </button>
           <button
+            onClick={() => requestNavigation("automation")}
+            className={clsx(
+              "flex flex-col items-center gap-1",
+              activeTab === "automation"
+                ? "text-purple-600 font-bold"
+                : "text-gray-400"
+            )}
+          >
+            <Zap className="w-5 h-5" />
+            <span className="text-[10px]">Growth</span>
+          </button>
+          <button
             onClick={() => requestNavigation("settings")}
             className={clsx(
               "flex flex-col items-center gap-1",
@@ -393,70 +413,54 @@ const Admin = () => {
             <Settings className="w-5 h-5" />
             <span className="text-[10px]">Settings</span>
           </button>
-          <button
-            onClick={() => requestNavigation("logout")}
-            className="flex flex-col items-center gap-1 text-gray-400 hover:text-red-500"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="text-[10px]">Logout</span>
-          </button>
         </div>
       </div>
 
-      {/* 3. Right Live Phone Preview (Desktop only) */}
-      <div className="hidden lg:flex w-[480px] bg-[#EFEFEF] border-l border-gray-200 items-center justify-center p-6 shrink-0 relative overflow-hidden">
-        <div className="scale-[0.9] origin-center">
-          <LinkTreePreview
-            profile={state.profile}
-            templateType={state.templateType}
-            templateValue={state.templateValue}
-            socialLinks={state.socialLinks}
-            customLinks={state.customLinks}
-          />
+      {/* Right Live Phone Preview (Desktop only) */}
+      <div className="hidden lg:flex w-[480px] bg-white border-l border-gray-200 flex-col items-center justify-center p-8 shrink-0 relative overflow-hidden">
+        <div className="absolute top-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Live Preview
         </div>
+        <LinkTreePreview />
       </div>
 
-      {/* Unsaved Changes Prompt Modal */}
-      {pendingTarget !== null && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in-95 font-sans">
-            <div className="flex items-center gap-3 mb-4 text-amber-500">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-6 h-6 text-amber-600" />
+      {/* Unsaved Changes Warning Modal */}
+      {isUnsavedModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 font-sans">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900">
-                  저장되지 않은 변경사항
+                  저장되지 않은 변경사항이 있습니다
                 </h3>
-                <p className="text-xs text-gray-500 font-medium">
-                  Unsaved Changes
+                <p className="text-xs text-gray-500">
+                  이동하기 전에 변경사항을 저장하시겠습니까?
                 </p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-700 font-medium mb-6 leading-relaxed">
-              페이지를 이동하기 전에 변경한 내용을 저장하시겠습니까? 저장하지
-              않으면 작성한 내용이 손실될 수 있습니다.
-            </p>
-
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 pt-2">
               <button
-                onClick={handleConfirmSaveAndContinue}
-                className="w-full py-3 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-bold shadow-md shadow-purple-500/20 transition cursor-pointer"
+                onClick={handleSaveAndContinue}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-bold shadow-md transition cursor-pointer"
               >
-                저장하고 이동 (Save & Continue)
+                저장하고 이동하기 (Save & Continue)
               </button>
-
               <button
-                onClick={handleConfirmDiscardAndContinue}
-                className="w-full py-3 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-sm font-bold text-gray-800 transition cursor-pointer"
+                onClick={handleDiscardAndContinue}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl text-xs font-bold transition cursor-pointer"
               >
-                저장하지 않고 이동 (Discard Changes)
+                저장하지 않고 이동하기 (Discard Changes)
               </button>
-
               <button
-                onClick={handleCancelPrompt}
-                className="w-full py-2.5 text-xs font-bold text-gray-400 hover:text-gray-700 transition cursor-pointer"
+                onClick={() => {
+                  setIsUnsavedModalOpen(false);
+                  setPendingTarget(null);
+                }}
+                className="w-full py-2.5 text-gray-500 hover:text-black text-xs font-bold transition cursor-pointer"
               >
                 취소 (Keep Editing)
               </button>

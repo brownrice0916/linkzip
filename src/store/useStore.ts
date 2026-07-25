@@ -30,6 +30,31 @@ export interface UserProfile {
   logoUrl?: string;
   titleColor?: string;
   bannerUrl?: string;
+  hideWatermark?: boolean;
+}
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  role: 'admin' | 'editor' | 'viewer';
+  status: 'active' | 'pending';
+  invitedAt: string;
+}
+
+export interface DMAutomationRule {
+  id: string;
+  keyword: string;
+  responseMessage: string;
+  targetLinkUrl: string;
+  isActive: boolean;
+}
+
+export interface AlimtalkSettings {
+  apiKey: string;
+  apiSecret: string;
+  senderPhone: string;
+  templateCode: string;
+  isEnabled: boolean;
 }
 
 export interface AppStateSnapshot {
@@ -47,6 +72,9 @@ export interface AppStateSnapshot {
   titleFontFamily?: string;
   pageTextColor?: string;
   sticker?: string;
+  teamMembers?: TeamMember[];
+  dmRules?: DMAutomationRule[];
+  alimtalkSettings?: AlimtalkSettings;
 }
 
 interface AppState {
@@ -72,6 +100,11 @@ interface AppState {
   pageTextColor?: string;
   sticker?: string;
 
+  // Growth & Enterprise Data
+  teamMembers: TeamMember[];
+  dmRules: DMAutomationRule[];
+  alimtalkSettings: AlimtalkSettings;
+
   // Change Tracking & History (Undo / Redo / Cancel / Save)
   isDirty: boolean;
   undoStack: AppStateSnapshot[];
@@ -91,6 +124,14 @@ interface AppState {
   setProfile: (profile: UserProfile) => void;
   loadData: (data: Partial<AppState>) => void;
   reorderLinks: (newLinks: CustomLink[]) => void;
+
+  // Growth Actions
+  addTeamMember: (member: TeamMember) => void;
+  removeTeamMember: (id: string) => void;
+  addDMRule: (rule: DMAutomationRule) => void;
+  updateDMRule: (id: string, updates: Partial<DMAutomationRule>) => void;
+  removeDMRule: (id: string) => void;
+  setAlimtalkSettings: (settings: Partial<AlimtalkSettings>) => void;
 
   // Undo / Redo / Cancel / Save Actions
   undo: () => void;
@@ -119,6 +160,9 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   titleFontFamily: state.titleFontFamily,
   pageTextColor: state.pageTextColor,
   sticker: state.sticker,
+  teamMembers: JSON.parse(JSON.stringify(state.teamMembers || [])),
+  dmRules: JSON.parse(JSON.stringify(state.dmRules || [])),
+  alimtalkSettings: JSON.parse(JSON.stringify(state.alimtalkSettings || {})),
 });
 
 const recursivelyUpdateLink = (links: CustomLink[], id: string, updates: Partial<CustomLink>): CustomLink[] => {
@@ -167,7 +211,7 @@ export const useStore = create<AppState>((set) => ({
   templateValue: 'minimalist',
   socialLinks: [],
   customLinks: [],
-  profile: { name: '', username: '', bio: '', avatarUrl: '' },
+  profile: { name: '', username: '', bio: '', avatarUrl: '', hideWatermark: false },
 
   buttonStyle: 'solid',
   buttonRoundness: 'full',
@@ -175,6 +219,24 @@ export const useStore = create<AppState>((set) => ({
   fontFamily: 'Inter',
   titleFontFamily: '',
   sticker: '',
+
+  teamMembers: [],
+  dmRules: [
+    {
+      id: 'rule-1',
+      keyword: '링크',
+      responseMessage: '안녕하세요! 요청하신 대표 링크 모음집 URL입니다: https://linkzip.kr/preview',
+      targetLinkUrl: 'https://linkzip.kr/preview',
+      isActive: true
+    }
+  ],
+  alimtalkSettings: {
+    apiKey: '',
+    apiSecret: '',
+    senderPhone: '',
+    templateCode: '',
+    isEnabled: false
+  },
 
   // History & Change Tracking
   isDirty: false,
@@ -319,6 +381,66 @@ export const useStore = create<AppState>((set) => ({
     const snap = getSnapshotFromState(state);
     return {
       customLinks: newLinks,
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  addTeamMember: (member) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      teamMembers: [...state.teamMembers, member],
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  removeTeamMember: (id) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      teamMembers: state.teamMembers.filter(m => m.id !== id),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  addDMRule: (rule) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      dmRules: [...state.dmRules, rule],
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  updateDMRule: (id, updates) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      dmRules: state.dmRules.map(r => r.id === id ? { ...r, ...updates } : r),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  removeDMRule: (id) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      dmRules: state.dmRules.filter(r => r.id !== id),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  setAlimtalkSettings: (settings) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      alimtalkSettings: { ...state.alimtalkSettings, ...settings },
       undoStack: [...state.undoStack, snap],
       redoStack: [],
       isDirty: true

@@ -22,11 +22,11 @@ import { getLinkIcon } from "../lib/icons";
 import clsx from "clsx";
 
 interface LinkTreePreviewProps {
-  profile: UserProfile;
-  templateType: "color" | "preset";
-  templateValue: string;
-  socialLinks: SocialLink[];
-  customLinks: CustomLink[];
+  profile?: UserProfile;
+  templateType?: "color" | "preset";
+  templateValue?: string;
+  socialLinks?: SocialLink[];
+  customLinks?: CustomLink[];
   isPublic?: boolean;
 }
 
@@ -79,14 +79,15 @@ const getSocialUrl = (platform: string, id: string) => {
   }
 };
 
-const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
-  profile,
-  templateType,
-  templateValue,
-  socialLinks,
-  customLinks,
-  isPublic = false,
-}) => {
+const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
+  const store = useStore();
+  const profile = props.profile || store.profile;
+  const templateType = props.templateType || store.templateType;
+  const templateValue = props.templateValue || store.templateValue;
+  const socialLinks = props.socialLinks || store.socialLinks;
+  const customLinks = props.customLinks || store.customLinks;
+  const isPublic = props.isPublic || false;
+
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const isColor = templateType === "color";
   const {
@@ -718,19 +719,27 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = ({
             )}
           </div>
 
-          {/* Bottom Logo Pill */}
-          <div className="mt-auto pt-8 flex flex-col items-center">
-            <div className="mt-8 flex gap-3 text-[11px] font-medium opacity-60 text-center flex-wrap justify-center max-w-[80%]">
-              <span className="cursor-pointer hover:underline">
-                Cookie Preferences
-              </span>{" "}
-              •<span className="cursor-pointer hover:underline">Report</span> •
-              <span className="cursor-pointer hover:underline">Privacy</span> •
-              <span className="cursor-pointer hover:underline">
-                About this account
-              </span>
+          {/* Bottom Logo Pill (Hidden if hideWatermark is true) */}
+          {!profile.hideWatermark && (
+            <div className="mt-auto pt-8 flex flex-col items-center">
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-black/10 hover:bg-black/20 text-xs font-bold transition backdrop-blur-md cursor-pointer"
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                <span>LinkZip</span>
+              </a>
+              <div className="mt-4 flex gap-3 text-[11px] font-medium opacity-60 text-center flex-wrap justify-center max-w-[80%]">
+                <span className="cursor-pointer hover:underline">
+                  Cookie Preferences
+                </span>{" "}
+                •<span className="cursor-pointer hover:underline">Report</span> •
+                <span className="cursor-pointer hover:underline">Privacy</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

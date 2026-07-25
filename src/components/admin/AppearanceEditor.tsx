@@ -95,6 +95,8 @@ const presetColors = ['#000000', '#FFFFFF', '#FAF9F6', '#0F172A', '#E0E7FF', '#F
 
 const AppearanceEditor = () => {
   const { 
+    profile,
+    setProfile,
     templateType, 
     templateValue, 
     setTemplate, 
@@ -659,6 +661,33 @@ const AppearanceEditor = () => {
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 group-hover:text-black">
               {sticker ? sticker : 'Decorate page'} <ChevronRight className="w-4 h-4" />
             </div>
+          </div>
+
+          {/* Branding Watermark Removal Toggle Card */}
+          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 border border-purple-200 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-purple-700" />
+              </div>
+              <div>
+                <span className="font-bold text-sm text-gray-900 block">Hide LinkZip Branding</span>
+                <span className="text-xs text-gray-400">Remove "Powered by LinkZip" watermark on your page</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setProfile({ ...profile, hideWatermark: !profile?.hideWatermark })}
+              className={clsx(
+                "w-12 h-6 rounded-full transition-colors relative p-1 cursor-pointer",
+                profile.hideWatermark ? "bg-purple-600" : "bg-gray-300"
+              )}
+            >
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform shadow-xs",
+                  profile.hideWatermark ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
           </div>
 
         </div>
