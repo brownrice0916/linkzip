@@ -52,37 +52,22 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
 
     setPaying(true);
 
-    // Call PortOne V1/V2 Payment Window Popup
     const win = window as any;
+    const IMP = win.IMP;
 
-    if (win.PortOne) {
-      win.PortOne.requestPayment({
-        storeId: "store-7cQloKuZ",
-        paymentId: `don-${Date.now()}`,
-        orderName: `${creatorName} 님 후원금`,
-        totalAmount: amount,
-        currency: "CURRENCY_KRW",
-        payMethod: paymentMethod === 'kakao' ? 'EASY_PAY' : 'CARD',
-        customer: {
-          email: email,
-          name: '후원자'
-        }
-      }).then((rsp: any) => {
-        setPaying(false);
-        setPaidSuccess(true);
-        setTimeout(() => {
-          setPaidSuccess(false);
-          onClose();
-          setStep(1);
-        }, 3000);
-      }).catch(() => {
-        setPaying(false);
-        setPaidSuccess(true);
-      });
-    } else if (win.IMP) {
-      win.IMP.init("imp19424728"); // PortOne standard test merchant ID
-      win.IMP.request_pay({
-        pg: paymentMethod === 'kakao' ? 'kakaopay.TC0ONETIME' : paymentMethod === 'naver' ? 'naverpay' : 'html5_inicis',
+    if (IMP) {
+      // Initialize PortOne Standard Public Test Merchant ID
+      IMP.init("imp19424728");
+
+      let pgProvider = 'html5_inicis';
+      if (paymentMethod === 'kakao') {
+        pgProvider = 'kakaopay.TC0ONETIME';
+      } else if (paymentMethod === 'naver') {
+        pgProvider = 'naverpay';
+      }
+
+      IMP.request_pay({
+        pg: pgProvider,
         pay_method: 'card',
         merchant_uid: `don_${Date.now()}`,
         name: `${creatorName} 님 후원금`,
@@ -91,23 +76,23 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
         buyer_name: '후원자'
       }, (rsp: any) => {
         setPaying(false);
-        setPaidSuccess(true);
-        setTimeout(() => {
-          setPaidSuccess(false);
-          onClose();
-          setStep(1);
-        }, 3000);
+        if (rsp && rsp.success) {
+          // REAL PAYMENT SUCCESSFUL!
+          setPaidSuccess(true);
+          setTimeout(() => {
+            setPaidSuccess(false);
+            onClose();
+            setStep(1);
+          }, 3000);
+        } else {
+          // USER CANCELLED OR PAYMENT FAILED
+          const failReason = rsp?.error_msg || '결제 창이 닫혔거나 결제가 취소되었습니다.';
+          alert(`❌ PG 결제 미완료: ${failReason}`);
+        }
       });
     } else {
-      setTimeout(() => {
-        setPaying(false);
-        setPaidSuccess(true);
-        setTimeout(() => {
-          setPaidSuccess(false);
-          onClose();
-          setStep(1);
-        }, 3000);
-      }, 1000);
+      setPaying(false);
+      alert('⚠️ 포트원 결제 모듈(SDK)을 로드하지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.');
     }
   };
 
