@@ -1,21 +1,34 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
+import { signInWithGoogle } from "../lib/firebase";
 import { useStore } from "../store/useStore";
-import { Link2, Sparkles, ArrowRight, AlertOctagon, LayoutDashboard } from "lucide-react";
+import { Link2, Sparkles, ArrowRight, LayoutDashboard } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 
 const Landing = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
-  const [showBlockedModal, setShowBlockedModal] = useState(false);
 
-  const handleActionClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (user) {
-      navigate("/admin");
-    } else {
-      setShowBlockedModal(true);
+  const handleGoogleLogin = async () => {
+    try {
+      const user = await signInWithGoogle();
+      const { doc, getDoc } = await import("firebase/firestore");
+      const { db } = await import("../lib/firebase");
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        navigate("/admin");
+      } else {
+        navigate("/onboarding/template");
+      }
+    } catch (error) {
+      console.error("Login failed", error);
+      alert(
+        `로그인 에러: ${
+          (error as any).message
+        }\n\n1. Firebase Console에서 Google 로그인이 활성화되어 있는지 확인하세요.\n2. API 키가 정확한지 확인하세요.`
+      );
     }
   };
 
@@ -49,13 +62,13 @@ const Landing = () => {
           ) : (
             <>
               <button
-                onClick={handleActionClick}
+                onClick={handleGoogleLogin}
                 className="hidden md:block px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors cursor-pointer"
               >
                 Log in
               </button>
               <button
-                onClick={handleActionClick}
+                onClick={handleGoogleLogin}
                 className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-gray-100 font-semibold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.2)] cursor-pointer"
               >
                 Sign up
@@ -80,7 +93,7 @@ const Landing = () => {
         </h1>
 
         <button
-          onClick={handleActionClick}
+          onClick={user ? () => navigate('/admin') : handleGoogleLogin}
           className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-bold text-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] cursor-pointer"
         >
           {user ? (
@@ -101,35 +114,6 @@ const Landing = () => {
           Free forever. No credit card required.
         </p>
       </main>
-
-      {/* Blocked Popup Modal */}
-      {showBlockedModal && (
-        <div 
-          className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
-          onClick={() => setShowBlockedModal(false)}
-        >
-          <div 
-            className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl animate-in fade-in zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/30 text-red-500 flex items-center justify-center mx-auto">
-              <AlertOctagon className="w-10 h-10" />
-            </div>
-
-            <div className="space-y-2">
-              <h2 className="text-3xl font-black text-white tracking-tight">안돼돌아가</h2>
-              <p className="text-sm text-gray-400 font-medium">접근이 제한되었습니다.</p>
-            </div>
-
-            <button
-              onClick={() => setShowBlockedModal(false)}
-              className="w-full py-3.5 bg-white hover:bg-gray-200 text-black text-sm font-bold rounded-full transition shadow-lg cursor-pointer"
-            >
-              확인 (돌아가기)
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
