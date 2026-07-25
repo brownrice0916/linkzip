@@ -161,8 +161,7 @@ const LinksEditor = () => {
         title: 'SNS',
         isVisible: true,
         snsLinks: [
-          { id: `sns-1`, platform: 'instagram', value: '' },
-          { id: `sns-2`, platform: 'phone', value: '', countryCode: 'US' }
+          { id: `sns-${Date.now()}-1`, platform: 'phone', value: '', countryCode: 'KR' }
         ]
       });
     } else if (blockType === 'video') {
@@ -790,22 +789,23 @@ const LinksEditor = () => {
     );
   };
 
+  const [activeSNSIconPick, setActiveSNSIconPick] = useState<{ blockId: string; itemId: string } | null>(null);
+
   const renderSNSCard = (link: CustomLink) => {
     const items = link.snsLinks || [
-      { id: 'sns-1', platform: 'instagram', value: '' },
-      { id: 'sns-2', platform: 'phone', value: '', countryCode: 'US' }
+      { id: 'sns-1', platform: 'phone', value: '', countryCode: 'KR' }
     ];
 
     const updateItems = (newItems: import('../../store/useStore').SNSItem[]) => {
       updateCustomLink(link.id, { snsLinks: newItems });
     };
 
-    const handleAddItem = (platform: string) => {
+    const handleAddItem = (platform: string = 'link') => {
       const newItem: import('../../store/useStore').SNSItem = {
-        id: `sns-${Date.now()}`,
+        id: `sns-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
         platform,
         value: '',
-        countryCode: platform === 'phone' ? 'US' : undefined
+        countryCode: platform === 'phone' ? 'KR' : undefined
       };
       updateItems([...items, newItem]);
     };
@@ -881,27 +881,33 @@ const LinksEditor = () => {
                 {/* Drag handle */}
                 <GripVertical className="w-4 h-4 text-gray-400 shrink-0 cursor-grab" />
 
-                {/* Platform Icon Badge */}
-                <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0">
+                {/* Clickable Platform Icon Badge (Opens Icon Selector Modal!) */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSNSIconPick({ blockId: link.id, itemId: item.id })}
+                  className="w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 transition cursor-pointer hover:border-black group relative shadow-2xs"
+                  title="아이콘 변경하기 (Click to change icon)"
+                >
                   {isPhone ? (
-                    <Phone className="w-4 h-4 text-gray-700" />
+                    <Phone className="w-4.5 h-4.5 text-gray-800 group-hover:scale-110 transition-transform" />
                   ) : (
-                    <Icon className="w-4.5 h-4.5 text-gray-800" />
+                    <Icon className="w-5 h-5 text-gray-800 group-hover:scale-110 transition-transform" />
                   )}
-                </div>
+                  <span className="absolute -bottom-1 -right-1 bg-black text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">✎</span>
+                </button>
 
                 {/* Country Code Flag Dropdown (for phone) */}
                 {isPhone && (
                   <div className="relative shrink-0">
                     <select
-                      value={item.countryCode || 'US'}
+                      value={item.countryCode || 'KR'}
                       onChange={(e) => {
                         updateItems(items.map(i => i.id === item.id ? { ...i, countryCode: e.target.value } : i));
                       }}
                       className="p-3 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 cursor-pointer pr-6 appearance-none"
                     >
-                      <option value="US">🇺🇸</option>
                       <option value="KR">🇰🇷</option>
+                      <option value="US">🇺🇸</option>
                       <option value="JP">🇯🇵</option>
                       <option value="UK">🇬🇧</option>
                     </select>
@@ -916,7 +922,7 @@ const LinksEditor = () => {
                   onChange={(e) => handleUpdateItemValue(item.id, e.target.value)}
                   placeholder={
                     isPhone 
-                      ? "+1 Phone number (without -)" 
+                      ? "+82 Phone number (without -)" 
                       : `URL or ${item.platform.charAt(0).toUpperCase() + item.platform.slice(1)} ID`
                   }
                   className="flex-1 p-3 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
@@ -939,7 +945,7 @@ const LinksEditor = () => {
         <div className="pt-2">
           <button
             type="button"
-            onClick={() => handleAddItem('instagram')}
+            onClick={() => handleAddItem('link')}
             className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
           >
             <span>+ Add SNS</span>
@@ -1098,6 +1104,32 @@ const LinksEditor = () => {
         onSave={handleSaveSocial}
         onDelete={handleDeleteSocial}
       />
+
+      {/* SNS Row Icon Picker Modal */}
+      {activeSNSIconPick && (
+        <ThumbnailModal
+          isOpen={!!activeSNSIconPick}
+          onClose={() => setActiveSNSIconPick(null)}
+          currentType="icon"
+          currentIconName={
+            customLinks
+              .find(l => l.id === activeSNSIconPick.blockId)
+              ?.snsLinks?.find(i => i.id === activeSNSIconPick.itemId)
+              ?.platform || 'link'
+          }
+          onSave={(updates) => {
+            const targetBlock = customLinks.find(l => l.id === activeSNSIconPick.blockId);
+            if (targetBlock && targetBlock.snsLinks) {
+              const newPlatform = updates.iconName || 'link';
+              const updatedSnsLinks = targetBlock.snsLinks.map(i => 
+                i.id === activeSNSIconPick.itemId ? { ...i, platform: newPlatform } : i
+              );
+              updateCustomLink(targetBlock.id, { snsLinks: updatedSnsLinks });
+            }
+            setActiveSNSIconPick(null);
+          }}
+        />
+      )}
 
     </div>
   );
