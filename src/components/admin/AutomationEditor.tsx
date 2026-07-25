@@ -134,13 +134,35 @@ const AutomationEditor = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setIsWizardOpen(true)}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-            >
-              <FaInstagram className="w-4 h-4" />
-              <span>DM 연동 시작 (5단계)</span>
-            </button>
+            {!state.instagramAccount ? (
+              <button
+                onClick={() => setIsWizardOpen(true)}
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <FaInstagram className="w-4 h-4" />
+                <span>DM 연동 시작 (5단계)</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsWizardOpen(true)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <FaInstagram className="w-4 h-4 text-pink-600" />
+                  <span>대시보드 / 설정</span>
+                </button>
+                <button
+                  onClick={() => {
+                    state.setInstagramAccount(null);
+                    alert('인스타그램 연동 상태가 초기화(미연동)되었습니다.');
+                  }}
+                  className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-full text-xs font-bold transition cursor-pointer"
+                  title="연동 초기화"
+                >
+                  연동 해제
+                </button>
+              </div>
+            )}
 
             <button
               onClick={() => setIsDmModalOpen(true)}
