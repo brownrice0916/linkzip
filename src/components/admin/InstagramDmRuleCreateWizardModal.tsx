@@ -19,15 +19,15 @@ interface Props {
 
 // Mock Instagram Posts for Selection Grid (Step 1)
 const mockPosts = [
-  { id: 'post-1', title: '해외 출장이라 쓰고 관광데이트라 읽는다', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80' },
-  { id: 'post-2', title: '괴짜 철학관 다녀온 후기(완)', image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80' },
-  { id: 'post-3', title: '좋소 IT 회사에 CC가 없는 이유', image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80' },
-  { id: 'post-4', title: '괴짜 철학관 다녀온 후기(2)', image: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=300&auto=format&fit=crop&q=80' },
-  { id: 'post-5', title: '집구석에만 있으니 님 심심해서', image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=300&auto=format&fit=crop&q=80' },
-  { id: 'post-6', title: '프로젝트 폭망과 우울증', image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&auto=format&fit=crop&q=80' },
-  { id: 'post-7', title: '왜 힘든 일은 한번에 일어날까', image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80' },
-  { id: 'post-8', title: '무능한 대표가 폭주하면 생기는 일', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80' },
-  { id: 'post-9', title: '능력없는 직원이 팀장 되면 벌어지는 일', image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80' }
+  { id: 'post-1', title: '해외 출장이라 쓰고 관광데이트라 읽는다', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80', gradient: 'from-purple-600 to-indigo-600' },
+  { id: 'post-2', title: '괴짜 철학관 다녀온 후기(완)', image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80', gradient: 'from-emerald-600 to-teal-700' },
+  { id: 'post-3', title: '좋소 IT 회사에 CC가 없는 이유', image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80', gradient: 'from-blue-600 to-cyan-600' },
+  { id: 'post-4', title: '괴짜 철학관 다녀온 후기(2)', image: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=300&auto=format&fit=crop&q=80', gradient: 'from-pink-500 to-rose-600' },
+  { id: 'post-5', title: '집구석에만 있으니 님 심심해서', image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80', gradient: 'from-amber-500 to-orange-600' },
+  { id: 'post-6', title: '프로젝트 폭망과 우울증', image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&auto=format&fit=crop&q=80', gradient: 'from-violet-600 to-purple-800' },
+  { id: 'post-7', title: '왜 힘든 일은 한번에 일어날까', image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80', gradient: 'from-slate-700 to-slate-900' },
+  { id: 'post-8', title: '무능한 대표가 폭주하면 생기는 일', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80', gradient: 'from-indigo-600 to-blue-700' },
+  { id: 'post-9', title: '능력없는 직원이 팀장 되면 벌어지는 일', image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80', gradient: 'from-rose-500 to-pink-700' }
 ];
 
 export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
@@ -180,20 +180,30 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                       key={post.id}
                       onClick={() => setSelectedPostId(post.id)}
                       className={clsx(
-                        "aspect-square rounded-2xl overflow-hidden relative border-2 transition-all cursor-pointer group shadow-2xs",
+                        "aspect-square rounded-2xl overflow-hidden relative border-2 transition-all cursor-pointer group shadow-2xs bg-gradient-to-tr",
+                        post.gradient,
                         isSelected ? "border-black ring-2 ring-black" : "border-transparent opacity-90 hover:opacity-100"
                       )}
                     >
-                      <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
-                      {isSelected && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center shadow-md">
-                            <Check className="w-4 h-4" />
-                          </div>
+                      <img 
+                        src={post.image} 
+                        alt={post.title} 
+                        className="w-full h-full object-cover relative z-0" 
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-between p-2.5 z-10 text-left">
+                        <div className="flex justify-end">
+                          {isSelected && (
+                            <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center shadow-md">
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                      <div className="absolute bottom-0 inset-x-0 p-1 bg-gradient-to-t from-black/80 to-transparent text-[9px] text-white font-bold truncate">
-                        {post.title}
+                        <span className="text-[10px] text-white font-extrabold line-clamp-2 leading-tight drop-shadow-sm">
+                          {post.title}
+                        </span>
                       </div>
                     </button>
                   );
