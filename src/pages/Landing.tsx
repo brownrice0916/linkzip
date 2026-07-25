@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link2, Sparkles, ArrowRight, X, AlertOctagon } from "lucide-react";
+import { Link2, Sparkles, ArrowRight, AlertOctagon } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 
 const Landing = () => {
@@ -9,7 +9,6 @@ const Landing = () => {
     e.preventDefault();
     e.stopPropagation();
     setShowBlockedModal(true);
-    alert("안돼돌아가");
   };
 
   return (
