@@ -20,6 +20,7 @@ import {
 import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import { DonationVisitorModal } from "./DonationVisitorModal";
+import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
 import clsx from "clsx";
 
 interface LinkTreePreviewProps {
@@ -773,6 +774,25 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       );
                     })}
                   </div>
+                );
+              }
+
+              if (block.type === 'customer_info') {
+                const config = block.customerInfoConfig || {
+                  mainText: 'subscribe to our letter',
+                  detailText: 'sent every monday',
+                  receiveEmail: true,
+                  receivePhone: false,
+                  receiveName: false
+                };
+
+                return (
+                  <CustomerInfoVisitorCard
+                    key={block.id}
+                    block={block}
+                    config={config}
+                    profile={profile}
+                  />
                 );
               }
 

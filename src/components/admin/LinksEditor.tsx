@@ -1054,6 +1054,149 @@ const LinksEditor = () => {
     );
   };
 
+  const renderCustomerInfoCard = (link: CustomLink) => {
+    const config = link.customerInfoConfig || {
+      mainText: 'subscribe to our letter',
+      detailText: 'sent every monday',
+      receiveEmail: true,
+      receivePhone: false,
+      receiveName: false
+    };
+
+    const updateConfig = (updates: Partial<import('../../store/useStore').CustomerInfoConfig>) => {
+      const newConfig = { ...config, ...updates };
+      updateCustomLink(link.id, {
+        title: newConfig.mainText || link.title,
+        customerInfoConfig: newConfig
+      });
+    };
+
+    return (
+      <div 
+        key={link.id}
+        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+      >
+        {/* Header Row: Toggle, Title with (i), Controls */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            {/* ON/OFF Switch */}
+            <button
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+              )}
+            >
+              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                {link.isVisible !== false ? "ON" : "OFF"}
+              </span>
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
+                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            {/* Customer Info Title with (i) Badge */}
+            <div className="flex items-center gap-1.5 font-black text-base text-gray-900">
+              <span>Customer info</span>
+              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px] font-serif cursor-pointer" title="Customer info block info">i</span>
+            </div>
+          </div>
+
+          {/* Right Controls: highlight, reservation, menu, delete */}
+          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
+              <span>highlight</span>
+              <span className="text-gray-900">★</span>
+            </button>
+
+            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
+              <span>reservation</span>
+              <span className="text-gray-900">🕒</span>
+            </button>
+
+            <button 
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              title="Delete block"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Inputs */}
+
+        {/* 1. Main Text* */}
+        <div className="space-y-1">
+          <label className="block text-xs font-bold text-gray-600">main text<span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            value={config.mainText}
+            onChange={(e) => updateConfig({ mainText: e.target.value })}
+            placeholder="subscribe to our letter"
+            className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+          />
+        </div>
+
+        {/* 2. Detail Text */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-gray-600">detail text</label>
+            <span className="text-[11px] font-bold text-gray-400 cursor-pointer hover:text-black">🙂 Find emojis &gt;</span>
+          </div>
+          <input
+            type="text"
+            value={config.detailText || ''}
+            onChange={(e) => updateConfig({ detailText: e.target.value })}
+            placeholder="sent every monday"
+            className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+          />
+        </div>
+
+        {/* 3. Customer Info To Receive Checkboxes (Matching Screenshot 1) */}
+        <div className="space-y-2 pt-1">
+          <label className="block text-xs font-bold text-gray-600">Customer info to receive</label>
+
+          <div className="flex items-center gap-6 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-800">
+              <input
+                type="checkbox"
+                checked={config.receiveEmail !== false}
+                onChange={(e) => updateConfig({ receiveEmail: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+              />
+              <span>Email</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-800">
+              <input
+                type="checkbox"
+                checked={!!config.receivePhone}
+                onChange={(e) => updateConfig({ receivePhone: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+              />
+              <span>Phone number</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-800">
+              <input
+                type="checkbox"
+                checked={!!config.receiveName}
+                onChange={(e) => updateConfig({ receiveName: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+              />
+              <span>Name</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
@@ -1130,6 +1273,9 @@ const LinksEditor = () => {
           }
           if (block.type === 'notice') {
             return renderNoticeCard(block);
+          }
+          if (block.type === 'customer_info') {
+            return renderCustomerInfoCard(block);
           }
           return renderLinkItem(block);
         })}

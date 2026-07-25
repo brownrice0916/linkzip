@@ -42,9 +42,26 @@ export interface NoticeConfig {
   isPinned?: boolean;
 }
 
+export interface CustomerInfoConfig {
+  mainText: string;
+  detailText?: string;
+  receiveEmail?: boolean;
+  receivePhone?: boolean;
+  receiveName?: boolean;
+}
+
+export interface CollectedCustomerData {
+  id: string;
+  blockId?: string;
+  email?: string;
+  phone?: string;
+  name?: string;
+  createdAt: string;
+}
+
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice';
+  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info';
   title: string;
   url?: string;
   layout?: 'list' | 'grid';
@@ -57,6 +74,7 @@ export interface CustomLink {
   fileConfig?: FileConfig;
   snsLinks?: SNSItem[];
   noticeConfig?: NoticeConfig;
+  customerInfoConfig?: CustomerInfoConfig;
 }
 
 export interface UserProfile {

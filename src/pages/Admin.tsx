@@ -24,7 +24,7 @@ import LinksEditor from "../components/admin/LinksEditor";
 import ProfileEditor from "../components/admin/ProfileEditor";
 import AppearanceEditor from "../components/admin/AppearanceEditor";
 import SettingsEditor from "../components/admin/SettingsEditor";
-import AutomationEditor from "../components/admin/AutomationEditor";
+import GrowthEditor from "../components/admin/GrowthEditor";
 
 type TabType = "links" | "profile" | "appearance" | "automation" | "settings";
 type TargetAction = TabType | "home" | "logout" | null;
@@ -403,7 +403,7 @@ const Admin = () => {
             {activeTab === "links" && <LinksEditor />}
             {activeTab === "profile" && <ProfileEditor />}
             {activeTab === "appearance" && <AppearanceEditor />}
-            {activeTab === "automation" && <AutomationEditor />}
+            {activeTab === "automation" && <GrowthEditor />}
             {activeTab === "settings" && <SettingsEditor />}
           </div>
         </div>
