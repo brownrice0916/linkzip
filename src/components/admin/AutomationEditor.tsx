@@ -16,12 +16,18 @@ import {
   Send,
   ShieldCheck,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  ExternalLink,
+  HelpCircle
 } from 'lucide-react';
+import { FaInstagram } from 'react-icons/fa';
 import clsx from 'clsx';
 
 const AutomationEditor = () => {
   const state = useStore();
+
+  // Meta Instagram Token State
+  const [metaToken, setMetaToken] = useState(state.metaAccessToken || '');
 
   // DM Automation State
   const [newKeyword, setNewKeyword] = useState('');
@@ -41,6 +47,11 @@ const AutomationEditor = () => {
     templateCode: '',
     isEnabled: false
   });
+
+  const handleSaveMetaToken = () => {
+    state.setMetaAccessToken(metaToken.trim());
+    alert('인스타그램 Meta Graph API Access Token이 저장되었습니다.');
+  };
 
   const handleAddDMRule = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,8 +130,49 @@ const AutomationEditor = () => {
           </button>
         </div>
 
+        {/* Meta Graph API Access Token Input Card */}
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-50 via-pink-50 to-amber-50 border border-purple-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+              <FaInstagram className="w-4 h-4 text-pink-600" /> 인스타그램 비즈니스 API 토큰 연동
+            </span>
+            <span className={clsx(
+              "text-[10px] font-bold px-2.5 py-0.5 rounded-full",
+              state.metaAccessToken ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
+            )}>
+              {state.metaAccessToken ? "✓ 토큰 연결됨" : "Meta 토큰 연동 필요"}
+            </span>
+          </div>
+
+          <p className="text-xs text-gray-600 leading-relaxed">
+            실제 인스타그램에서 댓글(`링크`, `이벤트`)이 달렸을 때 자동으로 DM을 발송하려면 Meta Graph API 토큰이 필요합니다.
+          </p>
+
+          <div className="flex gap-2 pt-1">
+            <input
+              type="password"
+              placeholder="Instagram User Access Token (EAA...)"
+              value={metaToken}
+              onChange={(e) => setMetaToken(e.target.value)}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-600 bg-white"
+            />
+            <button
+              onClick={handleSaveMetaToken}
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl text-xs font-bold shadow-sm transition shrink-0 cursor-pointer"
+            >
+              토큰 저장
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[11px] text-purple-700 font-medium pt-1">
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>developers.facebook.com ➡ Graph API Explorer에서 인스타그램 접근 토큰을 발급받으세요.</span>
+          </div>
+        </div>
+
         {/* DM Rules List Table */}
-        <div className="space-y-3">
+        <div className="space-y-3 pt-2">
+          <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">등록된 자동화 키워드 규칙 목록</h4>
           {state.dmRules.length === 0 ? (
             <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
               <Bot className="w-8 h-8 text-gray-300 mx-auto mb-2" />

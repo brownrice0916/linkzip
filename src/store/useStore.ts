@@ -75,6 +75,7 @@ export interface AppStateSnapshot {
   teamMembers?: TeamMember[];
   dmRules?: DMAutomationRule[];
   alimtalkSettings?: AlimtalkSettings;
+  metaAccessToken?: string;
 }
 
 interface AppState {
@@ -104,6 +105,7 @@ interface AppState {
   teamMembers: TeamMember[];
   dmRules: DMAutomationRule[];
   alimtalkSettings: AlimtalkSettings;
+  metaAccessToken?: string;
 
   // Change Tracking & History (Undo / Redo / Cancel / Save)
   isDirty: boolean;
@@ -132,6 +134,7 @@ interface AppState {
   updateDMRule: (id: string, updates: Partial<DMAutomationRule>) => void;
   removeDMRule: (id: string) => void;
   setAlimtalkSettings: (settings: Partial<AlimtalkSettings>) => void;
+  setMetaAccessToken: (token: string) => void;
 
   // Undo / Redo / Cancel / Save Actions
   undo: () => void;
@@ -163,6 +166,7 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   teamMembers: JSON.parse(JSON.stringify(state.teamMembers || [])),
   dmRules: JSON.parse(JSON.stringify(state.dmRules || [])),
   alimtalkSettings: JSON.parse(JSON.stringify(state.alimtalkSettings || {})),
+  metaAccessToken: state.metaAccessToken || '',
 });
 
 const recursivelyUpdateLink = (links: CustomLink[], id: string, updates: Partial<CustomLink>): CustomLink[] => {
@@ -237,6 +241,7 @@ export const useStore = create<AppState>((set) => ({
     templateCode: '',
     isEnabled: false
   },
+  metaAccessToken: '',
 
   // History & Change Tracking
   isDirty: false,
@@ -441,6 +446,16 @@ export const useStore = create<AppState>((set) => ({
     const snap = getSnapshotFromState(state);
     return {
       alimtalkSettings: { ...state.alimtalkSettings, ...settings },
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  setMetaAccessToken: (token) => set((state) => {
+    const snap = getSnapshotFromState(state);
+    return {
+      metaAccessToken: token,
       undoStack: [...state.undoStack, snap],
       redoStack: [],
       isDirty: true
