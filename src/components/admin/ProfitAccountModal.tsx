@@ -314,12 +314,19 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
 
         </div>
 
-        {/* Modal Save Button (Matching Screenshot) */}
+        {/* Modal Save Button (Enabled ONLY when certified) */}
         <button
           onClick={handleSave}
-          className="w-full py-4 bg-[#8C9AA8] hover:bg-[#788796] text-white rounded-xl font-bold text-sm transition cursor-pointer shadow-sm tracking-wide"
+          disabled={!isCertified}
+          className={clsx(
+            "w-full py-4 rounded-xl font-black text-sm transition tracking-wide flex items-center justify-center gap-2",
+            isCertified
+              ? "bg-black hover:bg-gray-800 text-white cursor-pointer shadow-md"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
+          )}
+          title={!isCertified ? "계좌 인증(certification)을 완료해야 저장할 수 있습니다." : "저장하기"}
         >
-          save
+          <span>{isCertified ? "save" : "인증 완료 후 저장 가능 (save)"}</span>
         </button>
 
       </div>
