@@ -656,15 +656,23 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
               const isNone = block.thumbnailType === "none";
               const IconComp = getLinkIcon(block.iconName);
 
+              const isGuestbookBlock = 
+                block.iconName === 'pen-tool' || 
+                block.title?.includes('방명록') || 
+                block.title?.toLowerCase().includes('guestbook') ||
+                block.url?.includes('guestbook');
+
+              const hrefTarget = isGuestbookBlock
+                ? `/${profile.username || 'preview'}/guestbook`
+                : block.url?.match(/^https?:\/\//)
+                ? block.url
+                : `https://${block.url}`;
+
               return (
                 <a
                   key={block.id}
-                  href={
-                    block.url?.match(/^https?:\/\//)
-                      ? block.url
-                      : `https://${block.url}`
-                  }
-                  target="_blank"
+                  href={hrefTarget}
+                  target={isGuestbookBlock ? "_self" : "_blank"}
                   rel="noopener noreferrer"
                   className={buttonClass}
                   style={customButtonStyle}

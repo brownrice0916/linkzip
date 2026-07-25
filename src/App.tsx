@@ -13,6 +13,7 @@ import LinkSetup from "./pages/onboarding/LinkSetup";
 import ProfileSetup from "./pages/onboarding/ProfileSetup";
 import Admin from "./pages/Admin";
 import PublicProfile from "./pages/PublicProfile";
+import GuestbookPage from "./pages/GuestbookPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -131,6 +132,10 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Guestbook Pages */}
+        <Route path="/guestbook/:username" element={<GuestbookPage />} />
+        <Route path="/:username/guestbook" element={<GuestbookPage />} />
 
         {/* Public Profile - Matches anything not defined above */}
         <Route path="/:username" element={<PublicProfile />} />

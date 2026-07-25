@@ -185,6 +185,14 @@ const LinksEditor = () => {
         isVisible: true,
         iconName: 'minus'
       });
+    } else if (blockType === 'guestbook') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: '✏️ 방명록 (응원 메시지 남기기)',
+        url: `/${profile.username || 'preview'}/guestbook`,
+        isVisible: true,
+        iconName: 'pen-tool'
+      });
     } else if (blockType === 'customer_inquiry' || blockType === 'contact') {
       addCustomLink({
         id: `link-${Date.now()}`,
