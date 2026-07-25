@@ -97,6 +97,52 @@ const validateIdentityNumber = (idNum: string, type: 'personal' | 'corporate'): 
   return { valid: true };
 };
 
+// Bank specific account number format and length validation
+const validateBankAccountForBank = (bank: string, accNum: string): { valid: boolean; error?: string } => {
+  const cleanAcc = accNum.replace(/[^0-9]/g, '');
+
+  if (!cleanAcc) {
+    return { valid: false, error: '계좌번호를 입력해 주세요.' };
+  }
+
+  if (bank === 'KB국민은행') {
+    if (cleanAcc.length !== 14 && cleanAcc.length !== 12) {
+      return { valid: false, error: `선택하신 은행(${bank}) 계좌번호는 14자리(또는 12자리)여야 합니다. (입력하신 계좌: ${cleanAcc.length}자리)` };
+    }
+  } else if (bank === 'NH농협은행') {
+    if (cleanAcc.length !== 13 && cleanAcc.length !== 14 && cleanAcc.length !== 11) {
+      return { valid: false, error: `선택하신 은행(${bank}) 계좌번호는 13자리(또는 11, 14자리)여야 합니다. (입력하신 계좌: ${cleanAcc.length}자리)` };
+    }
+    const nhPrefixes = ['301', '302', '312', '351', '352', '356', '790'];
+    const hasNhPrefix = nhPrefixes.some(p => cleanAcc.startsWith(p));
+    if (!hasNhPrefix) {
+      return { valid: false, error: '선택하신 은행(NH농협은행) 식별번호(301, 302, 351, 352, 356 등)로 시작하는 농협 계좌가 아닙니다.' };
+    }
+  } else if (bank === '카카오뱅크') {
+    if (cleanAcc.length !== 13 || !cleanAcc.startsWith('3333')) {
+      return { valid: false, error: '카카오뱅크 계좌번호는 13자리 숫자(3333으로 시작)여야 합니다.' };
+    }
+  } else if (bank === '신한은행') {
+    if (cleanAcc.length !== 12 && cleanAcc.length !== 14) {
+      return { valid: false, error: `신한은행 계좌번호는 12자리 또는 14자리여야 합니다. (입력하신 계좌: ${cleanAcc.length}자리)` };
+    }
+  } else if (bank === '토스뱅크') {
+    if (cleanAcc.length !== 12 && cleanAcc.length !== 13) {
+      return { valid: false, error: `토스뱅크 계좌번호는 12~13자리여야 합니다. (입력하신 계좌: ${cleanAcc.length}자리)` };
+    }
+  } else if (bank === '우리은행') {
+    if (cleanAcc.length !== 13) {
+      return { valid: false, error: `우리은행 계좌번호는 13자리여야 합니다. (입력하신 계좌: ${cleanAcc.length}자리)` };
+    }
+  } else if (bank === '하나은행') {
+    if (cleanAcc.length !== 14) {
+      return { valid: false, error: `하나은행 계좌번호는 14자리여야 합니다. (입력하신 계좌: ${cleanAcc.length}자리)` };
+    }
+  }
+
+  return { valid: true };
+};
+
 export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   isOpen,
   onClose,
@@ -127,7 +173,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
       return;
     }
 
-    // 2. Account Number Pattern Check
+    // 2. Account Number & Bank Name Pattern Matching Check
     const cleanAccount = accountNumber.replace(/[^0-9]/g, '');
     const isRepeatedDigits = /^(\d)\1+$/.test(cleanAccount);
     const isSequentialDigits = cleanAccount === '12345678' || cleanAccount === '123456789' || cleanAccount === '1234567890';
@@ -135,6 +181,13 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
     if (!cleanAccount || cleanAccount.length < 10 || isRepeatedDigits || isSequentialDigits) {
       setIsCertified(false);
       alert('❌ 계좌번호 인증 실패\n유효하지 않은 계좌번호입니다. (10~16자리 실제 계좌번호를 입력해 주세요.)');
+      return;
+    }
+
+    const bankValidation = validateBankAccountForBank(bankName, cleanAccount);
+    if (!bankValidation.valid) {
+      setIsCertified(false);
+      alert(`❌ 은행 계좌 번호 불일치\n${bankValidation.error}`);
       return;
     }
 
