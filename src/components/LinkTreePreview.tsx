@@ -748,6 +748,34 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 );
               }
 
+              if (block.type === 'sns') {
+                const items = block.snsLinks || [];
+                return (
+                  <div key={block.id} className="w-full flex items-center justify-center gap-3.5 py-3 flex-wrap">
+                    {items.map((item) => {
+                      const Icon = getSocialIcon(item.platform) || FaGlobe;
+                      const isPhone = item.platform === 'phone';
+                      const targetUrl = isPhone 
+                        ? `tel:${item.value}`
+                        : getSocialUrl(item.platform, item.value);
+
+                      return (
+                        <a
+                          key={item.id}
+                          href={targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-11 h-11 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center shadow-md hover:scale-110 transition cursor-pointer border border-gray-100"
+                          title={item.platform}
+                        >
+                          <Icon className="w-5 h-5" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
               const isGuestbookBlock = 
                 block.iconName === 'pen-tool' || 
                 block.title?.includes('방명록') || 

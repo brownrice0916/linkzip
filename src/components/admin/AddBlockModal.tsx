@@ -31,13 +31,6 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
       title: '1. 기본 브랜딩 & 링크 연결 (가장 기본!)',
       blocks: [
         { 
-          id: 'sns', 
-          label: 'SNS (소셜 미디어)', 
-          desc: 'YouTube, 인스타그램, 틱톡, X(트위터), 치지직/아프리카TV 등 보유한 채널들을 아이콘으로 예쁘게 묶어 노출시킵니다.', 
-          customIcon: <FaInstagram className="w-6 h-6 text-white" />, 
-          bgColor: 'bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600' 
-        },
-        { 
           id: 'link', 
           label: 'Link (단일 링크)', 
           desc: '단일 URL 링크 추가하기', 
@@ -54,12 +47,11 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           iconColor: 'text-white' 
         },
         { 
-          id: 'file', 
-          label: 'File sharing (파일 공유)', 
-          desc: 'PDF 및 이미지, 문서 파일 업로드 및 공유하기', 
-          icon: Download, 
-          bgColor: 'bg-cyan-500', 
-          iconColor: 'text-white' 
+          id: 'sns', 
+          label: 'SNS (소셜 미디어)', 
+          desc: 'YouTube, 인스타그램, 틱톡, X(트위터), 치지직/아프리카TV 등 보유한 채널들을 아이콘으로 예쁘게 묶어 노출시킵니다.', 
+          customIcon: <FaInstagram className="w-6 h-6 text-white" />, 
+          bgColor: 'bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600' 
         },
       ]
     },
@@ -71,23 +63,23 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           label: 'notice (공지사항)', 
           desc: '팬미팅 일정, 공구 오픈 일정, 휴방 공지, 이벤트를 눈에 띄게 게시할 때 유용합니다.', 
           icon: Megaphone, 
-          bgColor: 'bg-amber-400', 
-          iconColor: 'text-gray-900' 
+          bgColor: 'bg-amber-500', 
+          iconColor: 'text-white' 
         },
         { 
           id: 'guestbook', 
           label: 'Guestbook (방명록)', 
           desc: '팬들이 자유롭게 응원 메시지나 댓글을 남길 수 있는 소통 공간입니다.', 
           icon: PenTool, 
-          bgColor: 'bg-orange-400', 
+          bgColor: 'bg-rose-500', 
           iconColor: 'text-white' 
         },
         { 
           id: 'customer_info', 
           label: 'Customer info (고객 정보 수집)', 
-          desc: '공구 알림 신청, 팬레터/이벤트 신청, 뉴스레터 구독 등 팬들의 이메일이나 연락처를 모을 때 씁니다.', 
+          desc: '공구 알림 신청, 팬레터/이벤트 신청, 뉴스레터 구독 등 방문자의 이메일이나 연락처를 수집합니다.', 
           icon: CreditCard, 
-          bgColor: 'bg-purple-600', 
+          bgColor: 'bg-blue-500', 
           iconColor: 'text-white' 
         },
       ]
@@ -98,17 +90,17 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
         { 
           id: 'sales', 
           label: 'Sales (판매)', 
-          desc: '디지털 상품(노션 템플릿, 전자책, 프리셋 등) 및 실물/공구 굿즈 제품 판매', 
+          desc: '디지털 파일, 자체제작 굿즈, 실물 상품을 직접 등록하고 판매합니다.', 
           icon: ShoppingBag, 
-          bgColor: 'bg-black', 
+          bgColor: 'bg-indigo-500', 
           iconColor: 'text-white' 
         },
         { 
           id: 'donation', 
           label: 'Donation (후원)', 
-          desc: '트위치/아프리카 후원처럼 팬들에게 직접 응원 후원금을 받습니다.', 
+          desc: '팬들로부터 자율적인 후원금(도네이션)을 받고 응원 메시지를 전달받습니다.', 
           icon: Heart, 
-          bgColor: 'bg-pink-500', 
+          bgColor: 'bg-red-500', 
           iconColor: 'text-white' 
         },
         { 

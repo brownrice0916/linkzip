@@ -28,9 +28,16 @@ export interface FileConfig {
   fileSize?: string;
 }
 
+export interface SNSItem {
+  id: string;
+  platform: string;
+  value: string;
+  countryCode?: string;
+}
+
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation' | 'file';
+  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns';
   title: string;
   url?: string;
   layout?: 'list' | 'grid';
@@ -41,6 +48,7 @@ export interface CustomLink {
   iconName?: string; // selected icon key e.g. 'link', 'globe', 'instagram', etc.
   donationConfig?: DonationConfig;
   fileConfig?: FileConfig;
+  snsLinks?: SNSItem[];
 }
 
 export interface UserProfile {

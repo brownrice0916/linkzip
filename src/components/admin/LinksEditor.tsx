@@ -9,7 +9,8 @@ import {
   GripVertical, 
   CornerDownRight, 
   Image as ImageIcon,
-  ChevronDown
+  ChevronDown,
+  Phone
 } from 'lucide-react';
 import { getLinkIcon } from '../../lib/icons';
 import { 
@@ -154,7 +155,16 @@ const LinksEditor = () => {
     } else if (blockType === 'group_link') {
       handleAddCollection();
     } else if (blockType === 'sns') {
-      handleAddSocial();
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        type: 'sns',
+        title: 'SNS',
+        isVisible: true,
+        snsLinks: [
+          { id: `sns-1`, platform: 'instagram', value: '' },
+          { id: `sns-2`, platform: 'phone', value: '', countryCode: 'US' }
+        ]
+      });
     } else if (blockType === 'video') {
       addCustomLink({
         id: `link-${Date.now()}`,
@@ -780,6 +790,166 @@ const LinksEditor = () => {
     );
   };
 
+  const renderSNSCard = (link: CustomLink) => {
+    const items = link.snsLinks || [
+      { id: 'sns-1', platform: 'instagram', value: '' },
+      { id: 'sns-2', platform: 'phone', value: '', countryCode: 'US' }
+    ];
+
+    const updateItems = (newItems: import('../../store/useStore').SNSItem[]) => {
+      updateCustomLink(link.id, { snsLinks: newItems });
+    };
+
+    const handleAddItem = (platform: string) => {
+      const newItem: import('../../store/useStore').SNSItem = {
+        id: `sns-${Date.now()}`,
+        platform,
+        value: '',
+        countryCode: platform === 'phone' ? 'US' : undefined
+      };
+      updateItems([...items, newItem]);
+    };
+
+    const handleRemoveItem = (itemId: string) => {
+      updateItems(items.filter((i) => i.id !== itemId));
+    };
+
+    const handleUpdateItemValue = (itemId: string, val: string) => {
+      updateItems(
+        items.map((i) => (i.id === itemId ? { ...i, value: val } : i))
+      );
+    };
+
+    return (
+      <div 
+        key={link.id}
+        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+      >
+        {/* Header Row: ON/OFF toggle, SNS title, Controls */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            {/* ON/OFF Switch */}
+            <button
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+              )}
+            >
+              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                {link.isVisible !== false ? "ON" : "OFF"}
+              </span>
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
+                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            {/* Title */}
+            <div className="font-black text-base text-gray-900">
+              <span>SNS</span>
+            </div>
+          </div>
+
+          {/* Controls: reservation, trashcan */}
+          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
+              <span>reservation</span>
+              <span className="text-gray-900">🕒</span>
+            </button>
+
+            <button 
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              title="Delete block"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* SNS Input Rows List */}
+        <div className="space-y-3">
+          {items.map((item) => {
+            const Icon = getSocialIconComp(item.platform);
+            const isPhone = item.platform === 'phone';
+
+            return (
+              <div key={item.id} className="flex items-center gap-2">
+                {/* Drag handle */}
+                <GripVertical className="w-4 h-4 text-gray-400 shrink-0 cursor-grab" />
+
+                {/* Platform Icon Badge */}
+                <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0">
+                  {isPhone ? (
+                    <Phone className="w-4 h-4 text-gray-700" />
+                  ) : (
+                    <Icon className="w-4.5 h-4.5 text-gray-800" />
+                  )}
+                </div>
+
+                {/* Country Code Flag Dropdown (for phone) */}
+                {isPhone && (
+                  <div className="relative shrink-0">
+                    <select
+                      value={item.countryCode || 'US'}
+                      onChange={(e) => {
+                        updateItems(items.map(i => i.id === item.id ? { ...i, countryCode: e.target.value } : i));
+                      }}
+                      className="p-3 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 cursor-pointer pr-6 appearance-none"
+                    >
+                      <option value="US">🇺🇸</option>
+                      <option value="KR">🇰🇷</option>
+                      <option value="JP">🇯🇵</option>
+                      <option value="UK">🇬🇧</option>
+                    </select>
+                    <ChevronDown className="w-3 h-3 text-gray-400 absolute right-2 top-4 pointer-events-none" />
+                  </div>
+                )}
+
+                {/* Text / URL Input */}
+                <input
+                  type="text"
+                  value={item.value}
+                  onChange={(e) => handleUpdateItemValue(item.id, e.target.value)}
+                  placeholder={
+                    isPhone 
+                      ? "+1 Phone number (without -)" 
+                      : `URL or ${item.platform.charAt(0).toUpperCase() + item.platform.slice(1)} ID`
+                  }
+                  className="flex-1 p-3 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+                />
+
+                {/* Delete trashcan */}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveItem(item.id)}
+                  className="p-2 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 cursor-pointer shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* + Add SNS Button */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => handleAddItem('instagram')}
+            className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+          >
+            <span>+ Add SNS</span>
+          </button>
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
@@ -850,6 +1020,9 @@ const LinksEditor = () => {
           }
           if (block.type === 'file') {
             return renderFileSharingCard(block);
+          }
+          if (block.type === 'sns') {
+            return renderSNSCard(block);
           }
           return renderLinkItem(block);
         })}
