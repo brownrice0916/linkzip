@@ -185,9 +185,11 @@ const LinksEditor = () => {
           detailText: '응원 메시지와 함께 후원금을 보낼 수 있습니다.',
           minAmount: 3000,
           buttonText: '후원하기',
-          bankName: 'NH농협은행',
-          accountNumber: '3020683730641',
-          accountOwnerName: profile.name || '황현미'
+          bankName: '',
+          accountNumber: '',
+          accountOwnerName: '',
+          idNumber: '',
+          accountConnected: false
         }
       });
     } else if (blockType === 'file') {
