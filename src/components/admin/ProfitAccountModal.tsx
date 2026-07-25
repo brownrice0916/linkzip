@@ -31,6 +31,35 @@ const banks = [
   'SC제일은행'
 ];
 
+const validateIdentityNumber = (idNum: string, type: 'personal' | 'corporate'): { valid: boolean; error?: string } => {
+  const cleanId = idNum.replace(/[^0-9]/g, '');
+
+  if (!cleanId) {
+    return { valid: false, error: 'ID number(주민등록번호/사업자번호)를 먼저 입력해야 계좌 인증이 가능합니다.' };
+  }
+
+  if (type === 'personal') {
+    // Requires valid 6-digit birthdate (YYMMDD), 13-digit RRN, or 10-digit BRN
+    if (cleanId.length !== 6 && cleanId.length !== 13 && cleanId.length !== 10) {
+      return { valid: false, error: '올바른 주민등록번호(6자리/13자리) 또는 사업자번호(10자리)를 입력해 주세요.' };
+    }
+
+    if (cleanId.length === 6) {
+      const month = parseInt(cleanId.substring(2, 4), 10);
+      const day = parseInt(cleanId.substring(4, 6), 10);
+      if (month < 1 || month > 12 || day < 1 || day > 31) {
+        return { valid: false, error: '유효하지 않은 생년월일(월/일) 형식입니다.' };
+      }
+    }
+  } else {
+    if (cleanId.length !== 10 && cleanId.length !== 13) {
+      return { valid: false, error: '올바른 법인/사업자등록번호(10자리/13자리)를 입력해 주세요.' };
+    }
+  }
+
+  return { valid: true };
+};
+
 export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   isOpen,
   onClose,
@@ -53,10 +82,21 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   const PORTONE_API_SECRET = "7cQloKuZDGCiSFg4ccvhkGCpKpVbMR8d6dzkmzC1LrJetp6q5KzT2stIuGzKs5skOTvEJZPGWR2SULH6";
 
   const handleCertify = async () => {
-    if (!accountNumber.trim()) {
-      alert('계좌번호를 입력해주세요.');
+    // 1. ID Number Strict Check
+    const idValidation = validateIdentityNumber(idNumber, accountType);
+    if (!idValidation.valid) {
+      setIsCertified(false);
+      alert(`❌ ID Number 인증 실패\n${idValidation.error}`);
       return;
     }
+
+    // 2. Account Number Check
+    if (!accountNumber.trim() || accountNumber.replace(/[^0-9]/g, '').length < 8) {
+      setIsCertified(false);
+      alert('❌ 계좌번호 인증 실패\n유효한 계좌번호 숫자(8자리 이상)를 입력해 주세요.');
+      return;
+    }
+
     setCertifying(true);
 
     try {
