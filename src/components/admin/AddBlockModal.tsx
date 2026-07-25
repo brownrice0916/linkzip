@@ -11,7 +11,7 @@ import {
   CalendarCheck, 
   Phone
 } from 'lucide-react';
-import { FaInstagram, FaYoutube } from 'react-icons/fa';
+import { FaInstagram } from 'react-icons/fa';
 
 interface AddBlockModalProps {
   isOpen: boolean;
@@ -44,13 +44,6 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           icon: Link2, 
           bgColor: 'bg-emerald-500', 
           iconColor: 'text-white' 
-        },
-        { 
-          id: 'video', 
-          label: 'Video (비디오)', 
-          desc: '내 채널의 대표 영상(최신 영상, 조회수 대박 난 영상, 채널 트레일러)을 페이지 상단에 노출시켜 방문자가 바로 재생해 볼 수 있게 합니다.', 
-          customIcon: <FaYoutube className="w-6 h-6 text-white" />, 
-          bgColor: 'bg-red-600' 
         },
       ]
     },
