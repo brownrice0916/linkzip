@@ -88,8 +88,8 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 font-sans overflow-y-auto">
-      <div className="bg-[#EDF2F7] rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl relative overflow-hidden my-auto border border-gray-200">
+    <div className="fixed inset-0 bg-[#EDF2F7] z-50 flex flex-col font-sans overflow-hidden animate-in fade-in duration-200">
+      <div className="bg-[#EDF2F7] w-full h-full flex flex-col relative overflow-hidden">
         
         {/* Top Sticky Header */}
         <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0 z-20 relative">

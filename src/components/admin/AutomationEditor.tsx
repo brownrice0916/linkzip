@@ -152,33 +152,7 @@ const AutomationEditor = () => {
           </div>
         </div>
 
-        {/* Instagram One-Click Automatic Connection Status Card */}
-        <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-50 via-pink-50 to-amber-50 border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                <FaInstagram className="w-4 h-4 text-pink-600" /> 원클릭 인스타그램 계정 자동 연동
-              </span>
-              <span className={clsx(
-                "text-[10px] font-bold px-2.5 py-0.5 rounded-full",
-                state.instagramAccount ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"
-              )}>
-                {state.instagramAccount ? `✓ ${state.instagramAccount} 연결됨` : "계정 연동 필요"}
-              </span>
-            </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              복잡한 API 토큰 복사/붙여넣기 없이, [인스타그램 로그인 & 권한 허용] 버튼 한 번이면 자동으로 모든 연동이 완료됩니다!
-            </p>
-          </div>
 
-          <button
-            onClick={() => setIsWizardOpen(true)}
-            className="px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-2xl text-xs font-extrabold shadow-md transition shrink-0 cursor-pointer flex items-center justify-center gap-2"
-          >
-            <FaInstagram className="w-4 h-4" />
-            {state.instagramAccount ? "계정 연동 상태 확인" : "인스타그램 계정 원클릭 연결하기"}
-          </button>
-        </div>
 
         {/* DM Rules List Table */}
         <div className="space-y-3 pt-2">
