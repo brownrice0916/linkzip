@@ -21,6 +21,7 @@ import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, Exter
 import { getLinkIcon } from "../lib/icons";
 import { DonationVisitorModal } from "./DonationVisitorModal";
 import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
+import { SalesVisitorModal } from "./SalesVisitorModal";
 import clsx from "clsx";
 
 interface LinkTreePreviewProps {
@@ -92,6 +93,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
+  const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
   const isColor = templateType === "color";
   const {
     buttonStyle = "solid",
@@ -796,6 +798,39 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 );
               }
 
+              if (block.type === 'sales') {
+                return (
+                  <button
+                    key={block.id}
+                    type="button"
+                    onClick={() => setActiveSalesBlock(block)}
+                    className={buttonClass}
+                    style={customButtonStyle}
+                  >
+                    {!isNone && (
+                      <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+                        {isImage && block.icon ? (
+                          <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <IconComp className="w-5 h-5 opacity-90" />
+                        )}
+                      </div>
+                    )}
+                    <span className="flex-1 text-center font-bold text-[15px]">
+                      🛍️ {block.salesConfig?.mainText || block.title || "디지털 상품 구매"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenShareModal(e, block)}
+                      className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
+                      title="Share link"
+                    >
+                      <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
+                    </button>
+                  </button>
+                );
+              }
+
               const isGuestbookBlock = 
                 block.iconName === 'pen-tool' || 
                 block.title?.includes('방명록') || 
@@ -1107,6 +1142,16 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           onClose={() => setActiveDonationBlock(null)}
           donationConfig={activeDonationBlock.donationConfig}
           creatorName={profile.name || profile.username || '크리에이터'}
+        />
+      )}
+
+      {/* Visitor Sales Product Modal */}
+      {activeSalesBlock && (
+        <SalesVisitorModal
+          isOpen={!!activeSalesBlock}
+          onClose={() => setActiveSalesBlock(null)}
+          block={activeSalesBlock}
+          profile={profile}
         />
       )}
     </>

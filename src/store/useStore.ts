@@ -61,9 +61,39 @@ export interface CollectedCustomerData {
   createdAt: string;
 }
 
+export interface ProductItem {
+  id: string;
+  name: string;
+  price: number;
+  fileName?: string;
+  fileUrl?: string;
+  discountPrice?: number;
+  stock?: number;
+  orderNote?: string;
+}
+
+export interface SalesConfig {
+  salesType?: 'digital_file' | 'product';
+  mainText: string;
+  image?: string;
+  description?: string;
+  descriptionViewType?: 'simple' | 'detail';
+  products: ProductItem[];
+  creatorMessage?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountOwner?: string;
+  sellerInfo?: {
+    businessType?: string;
+    sellerName?: string;
+    contactInfo?: string;
+    address?: string;
+  };
+}
+
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info';
+  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'sales';
   title: string;
   url?: string;
   layout?: 'list' | 'grid';
@@ -79,6 +109,7 @@ export interface CustomLink {
   snsLinks?: SNSItem[];
   noticeConfig?: NoticeConfig;
   customerInfoConfig?: CustomerInfoConfig;
+  salesConfig?: SalesConfig;
 }
 
 export interface UserProfile {

@@ -10,7 +10,9 @@ import {
   CornerDownRight, 
   Image as ImageIcon,
   ChevronDown,
-  Phone
+  Phone,
+  Smartphone,
+  Gift
 } from 'lucide-react';
 import { getLinkIcon } from '../../lib/icons';
 import { 
@@ -30,8 +32,9 @@ import { SocialModal } from './SocialModal';
 import { AddBlockModal } from './AddBlockModal';
 import { ProfitAccountModal } from './ProfitAccountModal';
 import { NoticeModal } from './NoticeModal';
+import { ProductRegistrationModal } from './ProductRegistrationModal';
 import clsx from 'clsx';
-import type { DonationConfig, NoticeConfig } from '../../store/useStore';
+import type { DonationConfig, NoticeConfig, SalesConfig, ProductItem } from '../../store/useStore';
 
 const getSocialIconComp = (platform: string) => {
   switch (platform) {
@@ -1305,6 +1308,298 @@ const LinksEditor = () => {
     );
   };
 
+  const [activeProductRegisterLink, setActiveProductRegisterLink] = useState<CustomLink | null>(null);
+
+  const renderSalesCard = (link: CustomLink) => {
+    const config = link.salesConfig || {
+      mainText: '',
+      description: '',
+      descriptionViewType: 'simple',
+      products: [],
+      creatorMessage: ''
+    };
+
+    const updateConfig = (updates: Partial<import('../../store/useStore').SalesConfig>) => {
+      const newConfig = { ...config, ...updates };
+      updateCustomLink(link.id, {
+        title: newConfig.mainText || link.title,
+        salesConfig: newConfig
+      });
+    };
+
+    // Step 1: Choose Sales Type (Screenshot 1)
+    if (!config.salesType) {
+      return (
+        <div 
+          key={link.id}
+          className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+        >
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+                className={clsx(
+                  "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                  link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+                )}
+              >
+                <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                  {link.isVisible !== false ? "ON" : "OFF"}
+                </span>
+                <div
+                  className={clsx(
+                    "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
+                    link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                  )}
+                />
+              </button>
+
+              <div className="flex items-center gap-1.5 font-black text-base text-gray-900">
+                <span>sale in KRW</span>
+                <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              title="Delete block"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-gray-600">sales type<span className="text-red-500">*</span></label>
+            <div className="grid grid-cols-2 gap-4 pt-1">
+              <button
+                type="button"
+                onClick={() => updateConfig({ salesType: 'digital_file', mainText: '디지털 파일 상품 판매' })}
+                className="p-6 border-2 border-gray-200 hover:border-black rounded-2xl flex flex-col items-center justify-center gap-3 transition cursor-pointer group bg-white shadow-2xs"
+              >
+                <Smartphone className="w-10 h-10 text-gray-400 group-hover:text-black group-hover:scale-110 transition-all" />
+                <span className="text-xs font-bold text-gray-800 group-hover:text-black">Digital file</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateConfig({ salesType: 'product', mainText: '실물 상품 판매' })}
+                className="p-6 border-2 border-gray-200 hover:border-black rounded-2xl flex flex-col items-center justify-center gap-3 transition cursor-pointer group bg-white shadow-2xs"
+              >
+                <Gift className="w-10 h-10 text-gray-400 group-hover:text-black group-hover:scale-110 transition-all" />
+                <span className="text-xs font-bold text-gray-800 group-hover:text-black">Product</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Step 2: Full Sales Form (Screenshot 2)
+    return (
+      <div 
+        key={link.id}
+        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+              )}
+            >
+              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                {link.isVisible !== false ? "ON" : "OFF"}
+              </span>
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
+                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            <div className="flex items-center gap-1.5 font-black text-base text-gray-900">
+              <span>{config.salesType === 'digital_file' ? 'Digital files sale in KRW' : 'Product sale in KRW'}</span>
+              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <div className="flex items-center gap-1" title="특정 카드 색상 지정">
+              <input
+                type="color"
+                value={link.buttonColor || '#ffffff'}
+                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              />
+            </div>
+
+            <button 
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              title="Delete block"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* 1. Main Text* */}
+        <div className="space-y-1">
+          <label className="block text-xs font-bold text-gray-600">main text<span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            value={config.mainText}
+            onChange={(e) => updateConfig({ mainText: e.target.value })}
+            placeholder="Enter a sales block title"
+            className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+          />
+        </div>
+
+        {/* 2. Image Upload */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-1">
+            <label className="block text-xs font-bold text-gray-600">image</label>
+            <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 hover:border-black flex flex-col items-center justify-center cursor-pointer transition bg-gray-50 overflow-hidden shrink-0">
+              {config.image ? (
+                <img src={config.image} alt="Product" className="w-full h-full object-cover" />
+              ) : (
+                <Plus className="w-6 h-6 text-gray-400" />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) updateConfig({ image: URL.createObjectURL(file) });
+                }}
+                className="hidden"
+              />
+            </label>
+            <p className="text-[11px] text-gray-400 font-medium">대표 상품 이미지를 등록해보세요.</p>
+          </div>
+        </div>
+
+        {/* 3. Description* */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <label className="block text-xs font-bold text-gray-600">Description<span className="text-red-500">*</span></label>
+              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
+            </div>
+            
+            <div className="flex items-center gap-3 text-xs font-bold text-gray-600">
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                  type="radio"
+                  name={`desc-view-${link.id}`}
+                  checked={config.descriptionViewType !== 'detail'}
+                  onChange={() => updateConfig({ descriptionViewType: 'simple' })}
+                  className="cursor-pointer"
+                />
+                <span>Simple view</span>
+              </label>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                  type="radio"
+                  name={`desc-view-${link.id}`}
+                  checked={config.descriptionViewType === 'detail'}
+                  onChange={() => updateConfig({ descriptionViewType: 'detail' })}
+                  className="cursor-pointer"
+                />
+                <span>detail view</span>
+              </label>
+            </div>
+          </div>
+
+          <textarea
+            value={config.description || ''}
+            onChange={(e) => updateConfig({ description: e.target.value })}
+            placeholder="Please enter detailed transaction terms, product description, exchange and refund policies, etc. You can enter up to 3,000 characters."
+            rows={5}
+            className="w-full p-3.5 border border-gray-300 rounded-2xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-300 leading-relaxed resize-none"
+          />
+        </div>
+
+        {/* 4. Product List* */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-1">
+            <label className="block text-xs font-bold text-gray-600">Product list<span className="text-red-500">*</span></label>
+            <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
+          </div>
+
+          {/* Registered Products List */}
+          {config.products && config.products.length > 0 && (
+            <div className="space-y-2">
+              {config.products.map((prod) => (
+                <div key={prod.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-black text-white rounded-md text-[10px]">상품</span>
+                    <span>{prod.name}</span>
+                    <span className="text-gray-500">({prod.price.toLocaleString()} KRW)</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newProds = config.products.filter(p => p.id !== prod.id);
+                      updateConfig({ products: newProds });
+                    }}
+                    className="p-1 text-gray-400 hover:text-red-500"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setActiveProductRegisterLink(link)}
+            className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+          >
+            <span>Register product</span>
+          </button>
+        </div>
+
+        {/* 5. Creator Message */}
+        <div className="space-y-1">
+          <label className="block text-xs font-bold text-gray-600">Creator Message</label>
+          <input
+            type="text"
+            value={config.creatorMessage || ''}
+            onChange={(e) => updateConfig({ creatorMessage: e.target.value })}
+            placeholder="This message will be delivered to the buyer upon booking completion."
+            className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-300"
+          />
+        </div>
+
+        {/* 6. Account Connect* */}
+        <div className="space-y-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-gray-600">Account connect<span className="text-red-500">*</span></label>
+            <span className="text-[11px] font-bold text-blue-600">! Link profit account (required)</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveProfitAccountLink(link)}
+            className="w-full py-4 bg-[#F24E1E] hover:bg-orange-600 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+          >
+            <span>+ Register a profit account</span>
+          </button>
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
@@ -1385,6 +1680,9 @@ const LinksEditor = () => {
           if (block.type === 'customer_info') {
             return renderCustomerInfoCard(block);
           }
+          if (block.type === 'sales') {
+            return renderSalesCard(block);
+          }
           return renderLinkItem(block);
         })}
       </div>
@@ -1404,6 +1702,29 @@ const LinksEditor = () => {
       >
         <p className="text-xs font-semibold">Drop here to move out of collection to main list</p>
       </div>
+
+      {/* Product Registration Modal */}
+      {activeProductRegisterLink && (
+        <ProductRegistrationModal
+          isOpen={!!activeProductRegisterLink}
+          onClose={() => setActiveProductRegisterLink(null)}
+          onRegister={(product) => {
+            const currentSalesConfig = activeProductRegisterLink.salesConfig || {
+              mainText: '디지털 상품 판매',
+              description: '',
+              products: []
+            };
+            const updatedProducts = [...(currentSalesConfig.products || []), product];
+            updateCustomLink(activeProductRegisterLink.id, {
+              salesConfig: {
+                ...currentSalesConfig,
+                products: updatedProducts
+              }
+            });
+            setActiveProductRegisterLink(null);
+          }}
+        />
+      )}
 
       {/* Add Block Modal (Matching Littly) */}
       <AddBlockModal
