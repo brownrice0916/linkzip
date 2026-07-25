@@ -19,6 +19,7 @@ import {
 } from "react-icons/fa";
 import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
+import { DonationVisitorModal } from "./DonationVisitorModal";
 import clsx from "clsx";
 
 interface LinkTreePreviewProps {
@@ -89,6 +90,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const isPublic = props.isPublic || false;
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
   const isColor = templateType === "color";
   const {
     buttonStyle = "solid",
@@ -656,6 +658,46 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
               const isNone = block.thumbnailType === "none";
               const IconComp = getLinkIcon(block.iconName);
 
+              if (block.type === 'donation') {
+                return (
+                  <button
+                    key={block.id}
+                    type="button"
+                    onClick={() => setActiveDonationBlock(block)}
+                    className={buttonClass}
+                    style={customButtonStyle}
+                  >
+                    {!isNone && (
+                      <div
+                        className={clsx(
+                          "w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
+                          templateValue.startsWith("neo-")
+                            ? "bg-[#E54D26] text-white border-2 border-black font-bold"
+                            : "bg-[#E54D26]/10 text-[#E54D26]"
+                        )}
+                      >
+                        {isImage && block.icon ? (
+                          <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <IconComp className="w-5 h-5 opacity-90" />
+                        )}
+                      </div>
+                    )}
+                    <span className="flex-1 text-center font-bold text-[15px]">
+                      {block.donationConfig?.buttonText || block.donationConfig?.mainText || block.title || "donation"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenShareModal(e, block)}
+                      className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
+                      title="Share link"
+                    >
+                      <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
+                    </button>
+                  </button>
+                );
+              }
+
               const isGuestbookBlock = 
                 block.iconName === 'pen-tool' || 
                 block.title?.includes('방명록') || 
@@ -949,6 +991,16 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Visitor Donation Modal */}
+      {activeDonationBlock && (
+        <DonationVisitorModal
+          isOpen={!!activeDonationBlock}
+          onClose={() => setActiveDonationBlock(null)}
+          donationConfig={activeDonationBlock.donationConfig}
+          creatorName={profile.name || profile.username || '크리에이터'}
+        />
       )}
     </>
   );

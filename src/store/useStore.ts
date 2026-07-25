@@ -6,9 +6,23 @@ export interface SocialLink {
   url?: string;
 }
 
+export interface DonationConfig {
+  mainText: string;
+  detailText?: string;
+  minAmount: number;
+  buttonText: string;
+  imageUrl?: string;
+  accountConnected?: boolean;
+  accountType?: 'personal' | 'corporate';
+  idNumber?: string;
+  bankName?: string;
+  accountOwnerName?: string;
+  accountNumber?: string;
+}
+
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection';
+  type?: 'link' | 'collection' | 'donation';
   title: string;
   url?: string;
   layout?: 'list' | 'grid';
@@ -17,6 +31,7 @@ export interface CustomLink {
   icon?: string; // image thumbnail URL
   thumbnailType?: 'image' | 'icon' | 'none'; // thumbnail mode
   iconName?: string; // selected icon key e.g. 'link', 'globe', 'instagram', etc.
+  donationConfig?: DonationConfig;
 }
 
 export interface UserProfile {

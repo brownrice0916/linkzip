@@ -27,7 +27,9 @@ import {
 import { ThumbnailModal } from './ThumbnailModal';
 import { SocialModal } from './SocialModal';
 import { AddBlockModal } from './AddBlockModal';
+import { ProfitAccountModal } from './ProfitAccountModal';
 import clsx from 'clsx';
+import type { DonationConfig } from '../../store/useStore';
 
 const getSocialIconComp = (platform: string) => {
   switch (platform) {
@@ -471,6 +473,167 @@ const LinksEditor = () => {
     );
   };
 
+  const [activeProfitAccountLink, setActiveProfitAccountLink] = useState<CustomLink | null>(null);
+
+  const renderDonationCard = (link: CustomLink) => {
+    const config = link.donationConfig || {
+      mainText: 'Please Donation!',
+      detailText: 'leave additional comments',
+      minAmount: 3000,
+      buttonText: 'donation',
+      accountConnected: false
+    };
+
+    const updateConfig = (updates: Partial<DonationConfig>) => {
+      const newConfig = { ...config, ...updates };
+      updateCustomLink(link.id, {
+        title: newConfig.mainText || link.title,
+        donationConfig: newConfig
+      });
+    };
+
+    return (
+      <div 
+        key={link.id}
+        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+      >
+        {/* Header Row: Toggle, Title, Info, Controls */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            {/* ON/OFF Switch */}
+            <button
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+              )}
+            >
+              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                {link.isVisible !== false ? "ON" : "OFF"}
+              </span>
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
+                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            {/* Donation Title with (i) Badge */}
+            <div className="flex items-center gap-1.5 font-black text-base text-gray-900">
+              <span>Donation</span>
+              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px] font-serif cursor-pointer" title="Donation Block Info">i</span>
+            </div>
+          </div>
+
+          {/* Right Controls: highlight, reservation, menu, delete */}
+          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
+              <span>highlight</span>
+              <span className="text-gray-900">★</span>
+            </button>
+
+            <button className="flex items-center gap-1 hover:text-black transition cursor-pointer">
+              <span>reservation</span>
+              <span className="text-gray-900">🕒</span>
+            </button>
+
+            <button 
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              title="Delete block"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Inputs */}
+
+        {/* 1. Main Text + Image Button */}
+        <div className="space-y-1">
+          <label className="block text-xs font-bold text-gray-600">main text<span className="text-red-500">*</span></label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={config.mainText}
+              onChange={(e) => updateConfig({ mainText: e.target.value })}
+              placeholder="Please Donation!"
+              className="flex-1 p-3.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+            />
+            <button
+              onClick={() => setActiveThumbnailLink(link)}
+              className="w-16 bg-[#8C9AA8] hover:bg-gray-600 text-white rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer shrink-0"
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span className="text-[9px] font-bold">image</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Detail Text */}
+        <div className="space-y-1">
+          <label className="block text-xs font-bold text-gray-600">detail text</label>
+          <input
+            type="text"
+            value={config.detailText || ''}
+            onChange={(e) => updateConfig({ detailText: e.target.value })}
+            placeholder="leave additional comments"
+            className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+          />
+        </div>
+
+        {/* 3. Minimum Amount & Text on the Button Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-gray-600">Minimum amount<span className="text-red-500">*</span></label>
+            <div className="relative flex items-center">
+              <input
+                type="number"
+                value={config.minAmount}
+                onChange={(e) => updateConfig({ minAmount: Number(e.target.value) })}
+                step={1000}
+                className="w-full p-3.5 pr-14 border border-gray-300 rounded-xl text-xs font-extrabold text-gray-900 focus:ring-2 focus:ring-black"
+              />
+              <span className="absolute right-3 text-xs font-black text-gray-900 pointer-events-none">KRW</span>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-gray-600">Text on the button</label>
+            <input
+              type="text"
+              value={config.buttonText}
+              onChange={(e) => updateConfig({ buttonText: e.target.value })}
+              placeholder="donation"
+              className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+            />
+          </div>
+        </div>
+
+        {/* 4. Account Connection Row */}
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-gray-600">Account connection<span className="text-red-500">*</span></label>
+            <span className={clsx("text-xs font-bold flex items-center gap-1", config.accountConnected ? "text-emerald-600" : "text-[#2563EB]")}>
+              {config.accountConnected ? "✓ Account connected" : "❗Account connection is required"}
+            </span>
+          </div>
+
+          {/* Register Profit Account Button */}
+          <button
+            type="button"
+            onClick={() => setActiveProfitAccountLink(link)}
+            className="w-full py-4 bg-[#E54D26] hover:bg-[#D43D17] text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md tracking-wide"
+          >
+            + Register a profit account
+          </button>
+        </div>
+
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
@@ -544,6 +707,9 @@ const LinksEditor = () => {
           if (block.type === 'collection') {
             return renderCollection(block);
           }
+          if (block.type === 'donation') {
+            return renderDonationCard(block);
+          }
           return renderLinkItem(block);
         })}
       </div>
@@ -570,6 +736,30 @@ const LinksEditor = () => {
         onClose={() => setIsAddBlockModalOpen(false)}
         onSelectBlock={handleSelectBlockType}
       />
+
+      {/* Profit Account Management Modal */}
+      {activeProfitAccountLink && (
+        <ProfitAccountModal
+          isOpen={!!activeProfitAccountLink}
+          onClose={() => setActiveProfitAccountLink(null)}
+          initialData={activeProfitAccountLink.donationConfig}
+          onSave={(accountData) => {
+            const currentConfig = activeProfitAccountLink.donationConfig || {
+              mainText: 'Please Donation!',
+              detailText: 'leave additional comments',
+              minAmount: 3000,
+              buttonText: 'donation'
+            };
+            updateCustomLink(activeProfitAccountLink.id, {
+              donationConfig: {
+                ...currentConfig,
+                ...accountData
+              }
+            });
+            setActiveProfitAccountLink(null);
+          }}
+        />
+      )}
 
       {/* Thumbnail Editor Modal */}
       {activeThumbnailLink && (
