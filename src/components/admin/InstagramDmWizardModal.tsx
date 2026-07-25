@@ -305,10 +305,14 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
                     type="text"
                     value={verificationCode}
                     onChange={(e) => setVerificationCode(e.target.value)}
-                    placeholder="Enter 6-digit code"
+                    placeholder="123456"
                     maxLength={6}
                     className="w-full px-4 py-3 rounded-2xl border border-gray-300 text-base font-mono font-bold tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                   />
+                </div>
+
+                <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100 text-[11px] text-blue-700 font-semibold leading-relaxed">
+                  💡 <b>테스트 안내:</b> 실제로 SMS 문자를 기다리실 필요 없이 아무 6자리 숫자를 입력하거나 바로 <b>[Continue]</b> 버튼을 누르시면 다음 <b>[권한 허용]</b> 단계로 진행됩니다!
                 </div>
 
                 <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-700">
@@ -329,10 +333,13 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
                     Continue
                   </button>
                   <button
-                    onClick={() => alert('인증 코드가 이메일로 다시 발송되었습니다.')}
+                    onClick={() => {
+                      setVerificationCode('123456');
+                      alert('인증 코드(123456)가 테스트용으로 자동 입력되었습니다.');
+                    }}
                     className="w-full py-3 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-bold text-xs rounded-full transition cursor-pointer"
                   >
-                    Try another way
+                    Try another way (테스트 코드 자동입력)
                   </button>
                 </div>
               </div>
