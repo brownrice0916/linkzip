@@ -31,29 +31,66 @@ const banks = [
   'SC제일은행'
 ];
 
+// Checksum validation for Korean Resident Registration Number (RRN)
+const isValidRRN = (rrn: string): boolean => {
+  if (rrn.length === 6) {
+    const month = parseInt(rrn.substring(2, 4), 10);
+    const day = parseInt(rrn.substring(4, 6), 10);
+    return month >= 1 && month <= 12 && day >= 1 && day <= 31;
+  }
+  if (rrn.length !== 13) return false;
+  const weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(rrn[i], 10) * weights[i];
+  }
+  const check = (11 - (sum % 11)) % 10;
+  return check === parseInt(rrn[12], 10);
+};
+
+// Checksum validation for Korean Business Registration Number (BRN)
+const isValidBRN = (brn: string): boolean => {
+  if (brn.length !== 10) return false;
+  const weights = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(brn[i], 10) * weights[i];
+  }
+  sum += Math.floor((parseInt(brn[8], 10) * 5) / 10);
+  const check = (10 - (sum % 10)) % 10;
+  return check === parseInt(brn[9], 10);
+};
+
 const validateIdentityNumber = (idNum: string, type: 'personal' | 'corporate'): { valid: boolean; error?: string } => {
   const cleanId = idNum.replace(/[^0-9]/g, '');
 
   if (!cleanId) {
-    return { valid: false, error: 'ID number(주민등록번호/사업자번호)를 먼저 입력해야 계좌 인증이 가능합니다.' };
+    return { valid: false, error: 'ID number(주민등록번호/사업자번호)를 입력해 주세요.' };
   }
 
   if (type === 'personal') {
-    // Requires valid 6-digit birthdate (YYMMDD), 13-digit RRN, or 10-digit BRN
-    if (cleanId.length !== 6 && cleanId.length !== 13 && cleanId.length !== 10) {
-      return { valid: false, error: '올바른 주민등록번호(6자리/13자리) 또는 사업자번호(10자리)를 입력해 주세요.' };
-    }
-
     if (cleanId.length === 6) {
-      const month = parseInt(cleanId.substring(2, 4), 10);
-      const day = parseInt(cleanId.substring(4, 6), 10);
-      if (month < 1 || month > 12 || day < 1 || day > 31) {
-        return { valid: false, error: '유효하지 않은 생년월일(월/일) 형식입니다.' };
+      if (!isValidRRN(cleanId)) {
+        return { valid: false, error: '생년월일(YYMMDD 6자리) 날짜 형식이 올바르지 않습니다.' };
       }
+    } else if (cleanId.length === 13) {
+      if (!isValidRRN(cleanId)) {
+        return { valid: false, error: '유효하지 않은 주민등록번호(13자리) 검증 체크섬 오류입니다.' };
+      }
+    } else if (cleanId.length === 10) {
+      if (!isValidBRN(cleanId)) {
+        return { valid: false, error: '유효하지 않은 사업자등록번호(10자리) 번호 오류입니다.' };
+      }
+    } else {
+      return { valid: false, error: '주민등록번호(6자리/13자리) 또는 사업자번호(10자리)를 정확히 입력해 주세요.' };
     }
   } else {
-    if (cleanId.length !== 10 && cleanId.length !== 13) {
-      return { valid: false, error: '올바른 법인/사업자등록번호(10자리/13자리)를 입력해 주세요.' };
+    if (cleanId.length === 10) {
+      if (!isValidBRN(cleanId)) {
+        return { valid: false, error: '유효하지 않은 법인/사업자등록번호(10자리)입니다.' };
+      }
+    } else if (cleanId.length !== 13) {
+      return { valid: false, error: '올바른 법인등록번호(10자리/13자리)를 입력해 주세요.' };
     }
   }
 
@@ -82,18 +119,22 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   const PORTONE_API_SECRET = "7cQloKuZDGCiSFg4ccvhkGCpKpVbMR8d6dzkmzC1LrJetp6q5KzT2stIuGzKs5skOTvEJZPGWR2SULH6";
 
   const handleCertify = async () => {
-    // 1. ID Number Strict Check
+    // 1. ID Number Strict Check sum
     const idValidation = validateIdentityNumber(idNumber, accountType);
     if (!idValidation.valid) {
       setIsCertified(false);
-      alert(`❌ ID Number 인증 실패\n${idValidation.error}`);
+      alert(`❌ ID Number 검증 실패\n${idValidation.error}`);
       return;
     }
 
-    // 2. Account Number Check
-    if (!accountNumber.trim() || accountNumber.replace(/[^0-9]/g, '').length < 8) {
+    // 2. Account Number Pattern Check
+    const cleanAccount = accountNumber.replace(/[^0-9]/g, '');
+    const isRepeatedDigits = /^(\d)\1+$/.test(cleanAccount);
+    const isSequentialDigits = cleanAccount === '12345678' || cleanAccount === '123456789' || cleanAccount === '1234567890';
+
+    if (!cleanAccount || cleanAccount.length < 10 || isRepeatedDigits || isSequentialDigits) {
       setIsCertified(false);
-      alert('❌ 계좌번호 인증 실패\n유효한 계좌번호 숫자(8자리 이상)를 입력해 주세요.');
+      alert('❌ 계좌번호 인증 실패\n유효하지 않은 계좌번호입니다. (10~16자리 실제 계좌번호를 입력해 주세요.)');
       return;
     }
 
@@ -109,26 +150,24 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
         },
         body: JSON.stringify({
           bank: bankName,
-          accountNumber: accountNumber.replace(/-/g, ''),
+          accountNumber: cleanAccount,
           identityNumber: idNumber
         })
       }).catch(() => null);
 
       if (response && response.ok) {
         const data = await response.json();
-        setAccountOwnerName(data.holderName || accountOwnerName || '황현미 (PortOne 실명인증완료)');
+        setAccountOwnerName(data.holderName || accountOwnerName || '황현미 (실명인증완료)');
+        setIsCertified(true);
+        alert('✅ 포트원(PortOne) V2 금융망 예금주 실명 인증이 성공했습니다!');
       } else {
-        // Fallback for CORS/Client-side direct fetch if blocked by browser CORS policy
-        setAccountOwnerName(accountOwnerName || '황현미 (포트원 실명인증완료)');
+        // If PortOne API responds with error or CORS restriction, fail verification if ID / account mismatch
+        setIsCertified(false);
+        alert('❌ 금융망 계좌 실명 인증 실패\n입력하신 ID Number와 계좌번호/예금주 정보가 실명 금융 망에서 일치하지 않거나 존재하지 않는 계좌입니다.');
       }
-
-      setIsCertified(true);
-      alert('✅ 포트원(PortOne) V2 API Key가 적용되어 계좌 실명 인증이 완료되었습니다!');
     } catch (err) {
-      setIsCertified(true);
-      if (!accountOwnerName) {
-        setAccountOwnerName('황현미 (포트원 실명인증완료)');
-      }
+      setIsCertified(false);
+      alert('❌ 계좌 인증 실패: 입력 정보를 다시 확인해 주세요.');
     } finally {
       setCertifying(false);
     }
