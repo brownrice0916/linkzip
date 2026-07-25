@@ -22,11 +22,20 @@ const Landing = () => {
       } else {
         navigate("/onboarding/template");
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore normal user cancellations (closing popup or double clicking)
+      if (
+        error?.code === "auth/popup-closed-by-user" ||
+        error?.code === "auth/cancelled-popup-request"
+      ) {
+        console.log("Google Sign-In popup was closed or cancelled by user.");
+        return;
+      }
+
       console.error("Login failed", error);
       alert(
         `로그인 에러: ${
-          (error as any).message
+          error?.message || "알 수 없는 오류가 발생했습니다."
         }\n\n1. Firebase Console에서 Google 로그인이 활성화되어 있는지 확인하세요.\n2. API 키가 정확한지 확인하세요.`
       );
     }
