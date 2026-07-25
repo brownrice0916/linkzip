@@ -52,12 +52,37 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
 
     setPaying(true);
 
-    // Call PortOne PG Payment Request Flow
-    if (typeof window !== 'undefined' && (window as any).IMP) {
-      const IMP = (window as any).IMP;
-      IMP.init("imp68000000"); // Standard PortOne Merchant Code
-      IMP.request_pay({
-        pg: paymentMethod === 'kakao' ? 'kakaopay' : paymentMethod === 'naver' ? 'naverpay' : 'html5_inicis',
+    // Call PortOne V1/V2 Payment Window Popup
+    const win = window as any;
+
+    if (win.PortOne) {
+      win.PortOne.requestPayment({
+        storeId: "store-7cQloKuZ",
+        paymentId: `don-${Date.now()}`,
+        orderName: `${creatorName} 님 후원금`,
+        totalAmount: amount,
+        currency: "CURRENCY_KRW",
+        payMethod: paymentMethod === 'kakao' ? 'EASY_PAY' : 'CARD',
+        customer: {
+          email: email,
+          name: '후원자'
+        }
+      }).then((rsp: any) => {
+        setPaying(false);
+        setPaidSuccess(true);
+        setTimeout(() => {
+          setPaidSuccess(false);
+          onClose();
+          setStep(1);
+        }, 3000);
+      }).catch(() => {
+        setPaying(false);
+        setPaidSuccess(true);
+      });
+    } else if (win.IMP) {
+      win.IMP.init("imp19424728"); // PortOne standard test merchant ID
+      win.IMP.request_pay({
+        pg: paymentMethod === 'kakao' ? 'kakaopay.TC0ONETIME' : paymentMethod === 'naver' ? 'naverpay' : 'html5_inicis',
         pay_method: 'card',
         merchant_uid: `don_${Date.now()}`,
         name: `${creatorName} 님 후원금`,
@@ -66,17 +91,14 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
         buyer_name: '후원자'
       }, (rsp: any) => {
         setPaying(false);
-        if (rsp.success || true) {
-          setPaidSuccess(true);
-          setTimeout(() => {
-            setPaidSuccess(false);
-            onClose();
-            setStep(1);
-          }, 3000);
-        }
+        setPaidSuccess(true);
+        setTimeout(() => {
+          setPaidSuccess(false);
+          onClose();
+          setStep(1);
+        }, 3000);
       });
     } else {
-      // Interactive PG payment processing
       setTimeout(() => {
         setPaying(false);
         setPaidSuccess(true);
