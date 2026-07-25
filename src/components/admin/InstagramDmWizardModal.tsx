@@ -17,7 +17,8 @@ import {
   Plus,
   RotateCw,
   LogOut,
-  UserPlus
+  UserPlus,
+  Trash2
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { InstagramDmRuleCreateWizardModal } from './InstagramDmRuleCreateWizardModal';
@@ -36,15 +37,15 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
 }) => {
   const state = useStore();
 
-  // Step 1: Showcase Intro, Step 2: Link Account Modal, Step 3: SMS Verification, Step 4: Permissions, Step 5: Complete
+  // Step 1: Main View, Step 2: Link Account Modal, Step 3: SMS Verification, Step 4: Permissions, Step 5: Complete
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [verificationCode, setVerificationCode] = useState('');
   const [trustDevice, setTrustDevice] = useState(true);
 
-  // Account Dropdown State (Matching Screenshot 5)
+  // Account Dropdown State
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
 
-  // Create Rule 5-Step Wizard Modal State (Matching Screenshots 2, 3, 4)
+  // Create Rule 5-Step Wizard Modal State
   const [isCreateRuleWizardOpen, setIsCreateRuleWizardOpen] = useState(false);
 
   // Permission Toggles (Step 4)
@@ -71,16 +72,14 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
   const handleStep4Complete = () => {
     const defaultAccount = 'grain.toon';
     state.setInstagramAccount(defaultAccount);
-    setWizardStep(5);
+    setWizardStep(1); // Stay in DM Automation dashboard view!
   };
 
   const handleCreateAutomationRule = () => {
     setIsAccountDropdownOpen(false);
     if (!state.instagramAccount) {
-      // 미연동 상태일 때는 계정 연동 단계(Step 2 모달)를 먼저 실행!
       setWizardStep(2);
     } else {
-      // 이미 연동 완료된 상태일 때만 규칙 생성 모달 실행!
       setIsCreateRuleWizardOpen(true);
     }
   };
@@ -105,7 +104,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Connected Account Dropdown Badge (Matching Screenshot 5) */}
+            {/* Connected Account Dropdown Badge (Matching User Screenshot) */}
             {state.instagramAccount ? (
               <div className="relative">
                 <button
@@ -121,7 +120,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
                   <ChevronDown className={clsx("w-3.5 h-3.5 text-gray-500 transition-transform duration-200", isAccountDropdownOpen ? "rotate-180" : "rotate-0")} />
                 </button>
 
-                {/* Account Dropdown Menu Popup (Matching Screenshot 5) */}
+                {/* Account Dropdown Menu Popup (Matching User Screenshot) */}
                 {isAccountDropdownOpen && (
                   <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-in fade-in zoom-in-95 font-sans">
                     {/* Account Item */}
@@ -186,125 +185,253 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
         {/* Main Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 relative">
 
-          {/* Banner Section */}
-          <div className="text-center space-y-3 pt-2">
-            <div className="inline-block px-3 py-1 bg-black text-white text-xs font-bold rounded-lg shadow-sm">
-              100% 무료
-            </div>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-              DM 자동화 1분이면 셋팅 끝!
-            </h2>
-          </div>
-
-          {/* 3 Showcase Cards Grid (Matching Screenshot 1) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            
-            {/* Card 1 */}
-            <div className="bg-[#1E1B4B] rounded-3xl p-6 text-white flex flex-col justify-between space-y-6 shadow-xl relative overflow-hidden">
-              <div className="bg-white text-black p-4 rounded-2xl space-y-2 shadow-md">
-                <div className="w-16 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto border border-indigo-200">
-                  <span className="text-xl">💻</span>
-                </div>
-                <div className="text-xs font-bold text-gray-900 text-left pt-2">
-                  <span className="font-extrabold text-indigo-600">littly</span> 댓글에 <span className="bg-yellow-200 px-1 rounded">“파일”</span>을 적어 주시면 자료를 전달 드려요!
-                </div>
+          {state.instagramAccount ? (
+            /* =========================================================
+               CONNECTING STATE: DM AUTOMATION DASHBOARD TABLE VIEW (Matching User Screenshot)
+               ========================================================= */
+            <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200 pt-2">
+              
+              {/* Table Column Headers */}
+              <div className="grid grid-cols-12 gap-4 px-6 text-[11px] font-bold text-gray-400 border-b border-gray-300 pb-3 items-center">
+                <div className="col-span-1">No</div>
+                <div className="col-span-2">Content</div>
+                <div className="col-span-4">Message</div>
+                <div className="col-span-1 text-center">status</div>
+                <div className="col-span-1 text-center">Sent</div>
+                <div className="col-span-1 text-center">Read</div>
+                <div className="col-span-1 text-center">Clicked</div>
+                <div className="col-span-1 text-right">edit / delete</div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
-                  1
-                </div>
-                <p className="text-xs sm:text-sm font-bold leading-snug">
-                  특정 댓글 or 전체댓글 셋팅만 해주면 준비는 끝 !!
-                </p>
-              </div>
-            </div>
-
-            {/* Card 2 */}
-            <div className="bg-[#1E1B4B] rounded-3xl p-6 text-white flex flex-col justify-between space-y-6 shadow-xl relative overflow-hidden">
-              <div className="bg-white text-black p-4 rounded-2xl space-y-3 shadow-md text-xs">
-                <div className="flex items-start gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gray-300 shrink-0" />
-                  <div>
-                    <span className="font-bold">파일 주세요~</span>
-                    <span className="text-[10px] text-gray-400 block">7주 좋아요 1개 답글 달기</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2 pl-4">
-                  <div className="w-6 h-6 rounded-full bg-red-400 shrink-0" />
-                  <span className="font-bold text-gray-800">전달드렸어요! 감사해요 ❤️</span>
-                </div>
-
-                <div className="flex items-start gap-2 pt-1">
-                  <div className="w-6 h-6 rounded-full bg-gray-300 shrink-0" />
-                  <div>
-                    <span className="font-bold">파일 받고싶습니다</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2 pl-4">
-                  <div className="w-6 h-6 rounded-full bg-red-400 shrink-0" />
-                  <span className="font-bold text-gray-800">항상 응원해요 &gt;&lt;💕</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
-                  2
-                </div>
-                <p className="text-xs sm:text-sm font-bold leading-snug">
-                  알아서, 자동 답변을 랜덤으로 달아줘요 !!
-                </p>
-              </div>
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-[#1E1B4B] rounded-3xl p-6 text-white flex flex-col justify-between space-y-6 shadow-xl relative overflow-hidden">
-              <div className="bg-white text-black p-4 rounded-2xl space-y-3 shadow-md text-xs">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-gray-300 shrink-0" />
-                    <span className="font-bold">customer</span>
-                  </div>
-                  <span className="text-[10px] text-gray-400">고객님</span>
-                </div>
-
-                <div className="bg-gray-100 p-3 rounded-xl space-y-2">
-                  <p className="text-[11px] text-gray-700 leading-tight">
-                    🥰안녕하세요~!! 도움되실 파일과 정보들을 전달드립니다 고객님의 꿈을 응원합니다.
-                  </p>
-                  <button className="w-full py-1.5 bg-white text-blue-600 text-[11px] font-bold rounded-lg border border-gray-200 flex items-center justify-center gap-1">
-                    정보 바로 보기 🏞️
+              {/* Table Data Rows */}
+              {state.dmRules.length === 0 ? (
+                <div className="bg-white rounded-3xl p-12 text-center space-y-3 shadow-xs border border-gray-200">
+                  <Bot className="w-10 h-10 text-gray-300 mx-auto" />
+                  <p className="text-xs text-gray-500 font-bold">아직 등록된 DM 자동화 규칙이 없습니다.</p>
+                  <button
+                    onClick={handleCreateAutomationRule}
+                    className="px-5 py-2.5 bg-[#4285F4] hover:bg-[#3367D6] text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    + Create automation for free
                   </button>
                 </div>
-              </div>
+              ) : (
+                state.dmRules.map((rule, idx) => (
+                  <div 
+                    key={rule.id}
+                    className="bg-white rounded-2xl p-5 border border-gray-200 shadow-2xs grid grid-cols-12 gap-4 items-center transition hover:shadow-md"
+                  >
+                    {/* 1. No */}
+                    <div className="col-span-1 text-sm font-black text-gray-900">
+                      {idx + 1}
+                    </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
-                  3
-                </div>
-                <p className="text-xs sm:text-sm font-bold leading-snug">
-                  동시에, 자동 DM 발송까지 !! <br />(링크는 최대 3개까지)
-                </p>
-              </div>
+                    {/* 2. Content Post Thumbnail */}
+                    <div className="col-span-2">
+                      <div className="w-24 h-24 rounded-2xl overflow-hidden border border-gray-200 relative bg-gradient-to-tr from-purple-600 to-indigo-600 shadow-2xs">
+                        <img 
+                          src="https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80" 
+                          alt="post"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                        />
+                        <div className="absolute inset-x-0 bottom-0 p-1.5 bg-black/70 text-[9px] text-white font-bold truncate">
+                          좋소 IT 회사에 CC가 없는 이유
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Message Details */}
+                    <div className="col-span-4 space-y-1 text-xs text-left">
+                      <p className="font-extrabold text-gray-900 text-xs">Send immediately</p>
+                      <p className="font-bold text-gray-800">
+                        Keywords: <span className="font-extrabold text-indigo-600">{rule.keyword}</span>
+                      </p>
+                      <p className="font-semibold text-gray-700 truncate">
+                        DM : {rule.responseMessage}
+                      </p>
+                      <p className="font-semibold text-gray-700 truncate">
+                        Link : <span className="text-blue-600 underline">{rule.targetLinkUrl}</span>
+                      </p>
+                      <div className="flex gap-3 text-[11px] font-bold text-gray-500 pt-0.5">
+                        <span>Auto reply : <span className="text-emerald-600">ON</span></span>
+                        <span>Follow request : <span className="text-gray-400">OFF</span></span>
+                      </div>
+                    </div>
+
+                    {/* 4. Status Toggle */}
+                    <div className="col-span-1 text-center">
+                      <button
+                        onClick={() => state.updateDMRule(rule.id, { isActive: !rule.isActive })}
+                        className={clsx(
+                          "px-3 py-1 rounded-full text-[11px] font-extrabold transition cursor-pointer shadow-2xs inline-flex items-center gap-1",
+                          rule.isActive ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500"
+                        )}
+                      >
+                        {rule.isActive ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+
+                    {/* 5. Sent */}
+                    <div className="col-span-1 text-center font-extrabold text-sm text-gray-800">
+                      0
+                    </div>
+
+                    {/* 6. Read */}
+                    <div className="col-span-1 text-center font-extrabold text-sm text-gray-800">
+                      0
+                    </div>
+
+                    {/* 7. Clicked */}
+                    <div className="col-span-1 text-center font-extrabold text-sm text-gray-800">
+                      0
+                    </div>
+
+                    {/* 8. Actions (edit / delete) */}
+                    <div className="col-span-1 flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => setIsCreateRuleWizardOpen(true)}
+                        className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-100 transition cursor-pointer shadow-2xs"
+                      >
+                        edit
+                      </button>
+                      <button
+                        onClick={() => state.removeDMRule(rule.id)}
+                        className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
+                        title="delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
+          ) : (
+            /* =========================================================
+               UNLINKED STATE: INTRO SHOWCASE CARDS (Matching Screenshot 1)
+               ========================================================= */
+            <>
+              {/* Banner Section */}
+              <div className="text-center space-y-3 pt-2">
+                <div className="inline-block px-3 py-1 bg-black text-white text-xs font-bold rounded-lg shadow-sm">
+                  100% 무료
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+                  DM 자동화 1분이면 셋팅 끝!
+                </h2>
+              </div>
 
-          </div>
+              {/* 3 Showcase Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                {/* Card 1 */}
+                <div className="bg-[#1E1B4B] rounded-3xl p-6 text-white flex flex-col justify-between space-y-6 shadow-xl relative overflow-hidden">
+                  <div className="bg-white text-black p-4 rounded-2xl space-y-2 shadow-md">
+                    <div className="w-16 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto border border-indigo-200">
+                      <span className="text-xl">💻</span>
+                    </div>
+                    <div className="text-xs font-bold text-gray-900 text-left pt-2">
+                      <span className="font-extrabold text-indigo-600">littly</span> 댓글에 <span className="bg-yellow-200 px-1 rounded">“파일”</span>을 적어 주시면 자료를 전달 드려요!
+                    </div>
+                  </div>
 
-          {/* Bottom Q&A Support Section */}
-          <div className="text-center pt-6 space-y-3">
-            <p className="text-xs text-gray-500 font-medium">
-              Having trouble with Instagram DM Automation? <br />
-              Try solving your issue in the Instagram Q&A!
-            </p>
-            <button 
-              onClick={() => window.open('https://help.instagram.com', '_blank')}
-              className="px-6 py-2.5 bg-black hover:bg-gray-800 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer"
-            >
-              Go to Q&A
-            </button>
-          </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
+                      1
+                    </div>
+                    <p className="text-xs sm:text-sm font-bold leading-snug">
+                      특정 댓글 or 전체댓글 셋팅만 해주면 준비는 끝 !!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card 2 */}
+                <div className="bg-[#1E1B4B] rounded-3xl p-6 text-white flex flex-col justify-between space-y-6 shadow-xl relative overflow-hidden">
+                  <div className="bg-white text-black p-4 rounded-2xl space-y-3 shadow-md text-xs">
+                    <div className="flex items-start gap-2">
+                      <div className="w-6 h-6 rounded-full bg-gray-300 shrink-0" />
+                      <div>
+                        <span className="font-bold">파일 주세요~</span>
+                        <span className="text-[10px] text-gray-400 block">7주 좋아요 1개 답글 달기</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 pl-4">
+                      <div className="w-6 h-6 rounded-full bg-red-400 shrink-0" />
+                      <span className="font-bold text-gray-800">전달드렸어요! 감사해요 ❤️</span>
+                    </div>
+
+                    <div className="flex items-start gap-2 pt-1">
+                      <div className="w-6 h-6 rounded-full bg-gray-300 shrink-0" />
+                      <div>
+                        <span className="font-bold">파일 받고싶습니다</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 pl-4">
+                      <div className="w-6 h-6 rounded-full bg-red-400 shrink-0" />
+                      <span className="font-bold text-gray-800">항상 응원해요 &gt;&lt;💕</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
+                      2
+                    </div>
+                    <p className="text-xs sm:text-sm font-bold leading-snug">
+                      알아서, 자동 답변을 랜덤으로 달아줘요 !!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card 3 */}
+                <div className="bg-[#1E1B4B] rounded-3xl p-6 text-white flex flex-col justify-between space-y-6 shadow-xl relative overflow-hidden">
+                  <div className="bg-white text-black p-4 rounded-2xl space-y-3 shadow-md text-xs">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-gray-300 shrink-0" />
+                        <span className="font-bold">customer</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">고객님</span>
+                    </div>
+
+                    <div className="bg-gray-100 p-3 rounded-xl space-y-2">
+                      <p className="text-[11px] text-gray-700 leading-tight">
+                        🥰안녕하세요~!! 도움되실 파일과 정보들을 전달드립니다 고객님의 꿈을 응원합니다.
+                      </p>
+                      <button className="w-full py-1.5 bg-white text-blue-600 text-[11px] font-bold rounded-lg border border-gray-200 flex items-center justify-center gap-1">
+                        정보 바로 보기 🏞️
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
+                      3
+                    </div>
+                    <p className="text-xs sm:text-sm font-bold leading-snug">
+                      동시에, 자동 DM 발송까지 !! <br />(링크는 최대 3개까지)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Q&A Support Section */}
+              <div className="text-center pt-6 space-y-3">
+                <p className="text-xs text-gray-500 font-medium">
+                  Having trouble with Instagram DM Automation? <br />
+                  Try solving your issue in the Instagram Q&A!
+                </p>
+                <button 
+                  onClick={() => window.open('https://help.instagram.com', '_blank')}
+                  className="px-6 py-2.5 bg-black hover:bg-gray-800 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer"
+                >
+                  Go to Q&A
+                </button>
+              </div>
+            </>
+          )}
 
         </div>
 
@@ -417,11 +544,10 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
           </div>
         )}
 
-        {/* STEP 4 MODAL OVERLAY: Instagram Permissions Allow (Screenshot 4) */}
+        {/* STEP 4 MODAL OVERLAY: Instagram Permissions Allow */}
         {wizardStep === 4 && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl p-8 max-w-md w-full space-y-6 shadow-2xl animate-in fade-in zoom-in-95 font-sans text-left border border-gray-100">
-              {/* Instagram Script Logo Header */}
               <div className="text-center pb-2 border-b border-gray-100">
                 <span className="text-3xl font-serif italic font-bold tracking-tight text-gray-900">
                   Instagram
@@ -502,34 +628,6 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
                   Cancel
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 5 MODAL OVERLAY: Connected Complete State */}
-        {wizardStep === 5 && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl animate-in fade-in zoom-in-95 font-sans relative border border-gray-100">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200 shadow-md">
-                <Check className="w-10 h-10" />
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-gray-900">인스타그램 연동 완료!</h3>
-                <p className="text-xs text-gray-500 font-medium">
-                  <span className="font-bold text-indigo-600">grain.toon</span> 계정 권한 연동이 성공적으로 완료되었습니다.
-                </p>
-              </div>
-
-              <button
-                onClick={() => {
-                  setWizardStep(1);
-                  onClose();
-                }}
-                className="w-full py-4 bg-[#4285F4] hover:bg-[#3367D6] text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
-              >
-                확인
-              </button>
             </div>
           </div>
         )}
