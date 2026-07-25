@@ -6,9 +6,7 @@ import {
   Check, 
   Plus, 
   Info, 
-  Image as ImageIcon,
-  Sparkles,
-  MessageSquare
+  Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -47,17 +45,24 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
   const [keywordInput, setKeywordInput] = useState('');
   const [keywords, setKeywords] = useState<string[]>(['리포데이']);
 
-  // Step 3: Message & Buttons
-  const [message, setMessage] = useState('리포데이');
-  const [buttonCount, setButtonCount] = useState<0 | 1 | 2 | 3>(1);
-  const [buttonName, setButtonName] = useState('정보 바로 보기 🏞️');
-  const [buttonUrl, setButtonUrl] = useState(`https://linkzip.kr/${state.profile.username || 'preview'}`);
+  // Step 3: DM Message & Buttons
+  const [message, setMessage] = useState('');
+  const [buttonCount, setButtonCount] = useState<0 | 1 | 2 | 3>(3);
 
-  // Step 4: Random Comment Replies
+  // Step 4: Button Links Config (up to 3 buttons)
+  const [buttons, setButtons] = useState<Array<{ name: string; url: string }>>([
+    { name: 'ㄴㅇㄹㄹㅇㄴㄹ', url: 'https://www.naver.com' },
+    { name: '', url: '' },
+    { name: '', url: '' }
+  ]);
+  const [currentButtonIndex, setCurrentButtonIndex] = useState<number>(0);
+  const [urlMode, setUrlMode] = useState<'new' | 'blocks'>('new');
+
+  // Step 5: Comment Reply Option
+  const [wantCommentReply, setWantCommentReply] = useState<'no' | 'yes'>('no');
   const [commentReplies, setCommentReplies] = useState<string[]>([
     '전달드렸어요! 감사해요 ❤️',
-    '항상 응원해요 ><💕',
-    '정보 확인해보세요! 🚀'
+    '항상 응원해요 ><💕'
   ]);
   const [newReplyInput, setNewReplyInput] = useState('');
 
@@ -76,43 +81,71 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
     setKeywords(keywords.filter(k => k !== kw));
   };
 
-  const handleAddCommentReply = () => {
-    if (newReplyInput.trim() && !commentReplies.includes(newReplyInput.trim())) {
-      setCommentReplies([...commentReplies, newReplyInput.trim()]);
-      setNewReplyInput('');
+  const handleUpdateButtonName = (index: number, name: string) => {
+    const next = [...buttons];
+    next[index] = { ...next[index], name };
+    setButtons(next);
+  };
+
+  const handleUpdateButtonUrl = (index: number, url: string) => {
+    const next = [...buttons];
+    next[index] = { ...next[index], url };
+    setButtons(next);
+  };
+
+  const handleStep3Next = () => {
+    if (buttonCount === 0) {
+      setStep(5);
+    } else {
+      setCurrentButtonIndex(0);
+      setStep(4);
+    }
+  };
+
+  const handleStep4LinkNext = () => {
+    if (currentButtonIndex + 1 < buttonCount) {
+      setCurrentButtonIndex(currentButtonIndex + 1);
+    } else {
+      setStep(5);
     }
   };
 
   const handleSaveAutomationRule = () => {
     const mainKeyword = keywords[0] || '자동응답';
+    const mainButtonUrl = buttons[0]?.url || 'https://www.naver.com';
+
     const newRule: DMAutomationRule = {
       id: `rule-${Date.now()}`,
       keyword: mainKeyword,
       responseMessage: message || '안녕하세요! 요청하신 정보 링크입니다.',
-      targetLinkUrl: buttonUrl,
+      targetLinkUrl: mainButtonUrl,
       isActive: true
     };
 
     state.addDMRule(newRule);
-    alert('새 DM 자동화 규칙이 성공적으로 생성되었습니다!');
+    alert('DM 자동화 규칙이 성공적으로 저장되었습니다!');
     onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans">
-      <div className="bg-[#EDF2F7] rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 border border-gray-200">
+      <div className="bg-[#EDF2F7] rounded-3xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 border border-gray-200">
         
         {/* Header */}
         <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            {step > 1 && (
-              <button 
-                onClick={() => setStep((step - 1) as any)}
-                className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
+            <button 
+              onClick={() => {
+                if (step === 4 && currentButtonIndex > 0) {
+                  setCurrentButtonIndex(currentButtonIndex - 1);
+                } else if (step > 1) {
+                  setStep((step - 1) as any);
+                }
+              }}
+              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
             <h3 className="text-base font-extrabold text-gray-900">Create automation</h3>
           </div>
           <button 
@@ -137,7 +170,9 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#EDF2F7]">
 
-          {/* STEP 1 OF 5: Post Selection (Matching Screenshot 2) */}
+          {/* =========================================================
+             STEP 1 OF 5: Post Selection (Matching Screenshot 1)
+             ========================================================= */}
           {step === 1 && (
             <div className="space-y-4">
               <h4 className="text-sm font-extrabold text-gray-900">
@@ -146,7 +181,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
 
               {/* Radio Group */}
               <div className="space-y-2">
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-900">
                   <input
                     type="radio"
                     name="postType"
@@ -189,9 +224,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                         src={post.image} 
                         alt={post.title} 
                         className="w-full h-full object-cover relative z-0" 
-                        onError={(e) => {
-                          (e.currentTarget as HTMLElement).style.display = 'none';
-                        }}
+                        onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-between p-2.5 z-10 text-left">
                         <div className="flex justify-end">
@@ -212,7 +245,9 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* STEP 2 OF 5: Keyword Settings (Matching Screenshot 3) */}
+          {/* =========================================================
+             STEP 2 OF 5: Keyword Settings (Matching Screenshot 2)
+             ========================================================= */}
           {step === 2 && (
             <div className="space-y-5">
               <h4 className="text-sm font-extrabold text-gray-900">
@@ -246,9 +281,9 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
 
               {/* Keywords Tag Input */}
               {keywordMode === 'specific' && (
-                <div className="space-y-2 pt-2">
+                <div className="space-y-2 pt-2 text-left">
                   <label className="text-xs font-bold text-gray-700">Keywords<span className="text-red-500">*</span></label>
-                  <div className="bg-white p-3 rounded-2xl border border-gray-300 min-h-[70px] flex flex-wrap gap-2 items-center">
+                  <div className="bg-white p-3 rounded-2xl border border-gray-300 min-h-[60px] flex flex-wrap gap-2 items-center shadow-2xs">
                     {keywords.map((kw) => (
                       <span 
                         key={kw} 
@@ -269,8 +304,8 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                       value={keywordInput}
                       onChange={(e) => setKeywordInput(e.target.value)}
                       onKeyDown={handleAddKeyword}
-                      placeholder={keywords.length === 0 ? "Enter keyword (e.g. 리포데이)" : "Type & press Enter..."}
-                      className="flex-1 bg-transparent border-none text-xs font-bold focus:outline-none min-w-[120px]"
+                      placeholder={keywords.length === 0 ? "Enter keyword..." : ""}
+                      className="flex-1 bg-transparent border-none text-xs font-bold focus:outline-none min-w-[100px]"
                     />
                   </div>
                 </div>
@@ -278,167 +313,257 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* STEP 3 OF 5: Write DM Message & Buttons (Matching Screenshot 4) */}
+          {/* =========================================================
+             STEP 3 OF 5: Write DM Message & Button Count (Matching Screenshot 3)
+             ========================================================= */}
           {step === 3 && (
             <div className="space-y-5">
-              <h4 className="text-sm font-extrabold text-gray-900 flex items-center justify-between">
+              <h4 className="text-sm font-extrabold text-gray-900 flex items-center gap-1">
                 <span>Please write the Instagram message you want to send.</span>
                 <Info className="w-4 h-4 text-gray-400" />
               </h4>
 
-              {/* Live Preview Bubble Box */}
-              <div className="bg-white p-6 rounded-3xl border border-gray-200 flex items-start gap-3 shadow-xs">
-                <div className="w-10 h-10 rounded-full bg-amber-100 overflow-hidden border border-amber-300 shrink-0 flex items-center justify-center">
-                  <img src={state.profile.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"} alt="avatar" className="w-full h-full object-cover" />
+              {/* Live Preview Container (Matching Screenshot 3) */}
+              <div className="bg-white p-6 rounded-3xl border border-gray-200 flex items-end gap-3 shadow-2xs">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-amber-300 shrink-0 bg-amber-100 flex items-center justify-center">
+                  <img 
+                    src={state.profile.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"} 
+                    alt="avatar" 
+                    className="w-full h-full object-cover" 
+                  />
                 </div>
 
-                <div className="flex-1 space-y-2">
-                  <div className="bg-[#E5E7EB] p-4 rounded-2xl rounded-tl-xs text-xs font-semibold text-gray-900 shadow-2xs">
-                    {message || 'Please enter your message'}
-                  </div>
+                <div className="bg-[#E5E7EB] p-4 rounded-2xl rounded-bl-xs text-xs font-semibold text-gray-900 shadow-2xs flex-1 space-y-2">
+                  <p>{message || 'Please enter your message'}</p>
 
+                  {/* Render Button Slots based on buttonCount */}
                   {buttonCount > 0 && (
-                    <div className="bg-white p-3 rounded-2xl border border-gray-200 text-center text-xs font-bold text-gray-700 shadow-2xs">
-                      {buttonName || 'Please enter the button name'}
+                    <div className="space-y-1.5 pt-1">
+                      {Array.from({ length: buttonCount }).map((_, idx) => (
+                        <div 
+                          key={idx}
+                          className="bg-white py-2.5 px-4 rounded-xl text-center text-xs font-bold text-gray-400 border border-gray-100 shadow-2xs truncate"
+                        >
+                          {buttons[idx]?.name || 'Please enter the button name'}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Message Input */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-700">Message<span className="text-red-500">*</span></label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Enter message content"
-                  rows={3}
-                  className="w-full p-4 rounded-2xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
-                />
-              </div>
-
-              {/* Message buttons selector */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-700">Message buttons<span className="text-red-500">*</span></label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[0, 1, 2, 3].map((count) => (
-                    <button
-                      key={count}
-                      type="button"
-                      onClick={() => setButtonCount(count as any)}
-                      className={clsx(
-                        "py-2.5 rounded-xl font-bold text-xs transition cursor-pointer border",
-                        buttonCount === count 
-                          ? "bg-black text-white border-black shadow-md" 
-                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                      )}
-                    >
-                      {count === 0 ? 'none' : count}
-                    </button>
-                  ))}
+              {/* Form Controls */}
+              <div className="space-y-4 text-left">
+                {/* Message Textarea */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">Message<span className="text-red-500">*</span></label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Please enter your message"
+                    rows={3}
+                    className="w-full p-4 rounded-2xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
+                  />
                 </div>
-              </div>
 
-              {/* Button Details Input */}
-              {buttonCount > 0 && (
-                <div className="space-y-3 p-4 bg-white rounded-2xl border border-gray-200">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-700">Button Name</label>
-                    <input
-                      type="text"
-                      value={buttonName}
-                      onChange={(e) => setButtonName(e.target.value)}
-                      placeholder="e.g. 정보 바로 보기 🏞️"
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-700">Target URL Link</label>
-                    <input
-                      type="url"
-                      value={buttonUrl}
-                      onChange={(e) => setButtonUrl(e.target.value)}
-                      placeholder="https://linkzip.kr/username"
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black"
-                    />
+                {/* Message buttons selector */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-700">Message buttons<span className="text-red-500">*</span></label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[0, 1, 2, 3].map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => setButtonCount(count as any)}
+                        className={clsx(
+                          "py-3 rounded-2xl font-extrabold text-xs transition cursor-pointer border shadow-2xs",
+                          buttonCount === count 
+                            ? "bg-black text-white border-black" 
+                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                        )}
+                      >
+                        {count === 0 ? 'none' : count}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          {/* STEP 4 OF 5: Random Comment Replies */}
+          {/* =========================================================
+             STEP 4 OF 5: Button Link Setup (Matching Screenshot 4)
+             ========================================================= */}
           {step === 4 && (
             <div className="space-y-5">
               <h4 className="text-sm font-extrabold text-gray-900">
-                Random reply to comments
+                Button link #{currentButtonIndex + 1} setup
               </h4>
-              <p className="text-xs text-gray-500 font-medium">
-                Set random reply comments to make your account look natural and avoid spam detection.
-              </p>
 
-              <div className="space-y-2">
-                {commentReplies.map((reply, idx) => (
-                  <div key={idx} className="p-3 bg-white rounded-2xl border border-gray-200 text-xs font-bold text-gray-800 flex items-center justify-between">
-                    <span>💬 {reply}</span>
-                    <button 
-                      onClick={() => setCommentReplies(commentReplies.filter((_, i) => i !== idx))}
-                      className="text-gray-400 hover:text-red-500 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+              {/* Live Preview Container (Matching Screenshot 4) */}
+              <div className="bg-white p-6 rounded-3xl border border-gray-200 flex items-end gap-3 shadow-2xs">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-amber-300 shrink-0 bg-amber-100 flex items-center justify-center">
+                  <img 
+                    src={state.profile.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"} 
+                    alt="avatar" 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+
+                <div className="bg-[#E5E7EB] p-4 rounded-2xl rounded-bl-xs text-xs font-semibold text-gray-900 shadow-2xs flex-1 space-y-2">
+                  <p>{message || '하이융ㅋ'}</p>
+
+                  <div className="space-y-1.5 pt-1">
+                    {Array.from({ length: buttonCount }).map((_, idx) => (
+                      <div 
+                        key={idx}
+                        className={clsx(
+                          "py-2.5 px-4 rounded-xl text-center text-xs font-bold border shadow-2xs truncate",
+                          idx === currentButtonIndex 
+                            ? "bg-white text-gray-900 border-black" 
+                            : "bg-white/80 text-gray-400 border-gray-100"
+                        )}
+                      >
+                        {buttons[idx]?.name || 'Please enter the button name'}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newReplyInput}
-                  onChange={(e) => setNewReplyInput(e.target.value)}
-                  placeholder="Add reply (e.g. DM 확인해보세요! ❤️)"
-                  className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-300 text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-black"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddCommentReply}
-                  className="px-4 py-2.5 bg-black hover:bg-gray-800 text-white rounded-2xl text-xs font-bold transition cursor-pointer"
-                >
-                  Add Reply
-                </button>
+              {/* Form Controls */}
+              <div className="space-y-4 text-left">
+                {/* Button Message Name */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700">Button message<span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={buttons[currentButtonIndex]?.name || ''}
+                    onChange={(e) => handleUpdateButtonName(currentButtonIndex, e.target.value)}
+                    placeholder="ㄴㅇㄹㄹㅇㄴㄹ"
+                    className="w-full p-3.5 rounded-2xl border border-gray-300 text-xs font-extrabold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
+                  />
+                </div>
+
+                {/* URL Options */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-700">URL<span className="text-red-500">*</span></label>
+                  
+                  {/* Segmented Option Selector */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setUrlMode('new')}
+                      className={clsx(
+                        "py-3 rounded-2xl text-xs font-extrabold transition cursor-pointer border shadow-2xs",
+                        urlMode === 'new' ? "bg-black text-white border-black" : "bg-white text-gray-700 border-gray-200"
+                      )}
+                    >
+                      Set up a new link
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setUrlMode('blocks')}
+                      className={clsx(
+                        "py-3 rounded-2xl text-xs font-extrabold transition cursor-pointer border shadow-2xs",
+                        urlMode === 'blocks' ? "bg-black text-white border-black" : "bg-white text-gray-700 border-gray-200"
+                      )}
+                    >
+                      Select from your link blocks
+                    </button>
+                  </div>
+
+                  {/* URL Input Field */}
+                  <input
+                    type="url"
+                    value={buttons[currentButtonIndex]?.url || ''}
+                    onChange={(e) => handleUpdateButtonUrl(currentButtonIndex, e.target.value)}
+                    placeholder="https://www.naver.com"
+                    className="w-full p-3.5 rounded-2xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
+                  />
+                </div>
               </div>
             </div>
           )}
 
-          {/* STEP 5 OF 5: Final Review & Activate */}
+          {/* =========================================================
+             STEP 5 OF 5: Comment Reply Option (Matching Screenshot 5)
+             ========================================================= */}
           {step === 5 && (
-            <div className="space-y-5 text-center py-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md border border-emerald-200">
-                <Sparkles className="w-8 h-8" />
+            <div className="space-y-6 pt-4 text-left">
+              <h4 className="text-base font-extrabold text-gray-900">
+                Automatically reply to the comments you send messages to?
+              </h4>
+
+              {/* Radio Options */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer text-xs font-bold text-gray-900">
+                  <input
+                    type="radio"
+                    name="wantCommentReply"
+                    checked={wantCommentReply === 'no'}
+                    onChange={() => setWantCommentReply('no')}
+                    className="w-4 h-4 text-black focus:ring-black"
+                  />
+                  <span>No, thank you</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer text-xs font-bold text-gray-900">
+                  <input
+                    type="radio"
+                    name="wantCommentReply"
+                    checked={wantCommentReply === 'yes'}
+                    onChange={() => setWantCommentReply('yes')}
+                    className="w-4 h-4 text-black focus:ring-black"
+                  />
+                  <span>Yes, I want to reply</span>
+                </label>
               </div>
 
-              <div className="space-y-1">
-                <h4 className="text-xl font-black text-gray-900">Automation Ready!</h4>
-                <p className="text-xs text-gray-500 font-medium">
-                  Review your DM automation rule settings and click activate.
-                </p>
-              </div>
+              {/* Additional Comment Replies if Yes */}
+              {wantCommentReply === 'yes' && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-xs text-gray-500 font-medium">
+                    Set random reply comments to make your account look natural:
+                  </p>
+                  <div className="space-y-2">
+                    {commentReplies.map((reply, idx) => (
+                      <div key={idx} className="p-3 bg-white rounded-2xl border border-gray-200 text-xs font-bold text-gray-800 flex items-center justify-between shadow-2xs">
+                        <span>💬 {reply}</span>
+                        <button 
+                          onClick={() => setCommentReplies(commentReplies.filter((_, i) => i !== idx))}
+                          className="text-gray-400 hover:text-red-500 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
 
-              <div className="p-5 bg-white rounded-3xl border border-gray-200 text-left space-y-3 text-xs shadow-2xs">
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-400 font-bold">Target Keyword:</span>
-                  <span className="font-extrabold text-indigo-600">#{keywords.join(', ') || 'All'}</span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newReplyInput}
+                      onChange={(e) => setNewReplyInput(e.target.value)}
+                      placeholder="Add reply (e.g. DM 확인해보세요! ❤️)"
+                      className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-300 text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-black"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newReplyInput.trim()) {
+                          setCommentReplies([...commentReplies, newReplyInput.trim()]);
+                          setNewReplyInput('');
+                        }
+                      }}
+                      className="px-4 py-2.5 bg-black hover:bg-gray-800 text-white rounded-2xl text-xs font-bold transition cursor-pointer"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-400 font-bold">DM Message:</span>
-                  <span className="font-bold text-gray-800 truncate max-w-[200px]">{message}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 font-bold">Target Link:</span>
-                  <span className="font-bold text-blue-600 truncate max-w-[200px]">{buttonUrl}</span>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -446,19 +571,48 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
 
         {/* Footer Action Button */}
         <div className="p-6 bg-white border-t border-gray-200 shrink-0">
-          {step < 5 ? (
+          {step === 1 && (
             <button
-              onClick={() => setStep((step + 1) as any)}
+              onClick={() => setStep(2)}
               className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
               Next
             </button>
-          ) : (
+          )}
+
+          {step === 2 && (
+            <button
+              onClick={() => setStep(3)}
+              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+            >
+              Next
+            </button>
+          )}
+
+          {step === 3 && (
+            <button
+              onClick={handleStep3Next}
+              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+            >
+              Next
+            </button>
+          )}
+
+          {step === 4 && (
+            <button
+              onClick={handleStep4LinkNext}
+              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+            >
+              {currentButtonIndex + 1}/{buttonCount} link setup complete
+            </button>
+          )}
+
+          {step === 5 && (
             <button
               onClick={handleSaveAutomationRule}
-              className="w-full py-4 bg-[#4285F4] hover:bg-[#3367D6] text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
-              Activate Automation
+              Finish &amp; Save
             </button>
           )}
         </div>
