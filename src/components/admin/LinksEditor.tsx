@@ -172,6 +172,24 @@ const LinksEditor = () => {
           { id: `sns-${Date.now()}-2`, platform: 'instagram', value: userHandle }
         ]
       });
+    } else if (blockType === 'donation') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        type: 'donation',
+        title: '💖 후원하기 (Donation)',
+        url: `/${userHandle}/donation`,
+        isVisible: true,
+        iconName: 'heart',
+        donationConfig: {
+          mainText: '후원해주셔서 감사합니다!',
+          detailText: '응원 메시지와 함께 후원금을 보낼 수 있습니다.',
+          minAmount: 3000,
+          buttonText: '후원하기',
+          bankName: 'NH농협은행',
+          accountNumber: '3020683730641',
+          accountOwnerName: profile.name || '황현미'
+        }
+      });
     } else if (blockType === 'file') {
       addCustomLink({
         id: `link-${Date.now()}`,
@@ -229,10 +247,19 @@ const LinksEditor = () => {
     } else if (blockType === 'sales') {
       addCustomLink({
         id: `link-${Date.now()}`,
-        title: '🛍️ 공식 굿즈 & 디지털 상품 마켓',
-        url: 'https://smartstore.naver.com',
+        type: 'sales',
+        title: '🛍️ 디지털 상품 판매',
+        url: `/${userHandle}/sales`,
         isVisible: true,
-        iconName: 'shopping-bag'
+        iconName: 'shopping-bag',
+        salesConfig: {
+          salesType: undefined,
+          mainText: '디지털 상품 및 파일 판매',
+          description: '전자책 및 디지털 파일을 손쉽게 다운로드받으세요.',
+          descriptionViewType: 'simple',
+          products: [],
+          creatorMessage: '구매해주셔서 감사합니다.'
+        }
       });
     } else if (blockType === 'booking') {
       addCustomLink({
