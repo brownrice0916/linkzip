@@ -10,6 +10,10 @@ import {
   CornerDownRight, 
   Image as ImageIcon,
   ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
   Phone,
   Smartphone,
   Gift
@@ -66,7 +70,8 @@ const LinksEditor = () => {
     removeCustomLink,
     moveItemToCollection,
     moveItemToRoot,
-    moveItemRelative
+    moveItemRelative,
+    moveItemDirection
   } = useStore();
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -77,18 +82,30 @@ const LinksEditor = () => {
   // Add Block Modal State
   const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false);
 
-  // Group Collapse State (Default is collapsed = true)
-  const [collapsedCollectionIds, setCollapsedCollectionIds] = useState<Record<string, boolean>>({});
+  // Universal Block Collapse State (Default: expanded false)
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Record<string, boolean>>({});
 
-  const isCollectionCollapsed = (id: string) => {
-    return collapsedCollectionIds[id] ?? true; // Default is collapsed (true)
+  const isBlockCollapsed = (id: string, defaultVal = false) => {
+    return collapsedBlockIds[id] ?? defaultVal;
   };
 
-  const toggleCollectionCollapse = (id: string) => {
-    setCollapsedCollectionIds((prev) => ({
+  const toggleBlockCollapse = (id: string, defaultVal = false) => {
+    setCollapsedBlockIds((prev) => ({
       ...prev,
-      [id]: !(prev[id] ?? true),
+      [id]: !(prev[id] ?? defaultVal),
     }));
+  };
+
+  const collapseAllBlocks = () => {
+    const newMap: Record<string, boolean> = {};
+    customLinks.forEach(l => { newMap[l.id] = true; });
+    setCollapsedBlockIds(newMap);
+  };
+
+  const expandAllBlocks = () => {
+    const newMap: Record<string, boolean> = {};
+    customLinks.forEach(l => { newMap[l.id] = false; });
+    setCollapsedBlockIds(newMap);
   };
 
   // Social Link Modal State
@@ -136,7 +153,7 @@ const LinksEditor = () => {
       links: []
     });
     // Open new collection by default
-    setCollapsedCollectionIds((prev) => ({ ...prev, [newCollectionId]: false }));
+    setCollapsedBlockIds((prev) => ({ ...prev, [newCollectionId]: false }));
   };
 
   const handleAddNestedLink = (collectionId: string) => {
@@ -372,10 +389,30 @@ const LinksEditor = () => {
           isDragOver && "border-2 border-indigo-500 bg-indigo-50/50"
         )}
       >
-        <div className="flex items-center gap-3">
-          {/* Drag Handle Icon */}
-          <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0">
-            <GripVertical className="w-4 h-4" />
+        <div className="flex items-center gap-2.5">
+          {/* Drag Handle & Up/Down Move Buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition" title="드래그하여 순서 변경">
+              <GripVertical className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'up')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="위로 이동"
+              >
+                <ArrowUp className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'down')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="아래로 이동"
+              >
+                <ArrowDown className="w-3 h-3" />
+              </button>
+            </div>
           </div>
 
           {/* Thumbnail / Icon Picker Button */}
@@ -465,7 +502,7 @@ const LinksEditor = () => {
   const renderCollection = (collection: CustomLink) => {
     const isBeingDragged = draggedId === collection.id;
     const isDragOver = dragOverTargetId === collection.id;
-    const isCollapsed = isCollectionCollapsed(collection.id);
+    const isCollapsed = isBlockCollapsed(collection.id, true);
 
     return (
       <div 
@@ -483,17 +520,39 @@ const LinksEditor = () => {
       >
         {/* Collection Header Controls */}
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0">
-              <GripVertical className="w-4 h-4" />
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* Drag Handle & Up/Down Move Buttons */}
+            <div className="flex items-center gap-1 shrink-0">
+              <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition" title="드래그하여 순서 변경">
+                <GripVertical className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => moveItemDirection(collection.id, 'up')}
+                  className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                  title="위로 이동"
+                >
+                  <ArrowUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveItemDirection(collection.id, 'down')}
+                  className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                  title="아래로 이동"
+                >
+                  <ArrowDown className="w-3 h-3" />
+                </button>
+              </div>
             </div>
 
             <button
-              onClick={() => toggleCollectionCollapse(collection.id)}
-              className="p-1.5 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              type="button"
+              onClick={() => toggleBlockCollapse(collection.id, true)}
+              className="p-1.5 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
               title={isCollapsed ? '컬렉션 펼치기' : '컬렉션 접기'}
             >
-              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90" : "rotate-0")} />
+              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
             </button>
 
             <Folder className="w-4 h-4 text-indigo-600 shrink-0" />
@@ -573,6 +632,10 @@ const LinksEditor = () => {
   const [activeProfitAccountLink, setActiveProfitAccountLink] = useState<CustomLink | null>(null);
 
   const renderDonationCard = (link: CustomLink) => {
+    const isBeingDragged = draggedId === link.id;
+    const isDragOver = dragOverTargetId === link.id;
+    const isCollapsed = isBlockCollapsed(link.id);
+
     const config = link.donationConfig || {
       mainText: 'Please Donation!',
       detailText: 'leave additional comments',
@@ -592,39 +655,64 @@ const LinksEditor = () => {
     return (
       <div 
         key={link.id}
-        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+        draggable
+        onDragStart={(e) => handleDragStart(e, link.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={(e) => handleDragOver(e, link.id)}
+        onDrop={(e) => handleDropOnItem(e, link.id)}
+        className={clsx(
+          "bg-white p-6 rounded-3xl border transition-all space-y-4 font-sans relative shadow-2xs",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+        )}
       >
-        {/* Header Row: Toggle, Title, Info, Controls */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            {/* ON/OFF Switch */}
+        {/* Header Row: Drag Handle, Up/Down Move, Fold/Expand, Toggle, Title, Info, Controls */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* Drag Handle Icon */}
+            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0" title="드래그하여 순서 변경">
+              <GripVertical className="w-4 h-4" />
+            </div>
+
+            {/* Up / Down Move Buttons */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'up')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="위로 이동"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'down')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="아래로 이동"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Accordion Fold/Expand Toggle Button */}
             <button
-              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
-              className={clsx(
-                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
-                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
-              )}
+              type="button"
+              onClick={() => toggleBlockCollapse(link.id)}
+              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+              title={isCollapsed ? '펼치기' : '접기'}
             >
-              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
-                {link.isVisible !== false ? "ON" : "OFF"}
-              </span>
-              <div
-                className={clsx(
-                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
-                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
-                )}
-              />
+              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
             </button>
 
-            {/* Donation Title with (i) Badge */}
-            <div className="flex items-center gap-1.5 font-black text-base text-gray-900">
-              <span>Donation</span>
-              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px] font-serif cursor-pointer" title="Donation Block Info">i</span>
+            <span className="text-base shrink-0">💖</span>
+            <div className="flex items-center gap-1.5 font-black text-base text-gray-900 truncate">
+              <span>{config.mainText || link.title || 'Donation (후원하기)'}</span>
+              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px] font-serif shrink-0 cursor-pointer" title="Donation Block Info">i</span>
             </div>
           </div>
 
-          {/* Right Controls: Color Picker & Delete */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
+          {/* Right Controls: Color Picker, ON/OFF Switch & Delete */}
+          <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-1" title="특정 카드 색상 지정 (기본은 전체 통일)">
               <input
                 type="color"
@@ -644,9 +732,25 @@ const LinksEditor = () => {
               )}
             </div>
 
+            <button
+              type="button"
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
+                link.isVisible !== false ? "bg-black" : "bg-gray-200"
+              )}
+            >
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
+                  link.isVisible !== false ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+
             <button 
               onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
               title="Delete block"
             >
               <Trash2 className="w-4 h-4" />
@@ -654,119 +758,115 @@ const LinksEditor = () => {
           </div>
         </div>
 
-        {/* Inputs */}
-
-        {/* 1. Main Text + Image Button */}
-        <div className="space-y-1">
-          <label className="block text-xs font-bold text-gray-600">main text<span className="text-red-500">*</span></label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={config.mainText}
-              onChange={(e) => updateConfig({ mainText: e.target.value })}
-              placeholder="Please Donation!"
-              className="flex-1 p-3.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
-            />
-            <button
-              onClick={() => setActiveThumbnailLink(link)}
-              className="w-16 bg-[#8C9AA8] hover:bg-gray-600 text-white rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer shrink-0"
-            >
-              <ImageIcon className="w-4 h-4" />
-              <span className="text-[9px] font-bold">image</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 2. Detail Text */}
-        <div className="space-y-1">
-          <label className="block text-xs font-bold text-gray-600">detail text</label>
-          <input
-            type="text"
-            value={config.detailText || ''}
-            onChange={(e) => updateConfig({ detailText: e.target.value })}
-            placeholder="leave additional comments"
-            className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
-          />
-        </div>
-
-        {/* 3. Minimum Amount & Text on the Button Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-600">Minimum amount<span className="text-red-500">*</span></label>
-            <div className="relative flex items-center">
+        {/* Card Body (Hidden when collapsed) */}
+        {!isCollapsed && (
+          <div className="space-y-4 pt-1">
+            {/* 1. Main Text* */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-600">main text<span className="text-red-500">*</span></label>
               <input
-                type="number"
-                value={config.minAmount}
-                onChange={(e) => updateConfig({ minAmount: Number(e.target.value) })}
-                step={1000}
-                className="w-full p-3.5 pr-14 border border-gray-300 rounded-xl text-xs font-extrabold text-gray-900 focus:ring-2 focus:ring-black"
+                type="text"
+                value={config.mainText}
+                onChange={(e) => updateConfig({ mainText: e.target.value })}
+                placeholder="Please Donation!"
+                className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
               />
-              <span className="absolute right-3 text-xs font-black text-gray-900 pointer-events-none">KRW</span>
             </div>
-          </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-600">Text on the button</label>
-            <input
-              type="text"
-              value={config.buttonText}
-              onChange={(e) => updateConfig({ buttonText: e.target.value })}
-              placeholder="donation"
-              className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
-            />
-          </div>
-        </div>
+            {/* 2. Detail Text */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-600">detail text</label>
+              <input
+                type="text"
+                value={config.detailText || ''}
+                onChange={(e) => updateConfig({ detailText: e.target.value })}
+                placeholder="leave additional comments"
+                className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+              />
+            </div>
 
-        {/* 4. Account Connection Row */}
-        {(() => {
-          const isConnected = config.accountConnected || !!profile.verifiedAccount?.accountConnected || (!!config.accountNumber && !!config.bankName);
-          const bank = config.bankName || profile.verifiedAccount?.bankName || 'NH농협은행';
-          const accNum = config.accountNumber || profile.verifiedAccount?.accountNumber || '';
-          const owner = config.accountOwnerName || profile.verifiedAccount?.accountOwnerName || profile.name || '';
-
-          return (
-            <div className="space-y-2 pt-1 border-t border-gray-100">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-gray-600">Account connection<span className="text-red-500">*</span></label>
-                <span className={clsx("text-xs font-bold flex items-center gap-1", isConnected ? "text-emerald-600 font-extrabold" : "text-[#2563EB]")}>
-                  {isConnected ? "✓ Account connected" : "❗Account connection is required"}
-                </span>
+            {/* 3. Minimum Amount & Text on the Button Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-600">Minimum amount<span className="text-red-500">*</span></label>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    value={config.minAmount}
+                    onChange={(e) => updateConfig({ minAmount: Number(e.target.value) })}
+                    step={1000}
+                    className="w-full p-3.5 pr-14 border border-gray-300 rounded-xl text-xs font-extrabold text-gray-900 focus:ring-2 focus:ring-black"
+                  />
+                  <span className="absolute right-3 text-xs font-black text-gray-900 pointer-events-none">KRW</span>
+                </div>
               </div>
 
-              {isConnected ? (
-                /* Connected State: Hide big register button, show connected badge with edit option */
-                <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-900 shadow-2xs">
-                  <div className="flex items-center gap-2.5 truncate">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                    <span className="truncate">{bank} {accNum} ({owner}) 연동 완료</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveProfitAccountLink(link)}
-                    className="text-gray-500 hover:text-black text-xs font-bold underline shrink-0 cursor-pointer pl-2"
-                  >
-                    계좌 변경
-                  </button>
-                </div>
-              ) : (
-                /* Not Connected State: Show big register button */
-                <button
-                  type="button"
-                  onClick={() => setActiveProfitAccountLink(link)}
-                  className="w-full py-4 bg-[#E54D26] hover:bg-[#D43D17] text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md tracking-wide"
-                >
-                  + Register a profit account
-                </button>
-              )}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-600">Text on the button</label>
+                <input
+                  type="text"
+                  value={config.buttonText}
+                  onChange={(e) => updateConfig({ buttonText: e.target.value })}
+                  placeholder="donation"
+                  className="w-full p-3.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+                />
+              </div>
             </div>
-          );
-        })()}
+
+            {/* 4. Account Connection Row */}
+            {(() => {
+              const isConnected = config.accountConnected || !!profile.verifiedAccount?.accountConnected || (!!config.accountNumber && !!config.bankName);
+              const bank = config.bankName || profile.verifiedAccount?.bankName || 'NH농협은행';
+              const accNum = config.accountNumber || profile.verifiedAccount?.accountNumber || '';
+              const owner = config.accountOwnerName || profile.verifiedAccount?.accountOwnerName || profile.name || '';
+
+              return (
+                <div className="space-y-2 pt-1 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-gray-600">Account connection<span className="text-red-500">*</span></label>
+                    <span className={clsx("text-xs font-bold flex items-center gap-1", isConnected ? "text-emerald-600 font-extrabold" : "text-[#2563EB]")}>
+                      {isConnected ? "✓ Account connected" : "❗Account connection is required"}
+                    </span>
+                  </div>
+
+                  {isConnected ? (
+                    <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-900 shadow-2xs">
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                        <span className="truncate">{bank} {accNum} ({owner}) 연동 완료</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveProfitAccountLink(link)}
+                        className="text-gray-500 hover:text-black text-xs font-bold underline shrink-0 cursor-pointer pl-2"
+                      >
+                        계좌 변경
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setActiveProfitAccountLink(link)}
+                      className="w-full py-4 bg-[#E54D26] hover:bg-[#D43D17] text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md tracking-wide"
+                    >
+                      + Register a profit account
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
       </div>
     );
   };
 
   const renderFileSharingCard = (link: CustomLink) => {
+    const isBeingDragged = draggedId === link.id;
+    const isDragOver = dragOverTargetId === link.id;
+    const isCollapsed = isBlockCollapsed(link.id);
+
     const config = link.fileConfig || {
       title: '자유로운 주제 문구 입력',
       description: '추가 설명을 남길 수 있습니다',
@@ -799,66 +899,89 @@ const LinksEditor = () => {
     return (
       <div 
         key={link.id}
-        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+        draggable
+        onDragStart={(e) => handleDragStart(e, link.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={(e) => handleDragOver(e, link.id)}
+        onDrop={(e) => handleDropOnItem(e, link.id)}
+        className={clsx(
+          "bg-white p-6 rounded-3xl border transition-all space-y-4 font-sans relative shadow-2xs",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+        )}
       >
-        {/* Header Row: Toggle, Title, Controls */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            {/* ON/OFF Switch */}
+        {/* Header Row */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0" title="드래그하여 순서 변경">
+              <GripVertical className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'up')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="위로 이동"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'down')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="아래로 이동"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <button
+              type="button"
+              onClick={() => toggleBlockCollapse(link.id)}
+              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+              title={isCollapsed ? '펼치기' : '접기'}
+            >
+              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
+            </button>
+            <span className="text-base shrink-0">📁</span>
+            <span className="font-extrabold text-base text-gray-900 truncate">
+              {config.title || link.title || '파일 공유'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="color"
+              value={link.buttonColor || '#ffffff'}
+              onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+              className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              title="카드 색상 지정"
+            />
+            <button
+              type="button"
               onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
               className={clsx(
-                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
-                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+                "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
+                link.isVisible !== false ? "bg-black" : "bg-gray-200"
               )}
             >
-              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
-                {link.isVisible !== false ? "ON" : "OFF"}
-              </span>
               <div
                 className={clsx(
-                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
-                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
+                  link.isVisible !== false ? "translate-x-5" : "translate-x-0"
                 )}
               />
             </button>
-
-            {/* Title */}
-            <div className="font-black text-base text-gray-900">
-              <span>파일 공유</span>
-            </div>
-          </div>
-
-          {/* Right Controls: Color Picker & Delete */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <div className="flex items-center gap-1" title="특정 카드 색상 지정 (기본은 전체 통일)">
-              <input
-                type="color"
-                value={link.buttonColor || '#ffffff'}
-                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
-                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              />
-              {link.buttonColor && (
-                <button
-                  type="button"
-                  onClick={() => updateCustomLink(link.id, { buttonColor: undefined, buttonTextColor: undefined })}
-                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
-                  title="기본 통일 색상으로 복원"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
             <button 
               onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
-              title="Delete block"
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
+
+        {!isCollapsed && (
+          <div className="space-y-4 pt-1">
 
         {/* Inputs */}
 
@@ -921,14 +1044,20 @@ const LinksEditor = () => {
             />
           </label>
         </div>
-
       </div>
-    );
-  };
+    )}
+
+  </div>
+);
+};
 
   const [activeSNSIconPick, setActiveSNSIconPick] = useState<{ blockId: string; itemId: string } | null>(null);
 
   const renderSNSCard = (link: CustomLink) => {
+    const isBeingDragged = draggedId === link.id;
+    const isDragOver = dragOverTargetId === link.id;
+    const isCollapsed = isBlockCollapsed(link.id);
+
     const items = link.snsLinks || [
       { id: 'sns-1', platform: 'phone', value: '', countryCode: 'KR' }
     ];
@@ -960,47 +1089,82 @@ const LinksEditor = () => {
     return (
       <div 
         key={link.id}
-        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+        draggable
+        onDragStart={(e) => handleDragStart(e, link.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={(e) => handleDragOver(e, link.id)}
+        onDrop={(e) => handleDropOnItem(e, link.id)}
+        className={clsx(
+          "bg-white p-6 rounded-3xl border transition-all space-y-4 font-sans relative shadow-2xs",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+        )}
       >
-        {/* Header Row: ON/OFF toggle, SNS title, Controls */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            {/* ON/OFF Switch */}
+        {/* Header Row */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0" title="드래그하여 순서 변경">
+              <GripVertical className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'up')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="위로 이동"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'down')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="아래로 이동"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <button
+              type="button"
+              onClick={() => toggleBlockCollapse(link.id)}
+              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+              title={isCollapsed ? '펼치기' : '접기'}
+            >
+              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
+            </button>
+            <span className="text-base shrink-0">🌐</span>
+            <span className="font-extrabold text-base text-gray-900 truncate">
+              {link.title || 'SNS 아이콘 연동'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
               onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
               className={clsx(
-                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
-                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+                "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
+                link.isVisible !== false ? "bg-black" : "bg-gray-200"
               )}
             >
-              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
-                {link.isVisible !== false ? "ON" : "OFF"}
-              </span>
               <div
                 className={clsx(
-                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
-                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
+                  link.isVisible !== false ? "translate-x-5" : "translate-x-0"
                 )}
               />
             </button>
-
-            {/* Title */}
-            <div className="font-black text-base text-gray-900">
-              <span>SNS</span>
-            </div>
-          </div>
-
-          {/* Controls: trashcan */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
             <button 
               onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
-              title="Delete block"
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
+
+        {!isCollapsed && (
+          <div className="space-y-4 pt-1">
 
         {/* SNS Input Rows List */}
         <div className="space-y-3">
@@ -1083,14 +1247,20 @@ const LinksEditor = () => {
             <span>+ Add SNS</span>
           </button>
         </div>
-
       </div>
-    );
-  };
+    )}
+
+  </div>
+);
+};
 
   const [activeNoticeModalLink, setActiveNoticeModalLink] = useState<CustomLink | null>(null);
 
   const renderNoticeCard = (link: CustomLink) => {
+    const isBeingDragged = draggedId === link.id;
+    const isDragOver = dragOverTargetId === link.id;
+    const isCollapsed = isBlockCollapsed(link.id);
+
     const notice = link.noticeConfig || {
       title: '📢 8월 주요 공지사항',
       content: '팬미팅 일정 및 신규 굿즈 출시 안내입니다.',
@@ -1100,92 +1270,115 @@ const LinksEditor = () => {
     return (
       <div 
         key={link.id}
-        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+        draggable
+        onDragStart={(e) => handleDragStart(e, link.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={(e) => handleDragOver(e, link.id)}
+        onDrop={(e) => handleDropOnItem(e, link.id)}
+        className={clsx(
+          "bg-white p-6 rounded-3xl border transition-all space-y-4 font-sans relative shadow-2xs",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+        )}
       >
-        {/* Header Row: Toggle, Title, Controls */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            {/* ON/OFF Switch */}
+        {/* Header Row */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0" title="드래그하여 순서 변경">
+              <GripVertical className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'up')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="위로 이동"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'down')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="아래로 이동"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <button
+              type="button"
+              onClick={() => toggleBlockCollapse(link.id)}
+              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+              title={isCollapsed ? '펼치기' : '접기'}
+            >
+              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
+            </button>
+            <span className="text-base shrink-0">📢</span>
+            <span className="font-extrabold text-base text-gray-900 truncate">
+              {notice.title || link.title || 'Notice (공지사항)'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="color"
+              value={link.buttonColor || '#ffffff'}
+              onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+              className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              title="카드 색상 지정"
+            />
+            <button
+              type="button"
               onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
               className={clsx(
-                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
-                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+                "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
+                link.isVisible !== false ? "bg-black" : "bg-gray-200"
               )}
             >
-              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
-                {link.isVisible !== false ? "ON" : "OFF"}
-              </span>
               <div
                 className={clsx(
-                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
-                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
+                  link.isVisible !== false ? "translate-x-5" : "translate-x-0"
                 )}
               />
             </button>
-
-            {/* Title */}
-            <div className="font-black text-base text-gray-900">
-              <span>notice (공지사항)</span>
-            </div>
-          </div>
-
-          {/* Right Controls: Color Picker & Delete */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <div className="flex items-center gap-1" title="특정 카드 색상 지정 (기본은 전체 통일)">
-              <input
-                type="color"
-                value={link.buttonColor || '#ffffff'}
-                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
-                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              />
-              {link.buttonColor && (
-                <button
-                  type="button"
-                  onClick={() => updateCustomLink(link.id, { buttonColor: undefined, buttonTextColor: undefined })}
-                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
-                  title="기본 통일 색상으로 복원"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
             <button 
               onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
-              title="Delete block"
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Inputs / Content Snippet */}
-        <div className="space-y-3">
-          <div className="p-4 bg-amber-50/50 border border-amber-200/60 rounded-2xl space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-amber-800">{notice.title}</span>
-              <span className="text-[10px] font-semibold text-amber-600">{notice.date}</span>
+        {!isCollapsed && (
+          <div className="space-y-3 pt-1">
+            <div className="p-4 bg-amber-50/50 border border-amber-200/60 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-amber-800">{notice.title}</span>
+                <span className="text-[10px] font-semibold text-amber-600">{notice.date}</span>
+              </div>
+              <p className="text-xs text-gray-600 font-medium line-clamp-2">{notice.content}</p>
             </div>
-            <p className="text-xs text-gray-600 font-medium line-clamp-2">{notice.content}</p>
+
+            <button
+              type="button"
+              onClick={() => setActiveNoticeModalLink(link)}
+              className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+            >
+              <span>📢 공지사항 입력 / 수정하기</span>
+            </button>
           </div>
-
-          {/* Edit Notice Button */}
-          <button
-            type="button"
-            onClick={() => setActiveNoticeModalLink(link)}
-            className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
-          >
-            <span>📢 공지사항 입력 / 수정하기</span>
-          </button>
-        </div>
-
+        )}
       </div>
     );
   };
 
   const renderCustomerInfoCard = (link: CustomLink) => {
+    const isBeingDragged = draggedId === link.id;
+    const isDragOver = dragOverTargetId === link.id;
+    const isCollapsed = isBlockCollapsed(link.id);
+
     const config = link.customerInfoConfig || {
       mainText: 'subscribe to our letter',
       detailText: 'sent every monday',
@@ -1205,67 +1398,90 @@ const LinksEditor = () => {
     return (
       <div 
         key={link.id}
-        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+        draggable
+        onDragStart={(e) => handleDragStart(e, link.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={(e) => handleDragOver(e, link.id)}
+        onDrop={(e) => handleDropOnItem(e, link.id)}
+        className={clsx(
+          "bg-white p-6 rounded-3xl border transition-all space-y-4 font-sans relative shadow-2xs",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+        )}
       >
-        {/* Header Row: Toggle, Title with (i), Controls */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            {/* ON/OFF Switch */}
+        {/* Header Row */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0" title="드래그하여 순서 변경">
+              <GripVertical className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'up')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="위로 이동"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'down')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="아래로 이동"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <button
-              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
-              className={clsx(
-                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
-                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
-              )}
+              type="button"
+              onClick={() => toggleBlockCollapse(link.id)}
+              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+              title={isCollapsed ? '펼치기' : '접기'}
             >
-              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
-                {link.isVisible !== false ? "ON" : "OFF"}
-              </span>
-              <div
-                className={clsx(
-                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
-                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
-                )}
-              />
+              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
             </button>
-
-            {/* Customer Info Title with (i) Badge */}
-            <div className="flex items-center gap-1.5 font-black text-base text-gray-900">
-              <span>Customer info</span>
-              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px] font-serif cursor-pointer" title="Customer info block info">i</span>
+            <span className="text-base shrink-0">📝</span>
+            <div className="flex items-center gap-1.5 font-extrabold text-base text-gray-900 truncate">
+              <span>{config.mainText || link.title || 'Customer info'}</span>
+              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px] font-serif shrink-0 cursor-pointer" title="Customer info block info">i</span>
             </div>
           </div>
 
-          {/* Right Controls: Color Picker & Delete */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <div className="flex items-center gap-1" title="특정 카드 색상 지정 (기본은 전체 통일)">
-              <input
-                type="color"
-                value={link.buttonColor || '#ffffff'}
-                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
-                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              />
-              {link.buttonColor && (
-                <button
-                  type="button"
-                  onClick={() => updateCustomLink(link.id, { buttonColor: undefined, buttonTextColor: undefined })}
-                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
-                  title="기본 통일 색상으로 복원"
-                >
-                  ✕
-                </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="color"
+              value={link.buttonColor || '#ffffff'}
+              onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+              className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              title="카드 색상 지정"
+            />
+            <button
+              type="button"
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
+                link.isVisible !== false ? "bg-black" : "bg-gray-200"
               )}
-            </div>
-
+            >
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
+                  link.isVisible !== false ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
             <button 
               onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
-              title="Delete block"
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
+
+        {!isCollapsed && (
+          <div className="space-y-4 pt-1">
 
         {/* Inputs */}
 
@@ -1359,14 +1575,20 @@ const LinksEditor = () => {
             </div>
           </div>
         </div>
-
       </div>
-    );
-  };
+    )}
+
+  </div>
+);
+};
 
   const [activeProductRegisterLink, setActiveProductRegisterLink] = useState<CustomLink | null>(null);
 
   const renderSalesCard = (link: CustomLink) => {
+    const isBeingDragged = draggedId === link.id;
+    const isDragOver = dragOverTargetId === link.id;
+    const isCollapsed = isBlockCollapsed(link.id);
+
     const config = link.salesConfig || {
       mainText: '',
       description: '',
@@ -1388,65 +1610,104 @@ const LinksEditor = () => {
       return (
         <div 
           key={link.id}
-          className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+          draggable
+          onDragStart={(e) => handleDragStart(e, link.id)}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleDragOver(e, link.id)}
+          onDrop={(e) => handleDropOnItem(e, link.id)}
+          className={clsx(
+            "bg-white p-6 rounded-3xl border transition-all space-y-4 font-sans relative shadow-2xs",
+            isBeingDragged && "opacity-40 border-dashed border-gray-400",
+            isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+          )}
         >
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-            <div className="flex items-center gap-3">
+          {/* Header Row */}
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0" title="드래그하여 순서 변경">
+                <GripVertical className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => moveItemDirection(link.id, 'up')}
+                  className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                  title="위로 이동"
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveItemDirection(link.id, 'down')}
+                  className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                  title="아래로 이동"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <button
+                type="button"
+                onClick={() => toggleBlockCollapse(link.id)}
+                className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+                title={isCollapsed ? '펼치기' : '접기'}
+              >
+                <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
+              </button>
+              <span className="text-base shrink-0">🛍️</span>
+              <span className="font-extrabold text-base text-gray-900 truncate">
+                Sale in KRW (상품 판매)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
                 onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
                 className={clsx(
-                  "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
-                  link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+                  "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
+                  link.isVisible !== false ? "bg-black" : "bg-gray-200"
                 )}
               >
-                <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
-                  {link.isVisible !== false ? "ON" : "OFF"}
-                </span>
                 <div
                   className={clsx(
-                    "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
-                    link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                    "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
+                    link.isVisible !== false ? "translate-x-5" : "translate-x-0"
                   )}
                 />
               </button>
+              <button 
+                onClick={() => removeCustomLink(link.id)}
+                className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
-              <div className="flex items-center gap-1.5 font-black text-base text-gray-900">
-                <span>sale in KRW</span>
-                <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
+          {!isCollapsed && (
+            <div className="space-y-2 pt-1">
+              <label className="block text-xs font-bold text-gray-600">sales type<span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-2 gap-4 pt-1">
+                <button
+                  type="button"
+                  onClick={() => updateConfig({ salesType: 'digital_file', mainText: '디지털 파일 상품 판매' })}
+                  className="p-6 border-2 border-gray-200 hover:border-black rounded-2xl flex flex-col items-center justify-center gap-3 transition cursor-pointer group bg-white shadow-2xs"
+                >
+                  <Smartphone className="w-10 h-10 text-gray-400 group-hover:text-black group-hover:scale-110 transition-all" />
+                  <span className="text-xs font-bold text-gray-800 group-hover:text-black">Digital file</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => updateConfig({ salesType: 'product', mainText: '실물 상품 판매' })}
+                  className="p-6 border-2 border-gray-200 hover:border-black rounded-2xl flex flex-col items-center justify-center gap-3 transition cursor-pointer group bg-white shadow-2xs"
+                >
+                  <Gift className="w-10 h-10 text-gray-400 group-hover:text-black group-hover:scale-110 transition-all" />
+                  <span className="text-xs font-bold text-gray-800 group-hover:text-black">Product</span>
+                </button>
               </div>
             </div>
-
-            <button 
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
-              title="Delete block"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-gray-600">sales type<span className="text-red-500">*</span></label>
-            <div className="grid grid-cols-2 gap-4 pt-1">
-              <button
-                type="button"
-                onClick={() => updateConfig({ salesType: 'digital_file', mainText: '디지털 파일 상품 판매' })}
-                className="p-6 border-2 border-gray-200 hover:border-black rounded-2xl flex flex-col items-center justify-center gap-3 transition cursor-pointer group bg-white shadow-2xs"
-              >
-                <Smartphone className="w-10 h-10 text-gray-400 group-hover:text-black group-hover:scale-110 transition-all" />
-                <span className="text-xs font-bold text-gray-800 group-hover:text-black">Digital file</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => updateConfig({ salesType: 'product', mainText: '실물 상품 판매' })}
-                className="p-6 border-2 border-gray-200 hover:border-black rounded-2xl flex flex-col items-center justify-center gap-3 transition cursor-pointer group bg-white shadow-2xs"
-              >
-                <Gift className="w-10 h-10 text-gray-400 group-hover:text-black group-hover:scale-110 transition-all" />
-                <span className="text-xs font-bold text-gray-800 group-hover:text-black">Product</span>
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       );
     }
@@ -1455,54 +1716,93 @@ const LinksEditor = () => {
     return (
       <div 
         key={link.id}
-        className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xs space-y-5 font-sans relative"
+        draggable
+        onDragStart={(e) => handleDragStart(e, link.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={(e) => handleDragOver(e, link.id)}
+        onDrop={(e) => handleDropOnItem(e, link.id)}
+        className={clsx(
+          "bg-white p-6 rounded-3xl border transition-all space-y-4 font-sans relative shadow-2xs",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+        )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0" title="드래그하여 순서 변경">
+              <GripVertical className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'up')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="위로 이동"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveItemDirection(link.id, 'down')}
+                className="p-0.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded transition cursor-pointer"
+                title="아래로 이동"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <button
+              type="button"
+              onClick={() => toggleBlockCollapse(link.id)}
+              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+              title={isCollapsed ? '펼치기' : '접기'}
+            >
+              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
+            </button>
+            <span className="text-base shrink-0">🛍️</span>
+            <div className="flex items-center gap-1.5 font-extrabold text-base text-gray-900 truncate">
+              <span>{config.mainText || (config.salesType === 'digital_file' ? 'Digital files sale' : 'Product sale')}</span>
+              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px] shrink-0">i</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="color"
+              value={link.buttonColor || '#ffffff'}
+              onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
+              className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
+              title="특정 카드 색상 지정"
+            />
+
+            <button
+              type="button"
               onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
               className={clsx(
-                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
-                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+                "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
+                link.isVisible !== false ? "bg-black" : "bg-gray-200"
               )}
             >
-              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
-                {link.isVisible !== false ? "ON" : "OFF"}
-              </span>
               <div
                 className={clsx(
-                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
-                  link.isVisible !== false ? "translate-x-6" : "translate-x-0"
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
+                  link.isVisible !== false ? "translate-x-5" : "translate-x-0"
                 )}
               />
             </button>
 
-            <div className="flex items-center gap-1.5 font-black text-base text-gray-900">
-              <span>{config.salesType === 'digital_file' ? 'Digital files sale in KRW' : 'Product sale in KRW'}</span>
-              <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 text-xs font-semibold text-gray-600">
-            <div className="flex items-center gap-1" title="특정 카드 색상 지정">
-              <input
-                type="color"
-                value={link.buttonColor || '#ffffff'}
-                onChange={(e) => updateCustomLink(link.id, { buttonColor: e.target.value, buttonTextColor: '#000000' })}
-                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              />
-            </div>
-
             <button 
               onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md"
+              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
               title="Delete block"
             >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
+
+        {!isCollapsed && (
+          <div className="space-y-5 pt-1">
 
         {/* 1. Main Text* */}
         <div className="space-y-1">
@@ -1682,6 +1982,8 @@ const LinksEditor = () => {
         })()}
 
       </div>
+        )}
+    </div>
     );
   };
 
@@ -1733,11 +2035,11 @@ const LinksEditor = () => {
         </div>
       </div>
 
-      {/* Action Pill Buttons Row (Only Add Button) */}
-      <div className="flex items-center gap-3">
+      {/* Action Pill Buttons Row (Add + Expand All / Collapse All) */}
+      <div className="flex items-center gap-2.5">
         <button
           onClick={() => setIsAddBlockModalOpen(true)}
-          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-black hover:bg-gray-800 text-white rounded-full font-bold text-sm transition cursor-pointer shadow-md"
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-black hover:bg-gray-800 text-white rounded-full font-bold text-sm transition cursor-pointer shadow-md"
         >
           <Plus className="w-4 h-4" />
           <span>Add</span>

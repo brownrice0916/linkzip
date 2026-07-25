@@ -235,6 +235,7 @@ interface AppState {
   setProfile: (profile: UserProfile) => void;
   loadData: (data: Partial<AppState>) => void;
   reorderLinks: (newLinks: CustomLink[]) => void;
+  moveItemDirection: (id: string, direction: 'up' | 'down') => void;
 
   // Growth Actions
   addTeamMember: (member: TeamMember) => void;
@@ -756,6 +757,27 @@ export const useStore = create<AppState>((set) => ({
 
     return { 
       customLinks: insertNearTarget(cleanList),
+      undoStack: [...state.undoStack, snap],
+      redoStack: [],
+      isDirty: true
+    };
+  }),
+
+  moveItemDirection: (id, direction) => set((state) => {
+    const list = [...state.customLinks];
+    const index = list.findIndex(item => item.id === id);
+    if (index === -1) return state;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return state;
+
+    const snap = getSnapshotFromState(state);
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+
+    return {
+      customLinks: list,
       undoStack: [...state.undoStack, snap],
       redoStack: [],
       isDirty: true
