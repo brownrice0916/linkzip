@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
-import { useStore, type DMAutomationRule, type TeamMember } from '../../store/useStore';
-import { 
-  Bot, 
-  Users, 
-  MessageSquare, 
-  Plus, 
-  Trash2, 
-  CheckCircle2, 
-  Mail, 
-  Phone, 
-  Key, 
-  Zap, 
+import React, { useState } from "react";
+import {
+  useStore,
+  type DMAutomationRule,
+  type TeamMember,
+} from "../../store/useStore";
+import {
+  Bot,
+  Users,
+  MessageSquare,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  Mail,
+  Phone,
+  Key,
+  Zap,
   Sparkles,
   UserPlus,
   Send,
@@ -19,11 +23,11 @@ import {
   ToggleRight,
   ExternalLink,
   HelpCircle,
-  ChevronRight
-} from 'lucide-react';
-import { FaInstagram } from 'react-icons/fa';
-import { InstagramDmWizardModal } from './InstagramDmWizardModal';
-import clsx from 'clsx';
+  ChevronRight,
+} from "lucide-react";
+import { FaInstagram } from "react-icons/fa";
+import { InstagramDmWizardModal } from "./InstagramDmWizardModal";
+import clsx from "clsx";
 
 const AutomationEditor = () => {
   const state = useStore();
@@ -32,30 +36,34 @@ const AutomationEditor = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Meta Instagram Token State
-  const [metaToken, setMetaToken] = useState(state.metaAccessToken || '');
+  const [metaToken, setMetaToken] = useState(state.metaAccessToken || "");
 
   // DM Automation State
-  const [newKeyword, setNewKeyword] = useState('');
-  const [newMessage, setNewMessage] = useState('');
-  const [newTargetUrl, setNewTargetUrl] = useState('');
+  const [newKeyword, setNewKeyword] = useState("");
+  const [newMessage, setNewMessage] = useState("");
+  const [newTargetUrl, setNewTargetUrl] = useState("");
   const [isDmModalOpen, setIsDmModalOpen] = useState(false);
 
   // Team Member State
-  const [newTeamEmail, setNewTeamEmail] = useState('');
-  const [newTeamRole, setNewTeamRole] = useState<'admin' | 'editor' | 'viewer'>('editor');
+  const [newTeamEmail, setNewTeamEmail] = useState("");
+  const [newTeamRole, setNewTeamRole] = useState<"admin" | "editor" | "viewer">(
+    "editor"
+  );
 
   // Alimtalk State
-  const [alimtalk, setAlimtalk] = useState(state.alimtalkSettings || {
-    apiKey: '',
-    apiSecret: '',
-    senderPhone: '',
-    templateCode: '',
-    isEnabled: false
-  });
+  const [alimtalk, setAlimtalk] = useState(
+    state.alimtalkSettings || {
+      apiKey: "",
+      apiSecret: "",
+      senderPhone: "",
+      templateCode: "",
+      isEnabled: false,
+    }
+  );
 
   const handleSaveMetaToken = () => {
     state.setMetaAccessToken(metaToken.trim());
-    alert('인스타그램 Meta Graph API Access Token이 저장되었습니다.');
+    alert("인스타그램 Meta Graph API Access Token이 저장되었습니다.");
   };
 
   const handleAddDMRule = (e: React.FormEvent) => {
@@ -66,14 +74,16 @@ const AutomationEditor = () => {
       id: `rule-${Date.now()}`,
       keyword: newKeyword.trim(),
       responseMessage: newMessage.trim(),
-      targetLinkUrl: newTargetUrl.trim() || `https://linkzip.kr/${state.profile.username || 'preview'}`,
-      isActive: true
+      targetLinkUrl:
+        newTargetUrl.trim() ||
+        `https://linkzip.kr/${state.profile.username || "preview"}`,
+      isActive: true,
     };
 
     state.addDMRule(rule);
-    setNewKeyword('');
-    setNewMessage('');
-    setNewTargetUrl('');
+    setNewKeyword("");
+    setNewMessage("");
+    setNewTargetUrl("");
     setIsDmModalOpen(false);
   };
 
@@ -85,36 +95,40 @@ const AutomationEditor = () => {
       id: `member-${Date.now()}`,
       email: newTeamEmail.trim(),
       role: newTeamRole,
-      status: 'pending',
-      invitedAt: new Date().toISOString().split('T')[0]
+      status: "pending",
+      invitedAt: new Date().toISOString().split("T")[0],
     };
 
     state.addTeamMember(member);
-    setNewTeamEmail('');
-    alert(`${newTeamEmail} 님에게 ${newTeamRole.toUpperCase()} 권한 초대 메일을 발송했습니다.`);
+    setNewTeamEmail("");
+    alert(
+      `${newTeamEmail} 님에게 ${newTeamRole.toUpperCase()} 권한 초대 메일을 발송했습니다.`
+    );
   };
 
   const handleSaveAlimtalk = () => {
     state.setAlimtalkSettings(alimtalk);
-    alert('카카오 알림톡 설정이 저장되었습니다.');
+    alert("카카오 알림톡 설정이 저장되었습니다.");
   };
 
   return (
     <div className="space-y-8 pb-20 font-sans">
-      
       {/* Header */}
       <div>
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold mb-2">
           <Zap className="w-3.5 h-3.5" /> Growth & Marketing
         </div>
-        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Growth & Automation (자동화 및 성장)</h2>
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+          Growth & Automation (자동화 및 성장)
+        </h2>
         <p className="text-xs text-gray-500 font-medium mt-1">
-          인스타그램 DM 자동화, 팀원 초대, 카카오 알림톡 연동을 한곳에서 관리하세요.
+          인스타그램 DM 자동화, 팀원 초대, 카카오 알림톡 연동을 한곳에서
+          관리하세요.
         </p>
       </div>
 
       {/* 1. Instagram DM Automation Card */}
-      <div 
+      <div
         onClick={() => setIsWizardOpen(true)}
         className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 hover:border-purple-300 hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
       >
@@ -139,23 +153,10 @@ const AutomationEditor = () => {
               )}
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              팔로워 댓글/DM 키워드 감지 시 자동 반응 메시지 발송 &amp; 연동 관리
+              팔로워 댓글/DM 키워드 감지 시 자동 반응 메시지 발송 &amp; 연동
+              관리
             </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsWizardOpen(true);
-            }}
-            className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-2xl text-xs font-extrabold transition flex items-center gap-2 shadow-md group-hover:shadow-lg cursor-pointer"
-          >
-            <FaInstagram className="w-4 h-4" />
-            <span>DM 자동화 대시보드 바로가기</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
@@ -166,8 +167,12 @@ const AutomationEditor = () => {
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900">팀 멤버 초대 & 협업 (Team Members)</h3>
-            <p className="text-xs text-gray-500">함께 페이지를 관리할 팀원을 이메일로 초대하세요.</p>
+            <h3 className="text-sm font-bold text-gray-900">
+              팀 멤버 초대 & 협업 (Team Members)
+            </h3>
+            <p className="text-xs text-gray-500">
+              함께 페이지를 관리할 팀원을 이메일로 초대하세요.
+            </p>
           </div>
         </div>
 
@@ -206,14 +211,21 @@ const AutomationEditor = () => {
             </div>
           ) : (
             state.teamMembers.map((member) => (
-              <div key={member.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/60 flex items-center justify-between">
+              <div
+                key={member.id}
+                className="p-4 rounded-2xl border border-gray-100 bg-gray-50/60 flex items-center justify-between"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs text-gray-700">
                     {member.email[0].toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-900">{member.email}</p>
-                    <span className="text-[10px] text-gray-400 font-medium">초대일: {member.invitedAt}</span>
+                    <p className="text-xs font-bold text-gray-900">
+                      {member.email}
+                    </p>
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      초대일: {member.invitedAt}
+                    </span>
                   </div>
                 </div>
 
@@ -241,52 +253,73 @@ const AutomationEditor = () => {
             <MessageSquare className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900">카카오 알림톡 & 이메일 알림 연동</h3>
-            <p className="text-xs text-gray-500">솔라피 / 알리고 연동을 통해 신규 리드/구독 발생 시 카카오 알림톡을 발송합니다.</p>
+            <h3 className="text-sm font-bold text-gray-900">
+              카카오 알림톡 & 이메일 알림 연동
+            </h3>
+            <p className="text-xs text-gray-500">
+              솔라피 / 알리고 연동을 통해 신규 리드/구독 발생 시 카카오 알림톡을
+              발송합니다.
+            </p>
           </div>
         </div>
 
         <div className="space-y-4 pt-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700">API Key (솔라피/알리고)</label>
+              <label className="text-xs font-bold text-gray-700">
+                API Key (솔라피/알리고)
+              </label>
               <input
                 type="text"
                 value={alimtalk.apiKey}
-                onChange={(e) => setAlimtalk({ ...alimtalk, apiKey: e.target.value })}
+                onChange={(e) =>
+                  setAlimtalk({ ...alimtalk, apiKey: e.target.value })
+                }
                 placeholder="SOLAPI_API_KEY"
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-gray-50 focus:bg-white"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700">API Secret</label>
+              <label className="text-xs font-bold text-gray-700">
+                API Secret
+              </label>
               <input
                 type="password"
                 value={alimtalk.apiSecret}
-                onChange={(e) => setAlimtalk({ ...alimtalk, apiSecret: e.target.value })}
+                onChange={(e) =>
+                  setAlimtalk({ ...alimtalk, apiSecret: e.target.value })
+                }
                 placeholder="••••••••••••••••"
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-gray-50 focus:bg-white"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700">발신자 전화번호</label>
+              <label className="text-xs font-bold text-gray-700">
+                발신자 전화번호
+              </label>
               <input
                 type="text"
                 value={alimtalk.senderPhone}
-                onChange={(e) => setAlimtalk({ ...alimtalk, senderPhone: e.target.value })}
+                onChange={(e) =>
+                  setAlimtalk({ ...alimtalk, senderPhone: e.target.value })
+                }
                 placeholder="01012345678"
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-gray-50 focus:bg-white"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700">알림톡 템플릿 코드</label>
+              <label className="text-xs font-bold text-gray-700">
+                알림톡 템플릿 코드
+              </label>
               <input
                 type="text"
                 value={alimtalk.templateCode}
-                onChange={(e) => setAlimtalk({ ...alimtalk, templateCode: e.target.value })}
+                onChange={(e) =>
+                  setAlimtalk({ ...alimtalk, templateCode: e.target.value })
+                }
                 placeholder="KA01TP2304..."
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-gray-50 focus:bg-white"
               />
@@ -318,14 +351,20 @@ const AutomationEditor = () => {
                 <Bot className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">새 DM 자동화 규칙 생성</h3>
-                <p className="text-xs text-gray-500">인스타 댓글/DM 감지 키워드 및 답장 문구 입력</p>
+                <h3 className="text-base font-bold text-gray-900">
+                  새 DM 자동화 규칙 생성
+                </h3>
+                <p className="text-xs text-gray-500">
+                  인스타 댓글/DM 감지 키워드 및 답장 문구 입력
+                </p>
               </div>
             </div>
 
             <form onSubmit={handleAddDMRule} className="space-y-4 pt-2">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-700">감지 키워드 (Keyword)</label>
+                <label className="text-xs font-bold text-gray-700">
+                  감지 키워드 (Keyword)
+                </label>
                 <input
                   type="text"
                   value={newKeyword}
@@ -337,7 +376,9 @@ const AutomationEditor = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-700">자동 발송 메시지</label>
+                <label className="text-xs font-bold text-gray-700">
+                  자동 발송 메시지
+                </label>
                 <textarea
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
@@ -349,7 +390,9 @@ const AutomationEditor = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-700">연결 타겟 URL (선택)</label>
+                <label className="text-xs font-bold text-gray-700">
+                  연결 타겟 URL (선택)
+                </label>
                 <input
                   type="url"
                   value={newTargetUrl}
@@ -378,7 +421,6 @@ const AutomationEditor = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

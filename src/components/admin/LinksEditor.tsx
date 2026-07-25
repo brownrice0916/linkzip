@@ -14,6 +14,7 @@ import {
 import { getLinkIcon } from '../../lib/icons';
 import { ThumbnailModal } from './ThumbnailModal';
 import { SocialModal } from './SocialModal';
+import { AddBlockModal } from './AddBlockModal';
 import clsx from 'clsx';
 
 const LinksEditor = () => {
@@ -36,6 +37,9 @@ const LinksEditor = () => {
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const [isOverRootArea, setIsOverRootArea] = useState(false);
   const [activeThumbnailLink, setActiveThumbnailLink] = useState<CustomLink | null>(null);
+
+  // Add Block Modal State
+  const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false);
 
   // Group Collapse State (Default is collapsed = true)
   const [collapsedCollectionIds, setCollapsedCollectionIds] = useState<Record<string, boolean>>({});
@@ -106,6 +110,70 @@ const LinksEditor = () => {
       url: 'https://',
       isVisible: true
     }, collectionId);
+  };
+
+  const handleSelectBlockType = (blockType: string) => {
+    if (blockType === 'link') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: 'New Link',
+        url: 'https://',
+        isVisible: true,
+        iconName: 'link'
+      });
+    } else if (blockType === 'group_link') {
+      handleAddCollection();
+    } else if (blockType === 'sns') {
+      handleAddSocial();
+    } else if (blockType === 'video') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: 'Video Stream',
+        url: 'https://youtube.com',
+        isVisible: true,
+        iconName: 'youtube'
+      });
+    } else if (blockType === 'text') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: 'Text / Announcement',
+        url: '',
+        isVisible: true,
+        iconName: 'file-text'
+      });
+    } else if (blockType === 'gallery') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: 'Image Gallery',
+        url: '',
+        isVisible: true,
+        iconName: 'image'
+      });
+    } else if (blockType === 'space') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: '--- Spacing / Divider ---',
+        url: '',
+        isVisible: true,
+        iconName: 'minus'
+      });
+    } else if (blockType === 'customer_inquiry' || blockType === 'contact') {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: 'Contact / Inquiry',
+        url: 'https://open.kakao.com',
+        isVisible: true,
+        iconName: 'message-circle'
+      });
+    } else {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        title: `${blockType.replace('_', ' ')} block`,
+        url: 'https://',
+        isVisible: true,
+        iconName: 'sparkles'
+      });
+    }
   };
 
   // Drag handlers
@@ -181,82 +249,87 @@ const LinksEditor = () => {
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
         onDragOver={(e) => handleDragOver(e, link.id)}
-        onDragLeave={() => setDragOverTargetId(null)}
         onDrop={(e) => handleDropOnItem(e, link.id)}
         className={clsx(
-          "bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3 transition-all duration-150 relative",
-          isBeingDragged ? "opacity-40 scale-95 border-dashed border-gray-400" : "border-gray-200",
-          isDragOver ? "border-indigo-500 border-2 bg-indigo-50/20" : "",
-          isNested ? "ml-4" : ""
+          "bg-white p-4 rounded-2xl border transition-all space-y-3 relative group",
+          isNested ? "border-gray-200 bg-gray-50/50 shadow-2xs" : "border-gray-200 shadow-2xs",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver && "border-2 border-indigo-500 bg-indigo-50/50"
         )}
       >
-        {/* Drag Handle */}
-        <div className="cursor-grab active:cursor-grabbing p-1 text-gray-300 hover:text-gray-600 transition-colors shrink-0">
-          <GripVertical className="w-5 h-5" />
-        </div>
+        <div className="flex items-center gap-3">
+          {/* Drag Handle Icon */}
+          <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0">
+            <GripVertical className="w-4 h-4" />
+          </div>
 
-        {/* Thumbnail / Icon Button */}
-        <button
-          type="button"
-          onClick={() => setActiveThumbnailLink(link)}
-          className="w-12 h-12 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden hover:bg-gray-200 transition group cursor-pointer"
-          title="Change thumbnail / icon"
-        >
-          {isImage && link.icon ? (
-            <img src={link.icon} alt="Thumbnail" className="w-full h-full object-cover" />
-          ) : isIcon ? (
-            <div className="w-6 h-6 flex items-center justify-center shrink-0">
-              <SelectedIconComp className="w-full h-full object-contain text-gray-800" />
-            </div>
-          ) : (
-            <ImageIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-          )}
-        </button>
-
-        {/* Form Inputs */}
-        <div className="flex-1 space-y-2 min-w-0">
-          <input
-            type="text"
-            value={link.title}
-            onChange={(e) => updateCustomLink(link.id, { title: e.target.value })}
-            className="font-bold text-gray-900 bg-transparent border-none p-0 focus:ring-0 placeholder-gray-400 w-full text-sm"
-            placeholder="Title"
-          />
-          <input
-            type="text"
-            value={link.url || ''}
-            onChange={(e) => updateCustomLink(link.id, { url: e.target.value })}
-            className="text-xs text-gray-500 bg-transparent border-none p-0 focus:ring-0 placeholder-gray-400 w-full"
-            placeholder="URL"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          {isNested && (
-            <button 
-              onClick={() => moveItemToRoot(link.id)} 
-              title="Move out of collection"
-              className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <CornerDownRight className="w-4 h-4 transform rotate-180" />
-            </button>
-          )}
-          <button 
-            onClick={() => removeCustomLink(link.id)} 
-            className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+          {/* Thumbnail / Icon Picker Button */}
+          <button
+            type="button"
+            onClick={() => setActiveThumbnailLink(link)}
+            className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 hover:border-black transition cursor-pointer relative group/thumb"
+            title="Edit thumbnail / icon"
           >
-            <Trash2 className="w-4 h-4" />
+            {isImage ? (
+              <img src={link.icon} alt={link.title} className="w-full h-full object-cover" />
+            ) : isIcon && SelectedIconComp ? (
+              <SelectedIconComp className="w-5 h-5 text-gray-700" />
+            ) : (
+              <ImageIcon className="w-4 h-4 text-gray-400 group-hover/thumb:text-black transition" />
+            )}
           </button>
+
+          {/* Title & URL Inputs */}
+          <div className="flex-1 space-y-1.5 min-w-0">
+            <input
+              type="text"
+              value={link.title}
+              onChange={(e) => updateCustomLink(link.id, { title: e.target.value })}
+              className="w-full font-bold text-xs text-gray-900 border-none p-0 focus:ring-0 bg-transparent placeholder-gray-400 truncate"
+              placeholder="Title"
+            />
+            <input
+              type="text"
+              value={link.url || ''}
+              onChange={(e) => updateCustomLink(link.id, { url: e.target.value })}
+              className="w-full text-[11px] text-gray-500 font-medium border-none p-0 focus:ring-0 bg-transparent placeholder-gray-300 truncate"
+              placeholder="URL (e.g. https://...)"
+            />
+          </div>
+
+          {/* Actions: Visibility Toggle & Delete */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })}
+              className={clsx(
+                "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
+                link.isVisible !== false ? "bg-black" : "bg-gray-200"
+              )}
+            >
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
+                  link.isVisible !== false ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            <button
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1.5 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     );
   };
 
+  // Render Collection (Group) Block Card
   const renderCollection = (collection: CustomLink) => {
     const isBeingDragged = draggedId === collection.id;
     const isDragOver = dragOverTargetId === collection.id;
-    const isNestedDragOver = dragOverTargetId === `nested-${collection.id}`;
     const isCollapsed = isCollectionCollapsed(collection.id);
 
     return (
@@ -266,131 +339,98 @@ const LinksEditor = () => {
         onDragStart={(e) => handleDragStart(e, collection.id)}
         onDragEnd={handleDragEnd}
         onDragOver={(e) => handleDragOver(e, collection.id)}
-        onDragLeave={() => setDragOverTargetId(null)}
-        onDrop={(e) => handleDropOnItem(e, collection.id)}
+        onDrop={(e) => handleDropOnCollection(e, collection.id)}
         className={clsx(
-          "bg-white border rounded-2xl p-5 shadow-sm space-y-4 transition-all duration-150 relative",
-          isBeingDragged ? "opacity-40 scale-95 border-dashed border-gray-400" : "border-gray-200",
-          isDragOver && !isNestedDragOver ? "border-indigo-500 border-2 bg-indigo-50/20" : ""
+          "bg-white p-5 rounded-3xl border-2 transition-all space-y-4 shadow-sm relative",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver ? "border-indigo-500 bg-indigo-50/50" : "border-indigo-100"
         )}
       >
-        {/* Collection Header */}
-        <div className="flex items-center gap-3">
-          <div className="cursor-grab active:cursor-grabbing p-1 text-gray-300 hover:text-gray-600 transition-colors shrink-0">
-            <GripVertical className="w-5 h-5" />
-          </div>
-          
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-            <Folder className="w-5 h-5" />
-          </div>
+        {/* Collection Header Controls */}
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0">
+              <GripVertical className="w-4 h-4" />
+            </div>
 
-          <div className="flex-1 min-w-0">
+            <button
+              onClick={() => toggleCollectionCollapse(collection.id)}
+              className="p-1.5 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              title={isCollapsed ? '컬렉션 펼치기' : '컬렉션 접기'}
+            >
+              <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", isCollapsed ? "-rotate-90" : "rotate-0")} />
+            </button>
+
+            <Folder className="w-4 h-4 text-indigo-600 shrink-0" />
+
             <input
               type="text"
               value={collection.title}
               onChange={(e) => updateCustomLink(collection.id, { title: e.target.value })}
-              className="font-bold text-gray-900 bg-transparent border-none p-0 focus:ring-0 placeholder-gray-400 w-full text-base"
+              className="font-black text-sm text-gray-900 border-none p-0 focus:ring-0 bg-transparent placeholder-gray-400 flex-1 truncate"
               placeholder="Collection Title"
             />
           </div>
 
-          {/* Expand / Collapse Accordion Toggle Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleCollectionCollapse(collection.id);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition cursor-pointer shrink-0"
-            title={isCollapsed ? "그룹 펼치기" : "그룹 접기"}
-          >
-            <span>{isCollapsed ? "펼치기" : "접기"}</span>
-            <span className="text-[11px] text-gray-400 font-normal">
-              ({collection.links?.length || 0})
-            </span>
-            <ChevronDown
-              className={clsx(
-                "w-4 h-4 transition-transform duration-200 text-gray-500",
-                isCollapsed ? "-rotate-90" : "rotate-0"
-              )}
-            />
-          </button>
-
-          <button 
-            onClick={() => removeCustomLink(collection.id)} 
-            className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
-            title="그룹 삭제"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Expanded Collection Content */}
-        {!isCollapsed && (
-          <div className="space-y-4 pt-1 animate-in fade-in duration-200">
-            {/* Collection Layout Selector */}
-            <div className="flex gap-2 p-1 bg-gray-100 rounded-2xl">
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Layout Toggle (List vs Grid) */}
+            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
               <button
+                type="button"
                 onClick={() => updateCustomLink(collection.id, { layout: 'list' })}
                 className={clsx(
-                  "flex-1 flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border transition-all cursor-pointer",
-                  collection.layout === 'list' ? 'border-black bg-white shadow-2xs font-bold text-black' : 'border-transparent text-gray-500 hover:text-black'
+                  "p-1 rounded-md transition cursor-pointer",
+                  collection.layout !== 'grid' ? "bg-white text-black shadow-xs font-bold" : "text-gray-400"
                 )}
+                title="List view"
               >
-                <LayoutList className="w-4 h-4" />
-                <span className="text-xs">List</span>
+                <LayoutList className="w-3.5 h-3.5" />
               </button>
-              
               <button
+                type="button"
                 onClick={() => updateCustomLink(collection.id, { layout: 'grid' })}
                 className={clsx(
-                  "flex-1 flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border transition-all cursor-pointer",
-                  collection.layout === 'grid' ? 'border-black bg-white shadow-2xs font-bold text-black' : 'border-transparent text-gray-500 hover:text-black'
+                  "p-1 rounded-md transition cursor-pointer",
+                  collection.layout === 'grid' ? "bg-white text-black shadow-xs font-bold" : "text-gray-400"
                 )}
+                title="Grid view"
               >
-                <LayoutGrid className="w-4 h-4" />
-                <span className="text-xs">Grid</span>
+                <LayoutGrid className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {/* Inner Drop Target Box for Collection */}
-            <div 
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setDragOverTargetId(`nested-${collection.id}`);
-              }}
-              onDragLeave={(e) => {
-                e.stopPropagation();
-                setDragOverTargetId(null);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleDropOnCollection(e, collection.id);
-              }}
-              className={clsx(
-                "space-y-3 p-4 rounded-xl border-2 border-dashed transition-colors min-h-[90px] flex flex-col justify-center",
-                isNestedDragOver ? "border-purple-500 bg-purple-50/50 ring-2 ring-purple-300" : "border-gray-200 bg-gray-50/50"
-              )}
+            <button
+              onClick={() => removeCustomLink(collection.id)}
+              className="p-1.5 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 cursor-pointer"
             >
-              {(!collection.links || collection.links.length === 0) && (
-                <p className="text-xs text-gray-400 text-center py-2 font-medium flex items-center justify-center gap-1">
-                  <span>📥</span> 그룹 안으로 넣으려면 여기에 드롭하세요
-                </p>
-              )}
-              {collection.links?.map(link => renderLinkItem(link, true, collection.id))}
-              
-              <button 
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible Children Links */}
+        {!isCollapsed && (
+          <div className="pl-4 border-l-2 border-indigo-100 space-y-3 pt-1 animate-in fade-in duration-200">
+            {collection.links && collection.links.length > 0 ? (
+              collection.links.map((nestedLink) => renderLinkItem(nestedLink, true, collection.id))
+            ) : (
+              <div className="text-center py-4 text-xs font-semibold text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                컬렉션이 비어있습니다. 아래 [ + ] 버튼을 눌러 링크를 추가해보세요.
+              </div>
+            )}
+
+            {/* Add Nested Link Button */}
+            <div className="pt-1 flex justify-end">
+              <button
                 onClick={() => handleAddNestedLink(collection.id)}
-                className="w-full py-2.5 bg-gray-200 text-black font-semibold rounded-full hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-xs mt-2 cursor-pointer"
+                className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition cursor-pointer"
               >
-                <Plus className="w-4 h-4" /> Add link to collection
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add link inside</span>
               </button>
             </div>
           </div>
         )}
-
       </div>
     );
   };
@@ -398,72 +438,35 @@ const LinksEditor = () => {
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       
-      {/* Top Profile Summary Bar (Avatar + Username + Social Links Row + Add Button - Matching User Screenshot) */}
-      <div className="flex items-center gap-4 bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs mb-6">
-        {/* Avatar */}
-        <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border border-gray-200 shrink-0 flex items-center justify-center shadow-xs">
-          {profile.avatarUrl ? (
-            <img src={profile.avatarUrl} alt={profile.name || profile.username} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-lg font-black text-gray-400 uppercase">
-              {(profile.username || 'LZ')[0]}
-            </span>
-          )}
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Content &amp; Links</h2>
+          <p className="text-sm text-gray-500">Add, organize, and group your link blocks.</p>
         </div>
 
-        {/* User & Social Row */}
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-900 text-sm truncate mb-1.5">
-            {profile.username || profile.name || 'brownrice0916'}
-          </h3>
-
-          {/* Social Icons Row */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {socialLinks.map((social) => {
-              const IconComp = getLinkIcon(social.platform);
-              return (
-                <button
-                  key={social.id}
-                  onClick={() => handleEditSocial(social)}
-                  className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition border border-gray-200 text-gray-700 hover:text-black shrink-0 cursor-pointer shadow-2xs"
-                  title={social.platform}
-                >
-                  <IconComp className="w-3.5 h-3.5" />
-                </button>
-              );
-            })}
-
-            <button
-              onClick={handleAddSocial}
-              className="w-7 h-7 rounded-full bg-gray-900 hover:bg-black text-white flex items-center justify-center transition shrink-0 cursor-pointer shadow-xs"
-              title="Add Social Icon"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Add Action Buttons */}
-      <div className="grid grid-cols-2 gap-4">
+        {/* Add Social Icon Link Header Button */}
         <button
-          onClick={handleAddCollection}
-          className="flex items-center justify-center gap-2 py-3.5 px-4 bg-white border border-gray-200 rounded-full font-bold text-sm text-gray-800 hover:bg-gray-50 transition shadow-2xs cursor-pointer"
+          onClick={handleAddSocial}
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl text-xs font-bold transition cursor-pointer shadow-2xs"
         >
-          <Folder className="w-4 h-4 text-indigo-600" />
-          Add collection
-        </button>
-
-        <button
-          onClick={handleAddLink}
-          className="flex items-center justify-center gap-2 py-3.5 px-4 bg-black text-white rounded-full font-bold text-sm hover:bg-gray-800 transition shadow-md cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Add link
+          <Plus className="w-4 h-4 text-purple-600" />
+          <span>Social Icons</span>
         </button>
       </div>
 
-      {/* Custom Links List */}
+      {/* Main Add Block Button (Matching Littly) */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setIsAddBlockModalOpen(true)}
+          className="flex-1 flex items-center justify-center gap-2 py-4 px-6 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-full font-extrabold text-sm shadow-md hover:shadow-lg transition cursor-pointer"
+        >
+          <Plus className="w-5 h-5" />
+          Add a block
+        </button>
+      </div>
+
+      {/* Custom Links & Collections List */}
       <div className="space-y-4">
         {customLinks.map((block) => {
           if (block.type === 'collection') {
@@ -473,7 +476,7 @@ const LinksEditor = () => {
         })}
       </div>
 
-      {/* Root Drop Zone (to easily drop out of collection) */}
+      {/* Root Drop Zone */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -488,6 +491,13 @@ const LinksEditor = () => {
       >
         <p className="text-xs font-semibold">Drop here to move out of collection to main list</p>
       </div>
+
+      {/* Add Block Modal (Matching Littly) */}
+      <AddBlockModal
+        isOpen={isAddBlockModalOpen}
+        onClose={() => setIsAddBlockModalOpen(false)}
+        onSelectBlock={handleSelectBlockType}
+      />
 
       {/* Thumbnail Editor Modal */}
       {activeThumbnailLink && (
