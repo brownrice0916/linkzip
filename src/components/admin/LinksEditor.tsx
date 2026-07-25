@@ -223,6 +223,8 @@ const LinksEditor = () => {
     const isBeingDragged = draggedId === collection.id;
     const isDragOver = dragOverTargetId === collection.id;
 
+    const isNestedDragOver = dragOverTargetId === `nested-${collection.id}`;
+
     return (
       <div 
         key={collection.id}
@@ -230,11 +232,11 @@ const LinksEditor = () => {
         onDragStart={(e) => handleDragStart(e, collection.id)}
         onDragOver={(e) => handleDragOver(e, collection.id)}
         onDragLeave={() => setDragOverTargetId(null)}
-        onDrop={(e) => handleDropOnCollection(e, collection.id)}
+        onDrop={(e) => handleDropOnItem(e, collection.id)}
         className={clsx(
           "bg-white border rounded-2xl p-5 shadow-sm space-y-5 transition-all duration-150 relative",
           isBeingDragged ? "opacity-40 scale-95 border-dashed border-gray-400" : "border-gray-200",
-          isDragOver ? "border-indigo-500 border-2 bg-indigo-50/20" : ""
+          isDragOver && !isNestedDragOver ? "border-indigo-500 border-2 bg-indigo-50/20" : ""
         )}
       >
         {/* Collection Header */}
@@ -290,18 +292,30 @@ const LinksEditor = () => {
           </button>
         </div>
 
-        {/* Drop Target Box for Collection */}
+        {/* Inner Drop Target Box for Collection */}
         <div 
-          onDragOver={(e) => handleDragOver(e, collection.id)}
-          onDrop={(e) => handleDropOnCollection(e, collection.id)}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOverTargetId(`nested-${collection.id}`);
+          }}
+          onDragLeave={(e) => {
+            e.stopPropagation();
+            setDragOverTargetId(null);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleDropOnCollection(e, collection.id);
+          }}
           className={clsx(
             "space-y-3 p-4 rounded-xl border-2 border-dashed transition-colors min-h-[90px] flex flex-col justify-center",
-            isDragOver ? "border-indigo-500 bg-indigo-50/50" : "border-gray-200 bg-gray-50/50"
+            isNestedDragOver ? "border-purple-500 bg-purple-50/50 ring-2 ring-purple-300" : "border-gray-200 bg-gray-50/50"
           )}
         >
           {(!collection.links || collection.links.length === 0) && (
-            <p className="text-xs text-gray-400 text-center py-2 font-medium">
-              Drag links into this collection box or click below
+            <p className="text-xs text-gray-400 text-center py-2 font-medium flex items-center justify-center gap-1">
+              <span>📥</span> 그룹 안으로 넣으려면 여기에 드롭하세요
             </p>
           )}
           {collection.links?.map(link => renderLinkItem(link, true, collection.id))}
