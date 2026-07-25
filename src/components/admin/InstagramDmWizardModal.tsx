@@ -275,24 +275,24 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
           </div>
         )}
 
-        {/* STEP 3 MODAL OVERLAY: Check SMS / WhatsApp Code (Screenshot 3) */}
+        {/* STEP 3 MODAL OVERLAY: Check SMS Code (Standard SMS Text Message) */}
         {wizardStep === 3 && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl p-8 max-w-md w-full space-y-6 shadow-2xl animate-in fade-in zoom-in-95 font-sans relative">
               <div className="text-left space-y-1">
                 <span className="text-xs font-bold text-gray-400">싸리 | 인스타툰 • Instagram</span>
-                <h3 className="text-xl font-black text-gray-900">Check your WhatsApp messages</h3>
+                <h3 className="text-xl font-black text-gray-900">Check your SMS messages</h3>
                 <p className="text-xs text-gray-500 font-medium">
-                  Enter the code we sent to your WhatsApp account at +82 **-****-**53.
+                  Enter the code we sent via SMS to your mobile phone at +82 10-****-**53.
                 </p>
               </div>
 
-              {/* Phone Graphic Banner */}
-              <div className="bg-gradient-to-r from-purple-100 via-pink-100 to-indigo-100 rounded-2xl p-6 text-center relative overflow-hidden border border-purple-200">
-                <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md mb-2">
-                  <FaWhatsapp className="w-10 h-10" />
+              {/* Phone Graphic Banner (SMS Theme) */}
+              <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 text-center relative overflow-hidden border border-blue-200">
+                <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto shadow-md mb-2">
+                  <Smartphone className="w-9 h-9" />
                 </div>
-                <div className="bg-white px-4 py-2 rounded-xl text-emerald-600 font-mono font-bold text-lg inline-block border border-gray-200 shadow-xs">
+                <div className="bg-white px-4 py-2 rounded-xl text-blue-600 font-mono font-bold text-lg inline-block border border-gray-200 shadow-xs">
                   ******
                 </div>
               </div>
