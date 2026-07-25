@@ -1,14 +1,22 @@
 import React, { useState } from "react";
-import { Link2, Sparkles, ArrowRight, AlertOctagon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useStore } from "../store/useStore";
+import { Link2, Sparkles, ArrowRight, AlertOctagon, LayoutDashboard } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 
 const Landing = () => {
+  const navigate = useNavigate();
+  const user = useStore((state) => state.user);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
 
-  const handleBlockedClick = (e: React.MouseEvent) => {
+  const handleActionClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowBlockedModal(true);
+    if (user) {
+      navigate("/admin");
+    } else {
+      setShowBlockedModal(true);
+    }
   };
 
   return (
@@ -19,25 +27,41 @@ const Landing = () => {
 
       {/* Navbar */}
       <nav className="relative z-10 max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
-        <div className="flex items-center gap-2">
+        <div 
+          className="flex items-center gap-2 cursor-pointer" 
+          onClick={() => user ? navigate('/admin') : null}
+        >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg">
             <Link2 className="w-6 h-6 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight">LinkZip</span>
         </div>
+        
         <div className="flex items-center gap-4">
-          <button
-            onClick={handleBlockedClick}
-            className="hidden md:block px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors cursor-pointer"
-          >
-            Log in
-          </button>
-          <button
-            onClick={handleBlockedClick}
-            className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-gray-100 font-semibold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.2)] cursor-pointer"
-          >
-            Sign up
-          </button>
+          {user ? (
+            <button
+              onClick={() => navigate('/admin')}
+              className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-gray-100 font-bold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Go to Dashboard (관리자)</span>
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={handleActionClick}
+                className="hidden md:block px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Log in
+              </button>
+              <button
+                onClick={handleActionClick}
+                className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-gray-100 font-semibold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.2)] cursor-pointer"
+              >
+                Sign up
+              </button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -56,11 +80,20 @@ const Landing = () => {
         </h1>
 
         <button
-          onClick={handleBlockedClick}
+          onClick={handleActionClick}
           className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-bold text-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] cursor-pointer"
         >
-          <FaGoogle className="w-5 h-5 text-black" />
-          <span>Get started</span>
+          {user ? (
+            <>
+              <LayoutDashboard className="w-5 h-5 text-black" />
+              <span>Go to Dashboard (관리자로 이동)</span>
+            </>
+          ) : (
+            <>
+              <FaGoogle className="w-5 h-5 text-black" />
+              <span>Get started</span>
+            </>
+          )}
           <ArrowRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
         </button>
 
