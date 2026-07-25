@@ -164,54 +164,7 @@ const Admin = () => {
           <Link2 className="w-5 h-5 text-indigo-400" />
         </div>
 
-        {/* Action Controls: Save / Undo / Redo */}
-        <div className="flex flex-col items-center gap-3 w-full px-2 py-3 bg-gray-50 border-y border-gray-100 my-1">
-          {/* Save Button */}
-          <button
-            onClick={handleManualSave}
-            disabled={!state.isDirty}
-            className={clsx(
-              "w-12 h-12 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer font-bold text-[10px]",
-              state.isDirty
-                ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md ring-2 ring-indigo-300"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            )}
-            title="Save changes"
-          >
-            <span className="text-xs">💾</span>
-            <span>Save</span>
-          </button>
 
-          {/* Undo / Redo Row */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={state.undo}
-              disabled={state.undoStack.length === 0}
-              className={clsx(
-                "p-1.5 rounded-xl transition cursor-pointer",
-                state.undoStack.length > 0
-                  ? "hover:bg-gray-200 text-gray-700"
-                  : "text-gray-300 cursor-not-allowed"
-              )}
-              title="Undo"
-            >
-              <Undo2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={state.redo}
-              disabled={state.redoStack.length === 0}
-              className={clsx(
-                "p-1.5 rounded-xl transition cursor-pointer",
-                state.redoStack.length > 0
-                  ? "hover:bg-gray-200 text-gray-700"
-                  : "text-gray-300 cursor-not-allowed"
-              )}
-              title="Redo"
-            >
-              <Redo2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
 
         <nav className="flex flex-col gap-4 w-full px-3">
           <button
@@ -346,7 +299,87 @@ const Admin = () => {
 
         {/* Editor Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#F3F3F1]">
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-3xl mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200 space-y-6">
+            
+            {/* Section Header with Title (Left) and Undo / Redo / Cancel / Save (Right) */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <h2 className="text-2xl font-black text-gray-900 capitalize tracking-tight">
+                {activeTab === "links" && "Links"}
+                {activeTab === "profile" && "Profile"}
+                {activeTab === "appearance" && "Design"}
+                {activeTab === "automation" && "Growth"}
+                {activeTab === "settings" && "Settings"}
+              </h2>
+
+              {/* Controls Row (Matching User Screenshot) */}
+              <div className="flex items-center gap-3">
+                {/* Undo */}
+                <button
+                  onClick={state.undo}
+                  disabled={state.undoStack.length === 0}
+                  className={clsx(
+                    "p-2 rounded-xl transition cursor-pointer flex items-center justify-center",
+                    state.undoStack.length > 0
+                      ? "hover:bg-gray-100 text-gray-800"
+                      : "text-gray-300 cursor-not-allowed"
+                  )}
+                  title="Undo"
+                >
+                  <Undo2 className="w-5 h-5" />
+                </button>
+
+                {/* Redo */}
+                <button
+                  onClick={state.redo}
+                  disabled={state.redoStack.length === 0}
+                  className={clsx(
+                    "p-2 rounded-xl transition cursor-pointer flex items-center justify-center",
+                    state.redoStack.length > 0
+                      ? "hover:bg-gray-100 text-gray-800"
+                      : "text-gray-300 cursor-not-allowed"
+                  )}
+                  title="Redo"
+                >
+                  <Redo2 className="w-5 h-5" />
+                </button>
+
+                {/* Cancel Button */}
+                <button
+                  onClick={() => {
+                    if (state.isDirty) {
+                      if (confirm('변경사항을 취소하시겠습니까?')) {
+                        state.undo();
+                      }
+                    }
+                  }}
+                  disabled={!state.isDirty}
+                  className={clsx(
+                    "px-5 py-2 rounded-full border text-xs font-bold transition cursor-pointer",
+                    state.isDirty
+                      ? "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      : "border-gray-200 text-gray-300 cursor-not-allowed"
+                  )}
+                >
+                  Cancel
+                </button>
+
+                {/* Save Button (Matching Screenshot Purple/Indigo Pill) */}
+                <button
+                  onClick={handleManualSave}
+                  disabled={!state.isDirty}
+                  className={clsx(
+                    "px-6 py-2 rounded-full font-extrabold text-xs transition cursor-pointer shadow-md flex items-center gap-1.5",
+                    state.isDirty
+                      ? "bg-[#7C3AED] hover:bg-[#6D28D9] text-white ring-2 ring-purple-300 shadow-lg scale-105"
+                      : "bg-[#7C3AED]/50 text-white/70 cursor-not-allowed"
+                  )}
+                >
+                  <span>Save</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tab Editor Views */}
             {activeTab === "links" && <LinksEditor />}
             {activeTab === "profile" && <ProfileEditor />}
             {activeTab === "appearance" && <AppearanceEditor />}
