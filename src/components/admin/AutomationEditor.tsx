@@ -18,7 +18,8 @@ import {
   ToggleLeft,
   ToggleRight,
   ExternalLink,
-  HelpCircle
+  HelpCircle,
+  ChevronRight
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { InstagramDmWizardModal } from './InstagramDmWizardModal';
@@ -113,122 +114,48 @@ const AutomationEditor = () => {
       </div>
 
       {/* 1. Instagram DM Automation Card */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500 via-pink-500 to-amber-400 text-white flex items-center justify-center shadow-md shrink-0">
-              <Bot className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-gray-900">무제한 인스타그램 DM 자동화</h3>
-                {state.instagramAccount ? (
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {state.instagramAccount} 연결됨
-                  </span>
-                ) : null}
-              </div>
-              <p className="text-xs text-gray-500">팔로워 댓글/DM 키워드 감지 시 자동 반응 메시지 발송</p>
-            </div>
+      <div 
+        onClick={() => setIsWizardOpen(true)}
+        className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 hover:border-purple-300 hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-500 via-pink-500 to-amber-400 text-white flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 transition-transform">
+            <Bot className="w-6 h-6" />
           </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {!state.instagramAccount ? (
-              <button
-                onClick={() => setIsWizardOpen(true)}
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <FaInstagram className="w-4 h-4" />
-                <span>DM 연동 시작 (5단계)</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsWizardOpen(true)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                >
-                  <FaInstagram className="w-4 h-4 text-pink-600" />
-                  <span>대시보드 / 설정</span>
-                </button>
-                <button
-                  onClick={() => {
-                    state.setInstagramAccount(null);
-                    alert('인스타그램 연동 상태가 초기화(미연동)되었습니다.');
-                  }}
-                  className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-full text-xs font-bold transition cursor-pointer"
-                  title="연동 초기화"
-                >
-                  연동 해제
-                </button>
-              </div>
-            )}
-
-            <button
-              onClick={() => setIsDmModalOpen(true)}
-              className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              규칙 추가
-            </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
+                무제한 인스타그램 DM 자동화
+              </h3>
+              {state.instagramAccount ? (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {state.instagramAccount} 연결됨
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                  미연동
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              팔로워 댓글/DM 키워드 감지 시 자동 반응 메시지 발송 &amp; 연동 관리
+            </p>
           </div>
         </div>
 
-
-
-        {/* DM Rules List Table */}
-        <div className="space-y-3 pt-2">
-          <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">등록된 자동화 키워드 규칙 목록</h4>
-          {state.dmRules.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-              <Bot className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-xs text-gray-500 font-medium">등록된 DM 자동화 규칙이 없습니다.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {state.dmRules.map((rule) => (
-                <div 
-                  key={rule.id}
-                  className="p-4 rounded-2xl border border-gray-100 bg-gray-50/60 flex items-center justify-between gap-4"
-                >
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs font-bold">
-                        키워드: #{rule.keyword}
-                      </span>
-                      {rule.isActive ? (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          작동 중
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                          일시정지
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-700 font-medium truncate">{rule.responseMessage}</p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => state.updateDMRule(rule.id, { isActive: !rule.isActive })}
-                      className="p-2 text-gray-400 hover:text-gray-900 transition cursor-pointer"
-                      title={rule.isActive ? '비활성화' : '활성화'}
-                    >
-                      {rule.isActive ? <ToggleRight className="w-6 h-6 text-purple-600" /> : <ToggleLeft className="w-6 h-6 text-gray-300" />}
-                    </button>
-                    <button
-                      onClick={() => state.removeDMRule(rule.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 transition cursor-pointer"
-                      title="삭제"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsWizardOpen(true);
+            }}
+            className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-2xl text-xs font-extrabold transition flex items-center gap-2 shadow-md group-hover:shadow-lg cursor-pointer"
+          >
+            <FaInstagram className="w-4 h-4" />
+            <span>DM 자동화 대시보드 바로가기</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
