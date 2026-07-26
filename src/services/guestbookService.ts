@@ -166,6 +166,25 @@ export async function deleteGuestbookEntry(entryId: string, replyIds: string[]):
   await batch.commit();
 }
 
+export async function deleteGuestbookEntryWithPassword(
+  entryId: string,
+  targetUsername: string,
+  password: string,
+  replyIds: string[],
+): Promise<void> {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'guestbookDeleteChallenges', entryId), {
+    entryId,
+    targetUsername,
+    passwordHash: await hashGuestbookPassword(entryId, password),
+    createdAt: serverTimestamp(),
+  });
+  batch.delete(doc(db, 'guestbooks', entryId));
+  batch.delete(doc(db, 'guestbookSecrets', entryId));
+  replyIds.forEach((replyId) => batch.delete(doc(db, 'guestbookReplies', replyId)));
+  await batch.commit();
+}
+
 export function subscribeToGuestbookReplies(
   targetUsername: string,
   onReplies: (replies: GuestbookReply[]) => void,
@@ -261,6 +280,23 @@ export async function updateGuestbookReplyWithPassword(
 
 export async function deleteGuestbookReply(replyId: string): Promise<void> {
   const batch = writeBatch(db);
+  batch.delete(doc(db, 'guestbookReplies', replyId));
+  batch.delete(doc(db, 'guestbookReplySecrets', replyId));
+  await batch.commit();
+}
+
+export async function deleteGuestbookReplyWithPassword(
+  replyId: string,
+  targetUsername: string,
+  password: string,
+): Promise<void> {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'guestbookReplyDeleteChallenges', replyId), {
+    replyId,
+    targetUsername,
+    passwordHash: await hashGuestbookPassword(replyId, password),
+    createdAt: serverTimestamp(),
+  });
   batch.delete(doc(db, 'guestbookReplies', replyId));
   batch.delete(doc(db, 'guestbookReplySecrets', replyId));
   await batch.commit();

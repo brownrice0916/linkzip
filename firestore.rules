@@ -129,7 +129,10 @@ service cloud.firestore {
         && request.resource.data.content.size() > 0
         && request.resource.data.content.size() <= 1000
         && (
-          ownsUsername(resource.data.targetUsername)
+          (ownsUsername(resource.data.targetUsername)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'isHidden', 'updatedAt'
+            ]))
           || (signedIn()
             && resource.data.authorUid == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -139,9 +142,15 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'authorName', 'content', 'isSecret', 'updatedAt', 'editChallengeId'
             ])
+            && (resource.data.authorName != '익명'
+              || request.resource.data.authorName == resource.data.authorName)
             && validGuestbookPasswordEdit(entryId))
         );
-      allow delete: if ownsUsername(resource.data.targetUsername);
+      allow delete: if ownsUsername(resource.data.targetUsername)
+        || (signedIn() && resource.data.authorUid == request.auth.uid)
+        || (resource.data.hasEditPassword == true
+          && getAfter(/databases/$(database)/documents/guestbookDeleteChallenges/$(entryId)).data.entryId == entryId
+          && getAfter(/databases/$(database)/documents/guestbookDeleteChallenges/$(entryId)).data.targetUsername == resource.data.targetUsername);
     }
 
     match /guestbookSecrets/{entryId} {
@@ -154,7 +163,9 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/guestbooks/$(entryId)).data.targetUsername == request.resource.data.targetUsername
         && getAfter(/databases/$(database)/documents/guestbooks/$(entryId)).data.hasEditPassword == true;
       allow update: if false;
-      allow delete: if ownsUsername(resource.data.targetUsername);
+      allow delete: if ownsUsername(resource.data.targetUsername)
+        || (getAfter(/databases/$(database)/documents/guestbookDeleteChallenges/$(entryId)).data.targetUsername == resource.data.targetUsername
+          && getAfter(/databases/$(database)/documents/guestbookDeleteChallenges/$(entryId)).data.passwordHash == resource.data.passwordHash);
     }
 
     match /guestbookEditChallenges/{challengeId} {
@@ -176,6 +187,20 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /guestbookDeleteChallenges/{entryId} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly([
+          'entryId', 'targetUsername', 'passwordHash', 'createdAt'
+        ])
+        && request.resource.data.entryId == entryId
+        && request.resource.data.targetUsername is string
+        && request.resource.data.passwordHash is string
+        && request.resource.data.passwordHash.size() == 64
+        && get(/databases/$(database)/documents/guestbookSecrets/$(entryId)).data.targetUsername == request.resource.data.targetUsername
+        && get(/databases/$(database)/documents/guestbookSecrets/$(entryId)).data.passwordHash == request.resource.data.passwordHash;
+      allow update, delete: if false;
+    }
+
     match /guestbookReplySecrets/{replyId} {
       allow read: if false;
       allow create: if !signedIn()
@@ -186,7 +211,9 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/guestbookReplies/$(replyId)).data.targetUsername == request.resource.data.targetUsername
         && getAfter(/databases/$(database)/documents/guestbookReplies/$(replyId)).data.hasEditPassword == true;
       allow update: if false;
-      allow delete: if ownsUsername(resource.data.targetUsername);
+      allow delete: if ownsUsername(resource.data.targetUsername)
+        || (getAfter(/databases/$(database)/documents/guestbookReplyDeleteChallenges/$(replyId)).data.targetUsername == resource.data.targetUsername
+          && getAfter(/databases/$(database)/documents/guestbookReplyDeleteChallenges/$(replyId)).data.passwordHash == resource.data.passwordHash);
     }
 
     match /guestbookReplyEditChallenges/{challengeId} {
@@ -205,6 +232,20 @@ service cloud.firestore {
         && request.resource.data.content.size() <= 1000
         && get(/databases/$(database)/documents/guestbookReplySecrets/$(request.resource.data.replyId)).data.targetUsername == request.resource.data.targetUsername
         && get(/databases/$(database)/documents/guestbookReplySecrets/$(request.resource.data.replyId)).data.passwordHash == request.resource.data.passwordHash;
+      allow update, delete: if false;
+    }
+
+    match /guestbookReplyDeleteChallenges/{replyId} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly([
+          'replyId', 'targetUsername', 'passwordHash', 'createdAt'
+        ])
+        && request.resource.data.replyId == replyId
+        && request.resource.data.targetUsername is string
+        && request.resource.data.passwordHash is string
+        && request.resource.data.passwordHash.size() == 64
+        && get(/databases/$(database)/documents/guestbookReplySecrets/$(replyId)).data.targetUsername == request.resource.data.targetUsername
+        && get(/databases/$(database)/documents/guestbookReplySecrets/$(replyId)).data.passwordHash == request.resource.data.passwordHash;
       allow update, delete: if false;
     }
 
@@ -251,9 +292,16 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'authorName', 'content', 'updatedAt', 'editChallengeId'
             ])
+            && (resource.data.authorName != '익명'
+              || request.resource.data.authorName == resource.data.authorName)
             && validGuestbookReplyPasswordEdit(replyId))
         );
-      allow delete: if ownsUsername(resource.data.targetUsername);
+      allow delete: if ownsUsername(resource.data.targetUsername)
+        || (signedIn() && resource.data.authorUid == request.auth.uid)
+        || (resource.data.hasEditPassword == true
+          && getAfter(/databases/$(database)/documents/guestbookReplyDeleteChallenges/$(replyId)).data.replyId == replyId
+          && getAfter(/databases/$(database)/documents/guestbookReplyDeleteChallenges/$(replyId)).data.targetUsername == resource.data.targetUsername)
+        || !existsAfter(/databases/$(database)/documents/guestbooks/$(resource.data.entryId));
     }
   }
 }
