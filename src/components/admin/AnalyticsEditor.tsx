@@ -120,20 +120,10 @@ export const AnalyticsEditor: React.FC = () => {
   return (
     <div className="space-y-8 animate-fade-in pb-16 font-sans">
       
-      {/* Header Title Banner */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-purple-900 via-indigo-900 to-black text-white p-6 rounded-3xl shadow-lg">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-500/30 border border-purple-400/40 text-purple-200 uppercase tracking-widest flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-300 animate-spin" /> Live Realtime Analytics
-            </span>
-          </div>
-          <h2 className="text-2xl font-black tracking-tight">성과 분석 & 클릭률 (CTR)</h2>
-          <p className="text-xs text-purple-200 font-medium">
-            Linkzip 프로필의 방문자 수, 링크별 클릭 수, 그리고 클릭 전환율(CTR)을 실시간으로 추적합니다.
-          </p>
-        </div>
-
+      {/* Compact realtime information */}
+      <div className="flex items-center gap-3 bg-gray-50 text-gray-900 p-4 rounded-2xl border border-gray-200">
+        <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-purple-600" /></div>
+        <div><p className="text-xs font-black">실시간 성과 데이터</p><p className="text-[11px] text-gray-500 mt-0.5">프로필 조회수, 링크 클릭수, 클릭률을 실제 집계 데이터로 보여줍니다.</p></div>
       </div>
 
       {/* 4 Summary Metric Cards */}

@@ -94,7 +94,7 @@ export const MarketingEditor: React.FC = () => {
         
         <div className="flex items-center justify-between border-b border-gray-100 pb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 text-white flex items-center justify-center font-bold shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-gray-950 text-white flex items-center justify-center font-bold">
               <FaInstagram className="w-5 h-5" />
             </div>
             <div>
@@ -126,7 +126,7 @@ export const MarketingEditor: React.FC = () => {
             ) : (
               <button
                 onClick={() => setIsDmWizardOpen(true)}
-                className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-black text-xs rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1.5 hover:scale-105"
+                className="px-4 py-2.5 bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
               >
                 <FaInstagram className="w-4 h-4" />
                 <span>1클릭 계정 연동</span>
@@ -145,9 +145,9 @@ export const MarketingEditor: React.FC = () => {
 
         {/* Not Connected State Banner (Only when !instagramAccount) */}
         {!instagramAccount && (
-          <div className="p-5 bg-gradient-to-r from-purple-50 to-pink-50 border border-pink-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in">
+          <div className="p-5 bg-gray-50 border border-gray-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 text-white flex items-center justify-center font-bold shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-gray-950 text-white flex items-center justify-center font-bold shrink-0">
                 <FaInstagram className="w-5 h-5" />
               </div>
               <div>
@@ -158,7 +158,7 @@ export const MarketingEditor: React.FC = () => {
 
             <button
               onClick={() => setIsDmWizardOpen(true)}
-              className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-black text-xs rounded-xl transition cursor-pointer shadow-xs shrink-0 flex items-center gap-1.5 hover:scale-105"
+              className="px-4 py-2.5 bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs rounded-xl transition cursor-pointer shrink-0 flex items-center gap-1.5"
             >
               <FaInstagram className="w-4 h-4" />
               <span>1클릭 인스타그램 연동하기</span>

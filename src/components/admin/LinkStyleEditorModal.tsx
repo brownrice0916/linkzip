@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, CalendarDays, Image, Link2, RotateCcw, Type } from 'lucide-react';
+import { ArrowLeft, Link2, RotateCcw, Type } from 'lucide-react';
 import type { CustomLink, LinkButtonStyle } from '../../store/useStore';
 import { ColorPickerPopover } from './ColorPickerPopover';
 
@@ -85,14 +85,6 @@ const getDefaults = (variant: EditorVariant, theme: ThemeDefaults): EffectiveDef
   };
 };
 
-const shadowValue = (shadow?: LinkButtonStyle['shadow']) => {
-  if (shadow === 'soft') return '0 4px 12px rgba(15, 23, 42, 0.10)';
-  if (shadow === 'medium') return '0 8px 20px rgba(15, 23, 42, 0.18)';
-  if (shadow === 'strong') return '0 12px 30px rgba(15, 23, 42, 0.28)';
-  if (shadow === 'none') return 'none';
-  return undefined;
-};
-
 const variantLabel: Record<EditorVariant, string> = {
   button: '일반 링크 버튼',
   'collection-list': '컬렉션 내부 링크 전체',
@@ -126,18 +118,6 @@ export const LinkStyleEditorModal: React.FC<LinkStyleEditorModalProps> = ({
     opacity: style.opacity ?? themeDefaults.buttonOpacity ?? 100,
     shadow: style.shadow && style.shadow !== 'inherit' ? style.shadow : defaults.shadow,
   };
-  const previewStyle: React.CSSProperties = {
-    backgroundColor: effective.backgroundColor,
-    color: effective.textColor,
-    fontFamily: style.fontFamily === 'serif' ? 'serif' : style.fontFamily === 'mono' ? 'monospace' : style.fontFamily === 'sans' ? 'sans-serif' : undefined,
-    fontSize: `${effective.fontSize}px`,
-    fontWeight: effective.fontWeight,
-    border: `${effective.borderWidth}px solid ${effective.borderColor}`,
-    borderRadius: `${effective.borderRadius}px`,
-    opacity: effective.opacity / 100,
-    boxShadow: shadowValue(effective.shadow),
-  };
-
   const isCollection = link.type === 'collection';
   const updateVisual = (updates: Partial<CustomLink>) => {
     if (isCollection && onUpdateChildren) onUpdateChildren(updates);
@@ -145,35 +125,6 @@ export const LinkStyleEditorModal: React.FC<LinkStyleEditorModalProps> = ({
   };
   const updateStyle = (updates: Partial<LinkButtonStyle>) => {
     updateVisual({ customStyle: { ...style, ...updates } });
-  };
-
-  const renderPreview = () => {
-    if (isCollection) {
-      const items = link.links?.slice(0, 4) || [];
-      if (variant === 'collection-grid') {
-        return <div className="grid grid-cols-2 gap-3">{items.map((item) => <div key={item.id} className="aspect-square flex flex-col items-center justify-center gap-2 p-3 text-center" style={previewStyle}><span className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center"><Image className="w-4 h-4" /></span><span className="line-clamp-2">{item.title || '그룹 링크'}</span></div>)}</div>;
-      }
-      return <div className="space-y-3">{items.map((item) => <div key={item.id} className="w-full px-5 py-4 flex items-center gap-3 text-center" style={previewStyle}><span className="w-9 h-9 rounded-full bg-black/10 flex items-center justify-center shrink-0"><Image className="w-4 h-4" /></span><span className="flex-1">{item.title || '그룹 링크'}</span></div>)}</div>;
-    }
-    if (variant === 'reservation') {
-      return (
-        <div className="p-4 space-y-3" style={previewStyle}>
-          <div className="flex items-center justify-center gap-2 font-black"><CalendarDays className="w-4 h-4" /> 2026.07</div>
-          <div className="grid grid-cols-7 gap-1 opacity-70">{Array.from({ length: 14 }, (_, index) => <span key={index} className="h-2 rounded-full bg-current opacity-25" />)}</div>
-          <div className="rounded-xl bg-black/10 px-3 py-2 flex items-center gap-2"><span className="w-7 h-7 rounded-full bg-black text-white text-[8px] flex items-center justify-center">OPEN</span><span>{link.title || '예약 일정'}</span></div>
-        </div>
-      );
-    }
-    if (variant === 'social') {
-      return <div className="flex justify-center gap-3">{[1, 2, 3].map((item) => <div key={item} className="w-12 h-12 flex items-center justify-center" style={previewStyle}>●</div>)}</div>;
-    }
-    if (variant === 'form') {
-      return <div className="p-4 space-y-2" style={previewStyle}><div className="font-black">{link.title || '정보 입력'}</div><div className="h-9 rounded-lg bg-black/5 border border-black/10" /><div className="h-9 rounded-lg bg-black text-white flex items-center justify-center text-xs">제출하기</div></div>;
-    }
-    if (variant === 'group-grid') {
-      return <div className="max-w-44 aspect-square mx-auto flex flex-col items-center justify-center gap-3 p-4 text-center" style={previewStyle}><span className="w-12 h-12 rounded-full bg-black/10 flex items-center justify-center"><Image className="w-5 h-5" /></span>{link.title || '그룹 링크'}</div>;
-    }
-    return <div className="w-full px-5 py-4 flex items-center gap-3 text-center" style={previewStyle}>{variant === 'group-list' && <span className="w-9 h-9 rounded-full bg-black/10 flex items-center justify-center shrink-0"><Image className="w-4 h-4" /></span>}<span className="flex-1">{link.title || '링크 버튼'}</span></div>;
   };
 
   return (
@@ -197,8 +148,6 @@ export const LinkStyleEditorModal: React.FC<LinkStyleEditorModalProps> = ({
 
       <section className="bg-white rounded-3xl border border-gray-100 shadow-xs p-6 space-y-6">
         <div><h3 className="text-xl font-black text-gray-950">디자인</h3><p className="text-xs text-gray-400 mt-1">{isCollection ? `컬렉션 안의 링크 ${link.links?.length || 0}개에 한 번에 적용됩니다.` : '이 항목에만 적용되는 스타일입니다.'}</p></div>
-        <div className="space-y-3"><h4 className="text-sm font-black text-gray-900">실제 형태 미리보기</h4><div className="p-6 rounded-3xl bg-gray-100">{renderPreview()}</div></div>
-
           <section className="space-y-4"><h4 className="text-sm font-black text-gray-900">색상</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2 text-xs font-bold text-gray-600"><span>{variant === 'button' || variant.includes('group') || variant.includes('collection') ? '버튼 배경색' : '카드 배경색'}</span><ColorPickerPopover label="배경색" value={effective.backgroundColor} opacity={effective.opacity} onChange={(color) => updateVisual({ buttonColor: color })} onOpacityChange={(opacity) => updateStyle({ opacity })} /></div>
             <div className="space-y-2 text-xs font-bold text-gray-600"><span>글자색</span><ColorPickerPopover label="글자색" value={effective.textColor} onChange={(color) => updateVisual({ buttonTextColor: color })} suggested={['#111827', '#FFFFFF', '#4B5563', '#7C3AED', '#DC2626', '#065F46']} /></div>

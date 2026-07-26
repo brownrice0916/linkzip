@@ -194,14 +194,14 @@ const Admin = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#F8F9FA] overflow-hidden select-none font-sans">
+    <div className="linkzip-admin flex h-screen bg-[#F6F6F4] overflow-hidden select-none font-sans text-gray-900">
       {/* Sidebar Navigation */}
-      <div className="w-18 bg-white border-r border-gray-200 flex flex-col items-center py-6 gap-6 z-20 shrink-0 shadow-xs">
+      <div className="w-22 bg-white border-r border-gray-200 flex flex-col items-center py-5 gap-5 z-20 shrink-0">
         <div
           onClick={() => requestNavigation("home")}
-          className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center font-bold text-xl shadow-md cursor-pointer hover:scale-105 transition"
+          className="w-10 h-10 rounded-xl bg-gray-950 text-white flex items-center justify-center font-bold text-xl cursor-pointer hover:bg-gray-800 transition"
         >
-          <Link2 className="w-5 h-5 text-indigo-400" />
+          <Link2 className="w-5 h-5" />
         </div>
 
 
@@ -212,7 +212,7 @@ const Admin = () => {
             className={clsx(
               "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "links"
-                ? "bg-black text-white shadow-md"
+                ? "bg-gray-950 text-white"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
             )}
           >
@@ -225,7 +225,7 @@ const Admin = () => {
             className={clsx(
               "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "profile"
-                ? "bg-black text-white shadow-md"
+                ? "bg-gray-950 text-white"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
             )}
           >
@@ -238,7 +238,7 @@ const Admin = () => {
             className={clsx(
               "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "appearance"
-                ? "bg-black text-white shadow-md"
+                ? "bg-gray-950 text-white"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
             )}
           >
@@ -251,11 +251,11 @@ const Admin = () => {
             className={clsx(
               "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "analytics"
-                ? "bg-black text-white shadow-md"
+                ? "bg-gray-950 text-white"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
             )}
           >
-            <BarChart3 className="w-5 h-5 text-indigo-400" />
+            <BarChart3 className="w-5 h-5" />
             <span className="text-[10px] font-bold">{t("navAnalytics", state.language)}</span>
           </button>
 
@@ -264,11 +264,11 @@ const Admin = () => {
             className={clsx(
               "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "marketing"
-                ? "bg-black text-white shadow-md"
+                ? "bg-gray-950 text-white"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
             )}
           >
-            <Megaphone className="w-5 h-5 text-pink-500" />
+            <Megaphone className="w-5 h-5" />
             <span className="text-[10px] font-bold">{t("navMarketing", state.language)}</span>
           </button>
 
@@ -277,11 +277,11 @@ const Admin = () => {
             className={clsx(
               "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "automation"
-                ? "bg-black text-white shadow-md"
+                ? "bg-gray-950 text-white"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
             )}
           >
-            <Zap className="w-5 h-5 text-purple-400" />
+            <Zap className="w-5 h-5" />
             <span className="text-[10px] font-bold">{t("navGrowth", state.language)}</span>
           </button>
 
@@ -290,7 +290,7 @@ const Admin = () => {
             className={clsx(
               "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "settings"
-                ? "bg-black text-white shadow-md"
+                ? "bg-gray-950 text-white"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
             )}
           >
@@ -311,9 +311,9 @@ const Admin = () => {
       </div>
 
       {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#F8F9FA]">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#F6F6F4]">
         {/* Top Header Bar */}
-        <div className="h-16 bg-white border-b border-gray-200 px-8 flex items-center justify-between z-10 shrink-0">
+        <div className="h-16 bg-white border-b border-gray-200 px-6 lg:px-8 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-4">
             <span className="font-bold text-sm text-gray-900 tracking-tight">
               {t("myLinkZip", state.language)}
@@ -365,8 +365,8 @@ const Admin = () => {
         </div>
 
         {/* Editor Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#F3F3F1]">
-          <div className="max-w-3xl mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-7 bg-[#F6F6F4]">
+          <div className="admin-editor-canvas max-w-3xl mx-auto bg-white rounded-[20px] p-5 sm:p-7 border border-gray-200 space-y-6">
             
             {/* Section Header with Title (Left) and Undo / Redo / Cancel / Save (Right) */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
@@ -439,7 +439,7 @@ const Admin = () => {
                   className={clsx(
                     "px-6 py-2 rounded-full font-extrabold text-xs transition flex items-center gap-1.5",
                     state.isDirty
-                      ? "cursor-pointer bg-[#7C3AED] hover:bg-[#6D28D9] text-white ring-2 ring-purple-300 shadow-lg hover:scale-105 active:scale-95"
+                      ? "cursor-pointer bg-gray-950 hover:bg-gray-800 text-white shadow-sm active:scale-95"
                       : "cursor-not-allowed bg-gray-100 text-gray-300 border border-gray-200 shadow-none"
                   )}
                 >
@@ -471,7 +471,7 @@ const Admin = () => {
             )}
           >
             <Link2 className="w-5 h-5" />
-            <span className="text-[10px]">Content</span>
+            <span className="text-[10px]">{t("navLinks", state.language)}</span>
           </button>
           <button
             onClick={() => requestNavigation("profile")}
@@ -481,7 +481,7 @@ const Admin = () => {
             )}
           >
             <UserIcon className="w-5 h-5" />
-            <span className="text-[10px]">Header</span>
+            <span className="text-[10px]">{t("navProfile", state.language)}</span>
           </button>
           <button
             onClick={() => requestNavigation("appearance")}
@@ -493,7 +493,7 @@ const Admin = () => {
             )}
           >
             <Palette className="w-5 h-5" />
-            <span className="text-[10px]">Design</span>
+            <span className="text-[10px]">{t("navDesign", state.language)}</span>
           </button>
           <button
             onClick={() => requestNavigation("automation")}
@@ -505,7 +505,7 @@ const Admin = () => {
             )}
           >
             <Zap className="w-5 h-5" />
-            <span className="text-[10px]">Growth</span>
+            <span className="text-[10px]">{t("navGrowth", state.language)}</span>
           </button>
           <button
             onClick={() => requestNavigation("settings")}
@@ -517,15 +517,15 @@ const Admin = () => {
             )}
           >
             <Settings className="w-5 h-5" />
-            <span className="text-[10px]">Settings</span>
+            <span className="text-[10px]">{t("navSettings", state.language)}</span>
           </button>
         </div>
       </div>
 
       {/* Right Live Phone Preview (Desktop only) */}
-      <div className="hidden lg:flex w-[440px] bg-[#F8F9FA] border-l border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
+      <div className="hidden lg:flex w-[420px] bg-[#F0F0ED] border-l border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
         {/* Sleek Borderless Mobile Device Container */}
-        <div className="w-[340px] h-[680px] bg-white rounded-[3rem] shadow-2xl relative flex flex-col overflow-hidden border border-gray-100">
+        <div className="w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-[0_18px_48px_rgba(15,23,42,0.14)] relative flex flex-col overflow-hidden border border-gray-200">
           <div className="w-full h-full overflow-y-auto scrollbar-none">
             <LinkTreePreview />
           </div>

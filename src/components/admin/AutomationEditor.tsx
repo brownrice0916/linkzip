@@ -133,7 +133,7 @@ const AutomationEditor = () => {
         className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 hover:border-purple-300 hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
       >
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-500 via-pink-500 to-amber-400 text-white flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-xl bg-gray-950 text-white flex items-center justify-center shrink-0 group-hover:bg-gray-800 transition-colors">
             <Bot className="w-6 h-6" />
           </div>
           <div>

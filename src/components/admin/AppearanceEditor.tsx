@@ -298,7 +298,6 @@ const AppearanceEditor = () => {
           <div className="space-y-3 pt-2">
             <div><span className="text-sm font-bold text-gray-900 block">Button color</span><span className="text-[11px] text-gray-400">색상과 투명도를 함께 조절합니다</span></div>
             <ColorPickerPopover label="버튼 색상" value={buttonColor || '#FFFFFF'} opacity={buttonOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonOpacity: nextOpacity })} suggested={['#022B49', '#FFFFFF', '#FDEBDB', '#000000', '#7C3AED', '#EC4899', '#10B981', '#F59E0B']} />
-            <div className="h-10 rounded-xl border border-black/10 flex items-center justify-center text-xs font-black" style={{ backgroundColor: buttonColor || '#FFFFFF', opacity: (buttonOpacity ?? 100) / 100, color: buttonTextColor || '#111827' }}>버튼 미리보기</div>
           </div>
 
           {/* Button Text Color */}
