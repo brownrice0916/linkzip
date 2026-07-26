@@ -439,16 +439,10 @@ const Admin = () => {
                   Cancel
                 </button>
 
-                {/* Save Button (Matching Screenshot Purple/Indigo Pill) */}
+                {/* Save Button */}
                 <button
                   onClick={handleManualSave}
-                  disabled={!state.isDirty}
-                  className={clsx(
-                    "px-6 py-2 rounded-full font-extrabold text-xs transition cursor-pointer shadow-md flex items-center gap-1.5",
-                    state.isDirty
-                      ? "bg-[#7C3AED] hover:bg-[#6D28D9] text-white ring-2 ring-purple-300 shadow-lg scale-105"
-                      : "bg-[#7C3AED]/50 text-white/70 cursor-not-allowed"
-                  )}
+                  className="px-6 py-2 rounded-full font-extrabold text-xs transition cursor-pointer shadow-md flex items-center gap-1.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white ring-2 ring-purple-300 shadow-lg hover:scale-105 active:scale-95"
                 >
                   <span>Save</span>
                 </button>
