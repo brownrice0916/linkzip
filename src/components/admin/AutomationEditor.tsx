@@ -113,20 +113,6 @@ const AutomationEditor = () => {
 
   return (
     <div className="space-y-8 pb-20 font-sans">
-      {/* Header */}
-      <div>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold mb-2">
-          <Zap className="w-3.5 h-3.5" /> Growth & Marketing
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-          Growth & Automation (자동화 및 성장)
-        </h2>
-        <p className="text-xs text-gray-500 font-medium mt-1">
-          인스타그램 DM 자동화, 팀원 초대, 카카오 알림톡 연동을 한곳에서
-          관리하세요.
-        </p>
-      </div>
-
       {/* 1. Instagram DM Automation Card */}
       <div
         onClick={() => setIsWizardOpen(true)}

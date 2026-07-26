@@ -108,6 +108,7 @@
 
 @media (max-width: 900px) {
   .linkzip-admin.admin-shell {
+    --mobile-sheet-height: clamp(280px, 38dvh, 420px);
     min-width: 0;
     width: 100%;
     height: 100dvh;
@@ -143,14 +144,26 @@
   }
 
   .linkzip-admin.mobile-editor-open .admin-live-preview {
-    padding-bottom: 92px;
+    justify-content: flex-start;
+    padding: 12px 0 calc(var(--mobile-sheet-height) + 12px);
   }
 
   .linkzip-admin.mobile-editor-open .admin-live-preview > div {
-    width: min(270px, calc(100vw - 72px));
-    height: min(540px, calc(100dvh - 190px));
+    width: auto;
+    max-width: calc(100vw - 56px);
+    height: min(560px, calc(100dvh - 72px - var(--mobile-sheet-height) - 28px));
+    aspect-ratio: 1 / 2;
     border-radius: 24px;
     box-shadow: 0 12px 30px rgb(15 23 42 / 0.12);
+  }
+
+  .linkzip-admin.mobile-editor-closed .admin-live-preview {
+    padding: 12px 0 92px;
+  }
+
+  .linkzip-admin.mobile-editor-closed .admin-live-preview > div {
+    width: min(340px, calc(100vw - 40px));
+    height: min(680px, 100%);
   }
 
   .linkzip-admin .admin-top-nav,
@@ -193,6 +206,18 @@
     height: 24px;
   }
 
+  .linkzip-admin .mobile-toolbar-title {
+    min-width: 0;
+    max-width: 34vw;
+    overflow: hidden;
+    color: #111827;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .linkzip-admin .mobile-toolbar-cancel,
   .linkzip-admin .mobile-toolbar-save {
     height: 44px;
@@ -228,10 +253,10 @@
     left: 0;
     z-index: 40;
     width: 100%;
-    height: min(52dvh, 720px);
+    height: var(--mobile-sheet-height);
     max-height: calc(100dvh - 72px);
     min-width: 0;
-    min-height: 360px;
+    min-height: 280px;
     overflow: hidden;
     border: 0;
     border-radius: 30px 30px 0 0;
@@ -366,12 +391,7 @@
   }
 
   .linkzip-admin .admin-section-header {
-    align-items: flex-start;
-  }
-
-  .linkzip-admin .admin-section-header h2 {
-    font-size: 1.25rem;
-    line-height: 1.35;
+    display: none;
   }
 
   .linkzip-admin .admin-section-controls {
@@ -399,6 +419,11 @@
     width: 38px;
   }
 
+  .linkzip-admin .mobile-toolbar-title {
+    max-width: 29vw;
+    font-size: 14px;
+  }
+
   .linkzip-admin .mobile-toolbar-cancel,
   .linkzip-admin .mobile-toolbar-save {
     height: 42px;
@@ -410,8 +435,4 @@
     height: 100%;
   }
 
-  .linkzip-admin .admin-main-panel {
-    height: min(56dvh, 680px);
-    min-height: 340px;
-  }
 }

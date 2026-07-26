@@ -365,6 +365,15 @@ const Admin = () => {
       {/* Mobile editor toolbar */}
       <div className="mobile-admin-toolbar hidden">
         <button type="button" onClick={() => activeTab === "links" ? navigate(-1) : requestNavigation("links")} className="mobile-toolbar-icon" aria-label="뒤로가기"><ArrowLeft /></button>
+        <h1 className="mobile-toolbar-title">
+          {activeTab === "links" && t("navLinks", state.language)}
+          {activeTab === "profile" && t("navProfile", state.language)}
+          {activeTab === "appearance" && t("navDesign", state.language)}
+          {activeTab === "analytics" && t("navAnalytics", state.language)}
+          {activeTab === "marketing" && t("navMarketing", state.language)}
+          {activeTab === "automation" && t("navGrowth", state.language)}
+          {activeTab === "settings" && t("navSettings", state.language)}
+        </h1>
         <div className="ml-auto flex items-center gap-1">
           <button type="button" onClick={state.undo} disabled={state.undoStack.length === 0} className="mobile-toolbar-icon" aria-label="실행 취소"><Undo2 /></button>
           <button type="button" onClick={state.redo} disabled={state.redoStack.length === 0} className="mobile-toolbar-icon" aria-label="다시 실행"><Redo2 /></button>

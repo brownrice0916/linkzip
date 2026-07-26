@@ -65,12 +65,6 @@ const SettingsEditor = () => {
   return (
     <div className="space-y-6 pb-20 font-sans">
       
-      {/* Page Title */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 tracking-tight">{tr('계정 설정', 'Settings')}</h2>
-        <p className="text-xs text-gray-500 font-medium mt-1">{tr('계정 정보와 시스템 설정을 관리합니다.', 'Manage your account and system settings.')}</p>
-      </div>
-
       {/* 1. Profile Account Info Card */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 space-y-4">
         <div className="flex items-center gap-3 pb-3 border-b border-gray-100">

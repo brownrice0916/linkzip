@@ -59,12 +59,6 @@ const ProfileEditor = () => {
   return (
     <div className="space-y-8 animate-fade-in pb-20 font-sans">
       
-      {/* Header Title */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">{isKo ? '프로필 헤더' : 'Header'}</h2>
-        <p className="text-sm text-gray-500">{isKo ? '소개, 제목, 프로필 레이아웃을 설정합니다.' : 'Customize your bio, title, and profile layout.'}</p>
-      </div>
-
       <div className="space-y-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
 
         {/* 1. Layout Picker */}

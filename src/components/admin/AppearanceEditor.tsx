@@ -561,12 +561,6 @@ const AppearanceEditor = () => {
   return (
     <div className="space-y-8 animate-fade-in pb-20 font-sans">
       
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">{tr('디자인', 'Design')}</h2>
-        <p className="text-sm text-gray-500">{tr('테마, 버튼, 글꼴과 장식을 설정합니다.', 'Customize themes, buttons, fonts, and decorations.')}</p>
-      </div>
-
       {/* Top Theme Banner Card */}
       <div 
         onClick={() => setCurrentView('theme')}
