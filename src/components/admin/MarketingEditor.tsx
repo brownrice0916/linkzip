@@ -39,6 +39,7 @@ export const MarketingEditor: React.FC = () => {
   const [isRuleCreateModalOpen, setIsRuleCreateModalOpen] = useState(false);
   const [isKakaoWizardOpen, setIsKakaoWizardOpen] = useState(false);
   const [showAdvancedKakaoInput, setShowAdvancedKakaoInput] = useState(false);
+  const [testKakaoSent, setTestKakaoSent] = useState(false);
   const isKakaoConnected = alimtalkSettings?.isEnabled && (alimtalkSettings?.senderPhone || alimtalkSettings?.apiKey);
 
   // New Rule Quick Input
@@ -379,17 +380,49 @@ export const MarketingEditor: React.FC = () => {
                 rows={3}
                 className="w-full p-3 border border-amber-200 rounded-xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400 resize-none leading-relaxed bg-white shadow-2xs"
               />
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestKakaoSent(true);
+                    setTimeout(() => setTestKakaoSent(false), 5000);
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-black text-xs font-extrabold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-2xs hover:scale-105"
+                >
+                  <Send className="w-3.5 h-3.5 fill-black" />
+                  <span>📱 알림톡 발송 테스트하기</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedKakaoInput(!showAdvancedKakaoInput)}
+                  className="text-[11px] font-bold text-gray-500 hover:text-black underline cursor-pointer"
+                >
+                  {showAdvancedKakaoInput ? "▼ 수동 API Key 설정 숨기기" : "▶ 실재 문자/카톡 전송용 API Key 입력"}
+                </button>
+              </div>
             </div>
 
-            <div className="flex justify-end pt-1">
-              <button
-                type="button"
-                onClick={() => setShowAdvancedKakaoInput(!showAdvancedKakaoInput)}
-                className="text-[11px] font-bold text-gray-500 hover:text-black underline cursor-pointer"
-              >
-                {showAdvancedKakaoInput ? "▼ 수동 API Key 설정 숨기기" : "▶ 고급 / 수동 API Key 수정"}
-              </button>
-            </div>
+            {/* Test Send Preview Bubble */}
+            {testKakaoSent && (
+              <div className="p-4 bg-[#FEE500] text-black text-xs rounded-2xl border border-amber-300 shadow-md space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-black/10 pb-2">
+                  <div className="flex items-center gap-2 font-black text-xs">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                    <span>[알림톡 도착] {state.profile.name || 'LinkZip Official'}</span>
+                  </div>
+                  <span className="text-[10px] text-gray-700 font-bold">방금 전</span>
+                </div>
+                <p className="text-xs font-semibold leading-relaxed whitespace-pre-wrap">
+                  {alimtalkSettings?.customMessage || '[LinkZip] 안녕하세요! 요청하신 정보/주문이 성공적으로 수신되었습니다.'}
+                </p>
+                <div className="text-[10px] text-gray-700 pt-1 font-medium border-t border-black/10 flex justify-between">
+                  <span>수신 대표 번호: {alimtalkSettings?.senderPhone || '010-1234-5678'}</span>
+                  <span className="font-extrabold text-amber-950">✅ 시뮬레이션 알림톡 발송 성공</span>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* Not Connected State Banner */
