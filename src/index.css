@@ -106,37 +106,190 @@
   margin-left: auto;
 }
 
-@media (pointer: coarse) and (max-width: 800px) {
+@media (max-width: 900px) {
   .linkzip-admin.admin-shell {
     min-width: 0;
+    width: 100%;
+    height: auto;
+    min-height: 100dvh;
     gap: 0;
     padding: 0;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: 72px auto auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: #fff;
   }
 
   .linkzip-admin .admin-live-preview {
+    display: flex;
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    height: min(660px, 68dvh);
+    padding: 20px 0 28px;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .linkzip-admin .admin-live-preview > div {
+    width: min(340px, calc(100vw - 40px));
+    height: 100%;
+    border-radius: 28px;
+    box-shadow: 0 14px 36px rgb(15 23 42 / 0.14);
+  }
+
+  .linkzip-admin .admin-top-nav,
+  .linkzip-admin .admin-utility-bar {
     display: none;
   }
 
-  .linkzip-admin .admin-top-nav {
-    grid-column: 1;
-    grid-row: 2;
-    border-radius: 0;
-    overflow-x: auto;
-  }
-
-  .linkzip-admin .admin-utility-bar {
+  .linkzip-admin .mobile-admin-toolbar {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 45;
     grid-column: 1;
     grid-row: 1;
-    overflow-x: auto;
-    padding: 0.5rem;
+    align-items: center;
+    width: 100%;
+    height: 72px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgb(229 231 235);
+    background: rgb(255 255 255 / 0.96);
+    backdrop-filter: blur(14px);
   }
 
-  .linkzip-admin .admin-utility-bar + div {
+  .linkzip-admin .mobile-toolbar-icon {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: #111827;
+  }
+
+  .linkzip-admin .mobile-toolbar-icon:disabled {
+    color: #d1d5db;
+  }
+
+  .linkzip-admin .mobile-toolbar-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .linkzip-admin .mobile-toolbar-cancel,
+  .linkzip-admin .mobile-toolbar-save {
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .linkzip-admin .mobile-toolbar-cancel {
+    margin-left: 4px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #111827;
+  }
+
+  .linkzip-admin .mobile-toolbar-save {
+    background: #7c3aed;
+    color: #fff;
+    box-shadow: 0 8px 20px rgb(124 58 237 / 0.28);
+  }
+
+  .linkzip-admin .mobile-toolbar-cancel:disabled,
+  .linkzip-admin .mobile-toolbar-save:disabled {
+    opacity: 0.36;
+    box-shadow: none;
+  }
+
+  .linkzip-admin .admin-main-panel {
     grid-column: 1;
     grid-row: 3;
     min-width: 0;
-    border-radius: 0;
+    min-height: 55dvh;
+    overflow: visible;
+    border: 0;
+    border-radius: 30px 30px 0 0;
+    background: #fff;
+    box-shadow: 0 -14px 36px rgb(15 23 42 / 0.12);
+    position: relative;
+  }
+
+  .linkzip-admin .admin-main-panel::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    width: 42px;
+    height: 5px;
+    border-radius: 999px;
+    background: #d1d5db;
+    transform: translateX(-50%);
+  }
+
+  .linkzip-admin .admin-main-panel > div:first-child {
+    padding: 34px 14px 28px;
+    overflow: visible;
+    background: #fff;
+  }
+
+  .linkzip-admin .admin-editor-canvas {
+    width: 100%;
+    max-width: none;
+    padding: 20px 16px 32px;
+    border: 0;
+    border-radius: 24px;
+    box-shadow: none;
+  }
+
+  .linkzip-admin .admin-section-header {
+    align-items: flex-start;
+  }
+
+  .linkzip-admin .admin-section-header h2 {
+    font-size: 1.7rem;
+  }
+
+  .linkzip-admin .admin-section-controls {
+    display: none;
+  }
+
+  .linkzip-admin .admin-mobile-bottom-nav {
+    display: flex;
+  }
+
+  .linkzip-admin .admin-editor-canvas input,
+  .linkzip-admin .admin-editor-canvas textarea,
+  .linkzip-admin .admin-editor-canvas select,
+  .linkzip-admin .admin-editor-canvas button {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .linkzip-admin .mobile-admin-toolbar {
+    padding-inline: 10px;
+  }
+
+  .linkzip-admin .mobile-toolbar-icon {
+    width: 38px;
+  }
+
+  .linkzip-admin .mobile-toolbar-cancel,
+  .linkzip-admin .mobile-toolbar-save {
+    height: 42px;
+    padding-inline: 14px;
+    font-size: 13px;
+  }
+
+  .linkzip-admin .admin-live-preview {
+    height: min(600px, 66dvh);
   }
 }

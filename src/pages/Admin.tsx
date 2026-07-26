@@ -17,7 +17,8 @@ import {
   Zap,
   BarChart3,
   Megaphone,
-  Globe
+  Globe,
+  ArrowLeft
 } from "lucide-react";
 import { logout } from "../lib/firebase";
 import clsx from "clsx";
@@ -329,15 +330,26 @@ const Admin = () => {
         </div>
       </div>
 
+      {/* Mobile editor toolbar */}
+      <div className="mobile-admin-toolbar hidden">
+        <button type="button" onClick={() => activeTab === "links" ? navigate(-1) : requestNavigation("links")} className="mobile-toolbar-icon" aria-label="뒤로가기"><ArrowLeft /></button>
+        <div className="ml-auto flex items-center gap-1">
+          <button type="button" onClick={state.undo} disabled={state.undoStack.length === 0} className="mobile-toolbar-icon" aria-label="실행 취소"><Undo2 /></button>
+          <button type="button" onClick={state.redo} disabled={state.redoStack.length === 0} className="mobile-toolbar-icon" aria-label="다시 실행"><Redo2 /></button>
+          <button type="button" onClick={() => state.isDirty && state.cancelChanges()} disabled={!state.isDirty} className="mobile-toolbar-cancel">{t("cancel", state.language)}</button>
+          <button type="button" onClick={handleManualSave} disabled={!state.isDirty} className="mobile-toolbar-save">{t("save", state.language)}</button>
+        </div>
+      </div>
+
       {/* Main Workspace Area */}
-      <div className="col-start-2 row-start-3 min-w-[700px] min-h-0 flex flex-col bg-[#F6F6F4] rounded-[24px] border border-gray-200 overflow-hidden shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
+      <div className="admin-main-panel col-start-2 row-start-3 min-w-[700px] min-h-0 flex flex-col bg-[#F6F6F4] rounded-[24px] border border-gray-200 overflow-hidden shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
 
         {/* Editor Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-7 bg-[#F6F6F4]">
           <div className="admin-editor-canvas max-w-3xl mx-auto bg-white rounded-[20px] p-5 sm:p-7 border border-gray-200 space-y-6">
             
             {/* Section Header with Title (Left) and Undo / Redo / Cancel / Save (Right) */}
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+            <div className="admin-section-header flex items-center justify-between pb-4 border-b border-gray-100">
               <h2 className="text-2xl font-black text-gray-900 capitalize tracking-tight">
                 {activeTab === "links" && t("linksTitle", state.language)}
                 {activeTab === "profile" && t("profileTitle", state.language)}
@@ -349,7 +361,7 @@ const Admin = () => {
               </h2>
 
               {/* Controls Row (Matching User Screenshot) */}
-              <div className="flex items-center gap-3">
+              <div className="admin-section-controls flex items-center gap-3">
                 {/* Undo */}
                 <button
                   onClick={state.undo}
@@ -430,7 +442,7 @@ const Admin = () => {
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <div className="sm:hidden border-t border-gray-200 bg-white flex justify-around p-3 pb-safe">
+        <div className="admin-mobile-bottom-nav sm:hidden border-t border-gray-200 bg-white flex justify-around p-3 pb-safe">
           <button
             onClick={() => requestNavigation("links")}
             className={clsx(
