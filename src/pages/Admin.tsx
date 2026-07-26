@@ -19,12 +19,16 @@ import {
   Megaphone,
   Globe,
   ArrowLeft,
-  X
+  X,
+  Eye,
+  Sparkles,
+  LayoutGrid
 } from "lucide-react";
 import { logout } from "../lib/firebase";
 import clsx from "clsx";
 import { t } from "../lib/i18n";
-import { saveUserData } from "../services/userService";
+import { saveUserProfilesData } from "../services/userService";
+import AdminProfilesHome from "../components/admin/AdminProfilesHome";
 
 const LinksEditor = lazy(() => import("../components/admin/LinksEditor"));
 const ProfileEditor = lazy(() => import("../components/admin/ProfileEditor"));
@@ -100,30 +104,15 @@ const Admin = () => {
   const handleManualSave = async () => {
     if (!state.isDirty) return;
     try {
+      state.syncActiveProfileWorkspace();
+      const latestState = useStore.getState();
       if (state.user?.uid) {
-        await saveUserData(state.user.uid, state.profile.username || state.user.uid, {
-          profile: state.profile,
-          template: { type: state.templateType, value: state.templateValue },
-          design: {
-            buttonStyle: state.buttonStyle,
-            buttonRoundness: state.buttonRoundness,
-            buttonShadow: state.buttonShadow,
-            buttonColor: state.buttonColor,
-            buttonTextColor: state.buttonTextColor,
-            buttonOpacity: state.buttonOpacity,
-            buttonTextOpacity: state.buttonTextOpacity,
-            fontFamily: state.fontFamily,
-            titleFontFamily: state.titleFontFamily,
-            pageTextColor: state.pageTextColor,
-            sticker: state.sticker,
-          },
-          socialLinks: state.socialLinks,
-          customLinks: state.customLinks,
-          teamMembers: state.teamMembers,
-          dmRules: state.dmRules,
-          alimtalkSettings: state.alimtalkSettings,
-          instagramAccount: state.instagramAccount,
-          pageViews: state.pageViews,
+        await saveUserProfilesData(state.user.uid, latestState.profileWorkspaces, latestState.activeProfileId, {
+          teamMembers: latestState.teamMembers,
+          dmRules: latestState.dmRules,
+          alimtalkSettings: latestState.alimtalkSettings,
+          instagramAccount: latestState.instagramAccount,
+          pageViews: latestState.pageViews,
         });
       }
 
@@ -133,6 +122,8 @@ const Admin = () => {
           profile: state.profile,
           customLinks: state.customLinks,
           socialLinks: state.socialLinks,
+          profileWorkspaces: latestState.profileWorkspaces,
+          activeProfileId: latestState.activeProfileId,
           dmRules: state.dmRules,
           instagramAccount: state.instagramAccount,
         }));
@@ -160,7 +151,7 @@ const Admin = () => {
     if (target === "logout") {
       handleLogout();
     } else if (target === "home") {
-      navigate("/");
+      navigate("/admin");
     } else if (
       target === "links" ||
       target === "profile" ||
@@ -224,6 +215,8 @@ const Admin = () => {
     }
   };
 
+  if (!urlTab) return <AdminProfilesHome />;
+
   return (
     <div className={clsx(
       "linkzip-admin admin-shell grid h-screen min-w-[1240px] grid-cols-[400px_minmax(700px,1fr)] grid-rows-[48px_64px_minmax(0,1fr)] gap-4 bg-[#ECEFF1] p-5 overflow-x-auto overflow-y-hidden select-none font-sans text-gray-900",
@@ -232,6 +225,14 @@ const Admin = () => {
       {/* Sidebar Navigation */}
       <div className="admin-top-nav col-start-2 row-start-2 w-full bg-white border border-gray-200 rounded-[24px] flex flex-row items-center px-3 py-2 gap-2 z-20 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
         <nav className="admin-nav-items flex flex-row items-center gap-1.5 min-w-0">
+          <button
+            onClick={() => requestNavigation("home")}
+            className="flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer text-gray-500 hover:bg-gray-100 hover:text-black"
+            title={state.language === 'ko' ? '프로필 목록' : 'Profiles'}
+          >
+            <LayoutGrid className="w-5 h-5" />
+            <span className="text-[10px] font-bold">{state.language === 'ko' ? '프로필' : 'Profiles'}</span>
+          </button>
           <button
             onClick={() => requestNavigation("links")}
             className={clsx(
@@ -364,7 +365,7 @@ const Admin = () => {
 
       {/* Mobile editor toolbar */}
       <div className="mobile-admin-toolbar hidden">
-        <button type="button" onClick={() => activeTab === "links" ? navigate(-1) : requestNavigation("links")} className="mobile-toolbar-icon" aria-label="뒤로가기"><ArrowLeft /></button>
+        <button type="button" onClick={() => activeTab === "links" ? requestNavigation('home') : requestNavigation("links")} className="mobile-toolbar-icon" aria-label="뒤로가기"><ArrowLeft /></button>
         <h1 className="mobile-toolbar-title">
           {activeTab === "links" && t("navLinks", state.language)}
           {activeTab === "profile" && t("navProfile", state.language)}
@@ -496,17 +497,17 @@ const Admin = () => {
             )}
           >
             <Link2 className="w-5 h-5" />
-            <span className="text-[10px]">{t("navLinks", state.language)}</span>
+            <span className="text-[10px]">{state.language === 'ko' ? '링크' : 'Links'}</span>
           </button>
           <button
-            onClick={() => requestNavigation("profile")}
+            onClick={() => setIsMobileEditorOpen(false)}
             className={clsx(
               "flex flex-col items-center gap-1",
-              activeTab === "profile" ? "text-black font-bold" : "text-gray-400"
+              !isMobileEditorOpen ? "text-black font-bold" : "text-gray-400"
             )}
           >
-            <UserIcon className="w-5 h-5" />
-            <span className="text-[10px]">{t("navProfile", state.language)}</span>
+            <Eye className="w-5 h-5" />
+            <span className="text-[10px]">{state.language === 'ko' ? '프리뷰' : 'Preview'}</span>
           </button>
           <button
             onClick={() => requestNavigation("appearance")}
@@ -518,7 +519,7 @@ const Admin = () => {
             )}
           >
             <Palette className="w-5 h-5" />
-            <span className="text-[10px]">{t("navDesign", state.language)}</span>
+            <span className="text-[10px]">{state.language === 'ko' ? '디자인' : 'Design'}</span>
           </button>
           <button
             onClick={() => requestNavigation("automation")}
@@ -529,20 +530,8 @@ const Admin = () => {
                 : "text-gray-400"
             )}
           >
-            <Zap className="w-5 h-5" />
-            <span className="text-[10px]">{t("navGrowth", state.language)}</span>
-          </button>
-          <button
-            onClick={() => requestNavigation("settings")}
-            className={clsx(
-              "flex flex-col items-center gap-1",
-              activeTab === "settings"
-                ? "text-black font-bold"
-                : "text-gray-400"
-            )}
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-[10px]">{t("navSettings", state.language)}</span>
+            <Sparkles className="w-5 h-5" />
+            <span className="text-[10px]">{state.language === 'ko' ? '도구' : 'Enhance'}</span>
           </button>
         </div>
       </div>
@@ -559,11 +548,10 @@ const Admin = () => {
 
       {!isMobileEditorOpen && (
         <div className="mobile-tab-dock hidden" aria-label="모바일 관리자 메뉴">
-          <button type="button" onClick={() => requestNavigation("links")}><Link2 /><span>{t("navLinks", state.language)}</span></button>
-          <button type="button" onClick={() => requestNavigation("profile")}><UserIcon /><span>{t("navProfile", state.language)}</span></button>
-          <button type="button" onClick={() => requestNavigation("appearance")}><Palette /><span>{t("navDesign", state.language)}</span></button>
-          <button type="button" onClick={() => requestNavigation("automation")}><Zap /><span>{t("navGrowth", state.language)}</span></button>
-          <button type="button" onClick={() => requestNavigation("settings")}><Settings /><span>{t("navSettings", state.language)}</span></button>
+          <button type="button" onClick={() => requestNavigation("links")}><Link2 /><span>{state.language === 'ko' ? '링크' : 'Links'}</span></button>
+          <button type="button" className="text-black"><Eye /><span>{state.language === 'ko' ? '프리뷰' : 'Preview'}</span></button>
+          <button type="button" onClick={() => requestNavigation("appearance")}><Palette /><span>{state.language === 'ko' ? '디자인' : 'Design'}</span></button>
+          <button type="button" onClick={() => requestNavigation("automation")}><Sparkles /><span>{state.language === 'ko' ? '도구' : 'Enhance'}</span></button>
         </div>
       )}
 

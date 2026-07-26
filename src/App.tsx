@@ -4,6 +4,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import { useStore } from "./store/useStore";
 import { getUserByUid, saveUserData } from "./services/userService";
+import type { ProfileWorkspace } from "./store/useStore";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const TemplateSelection = lazy(() => import("./pages/onboarding/TemplateSelection"));
@@ -49,12 +50,38 @@ function App() {
           
           if (resolvedUser) {
             const data = resolvedUser.data;
-            if (data.username) {
+            if (data.username && !(Array.isArray(data.profileWorkspaces) && data.profileWorkspaces.length > 0)) {
               void saveUserData(user.uid, data.username, data).catch((error) => {
                 console.warn('Unable to refresh public profile index:', error);
               });
             }
+            const legacyWorkspace: ProfileWorkspace = {
+              id: 'primary',
+              profile: data.profile || localBackup?.profile || { name: '', username: '', bio: '', avatarUrl: '' },
+              templateType: data.template?.type || 'preset',
+              templateValue: data.template?.value || 'minimalist',
+              socialLinks: data.socialLinks || localBackup?.socialLinks || [],
+              customLinks: data.customLinks || localBackup?.customLinks || [],
+              design: {
+                buttonStyle: data.design?.buttonStyle || 'solid',
+                buttonRoundness: data.design?.buttonRoundness || 'full',
+                buttonShadow: data.design?.buttonShadow || 'soft',
+                buttonColor: data.design?.buttonColor,
+                buttonTextColor: data.design?.buttonTextColor,
+                buttonOpacity: data.design?.buttonOpacity ?? 100,
+                buttonTextOpacity: data.design?.buttonTextOpacity ?? 100,
+                fontFamily: data.design?.fontFamily || 'Inter',
+                titleFontFamily: data.design?.titleFontFamily || '',
+                pageTextColor: data.design?.pageTextColor,
+                sticker: data.design?.sticker || '',
+              },
+            };
+            const profileWorkspaces = Array.isArray(data.profileWorkspaces) && data.profileWorkspaces.length > 0
+              ? data.profileWorkspaces
+              : [legacyWorkspace];
             loadData({
+              profileWorkspaces,
+              activeProfileId: data.activeProfileId || profileWorkspaces[0].id,
               profile: data.profile || localBackup?.profile || { name: '', username: '', bio: '', avatarUrl: '' },
               templateType: data.template?.type || 'preset',
               templateValue: data.template?.value || 'minimalist',

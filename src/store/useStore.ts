@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User } from 'firebase/auth';
-import { applyLinkClicks } from '../domain/profileData';
+import { applyLinkClicks } from '../domain/profileData.ts';
 
 export interface SocialLink {
   id: string;
@@ -243,6 +243,18 @@ export interface AppStateSnapshot {
   instagramAccount?: string;
 }
 
+export interface ProfileWorkspace {
+  id: string;
+  profile: UserProfile;
+  templateType: 'color' | 'preset';
+  templateValue: string;
+  socialLinks: SocialLink[];
+  customLinks: CustomLink[];
+  design: DesignSettings;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface AppState {
   // Authentication
   user: User | null;
@@ -254,6 +266,8 @@ interface AppState {
   socialLinks: SocialLink[];
   customLinks: CustomLink[];
   profile: UserProfile;
+  profileWorkspaces: ProfileWorkspace[];
+  activeProfileId: string;
 
   // Design Settings
   buttonStyle: 'solid' | 'glass' | 'outline';
@@ -296,6 +310,10 @@ interface AppState {
   updateCustomLink: (id: string, updates: Partial<CustomLink>) => void;
   removeCustomLink: (id: string) => void;
   setProfile: (profile: UserProfile) => void;
+  createProfileWorkspace: (name: string, username: string) => string;
+  switchProfileWorkspace: (id: string) => void;
+  deleteProfileWorkspace: (id: string) => void;
+  syncActiveProfileWorkspace: () => void;
   loadData: (data: Partial<AppState>) => void;
   reorderLinks: (newLinks: CustomLink[]) => void;
   moveItemRelative: (activeId: string, targetId: string, position?: 'before' | 'after') => void;
@@ -359,6 +377,49 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   instagramAccount: state.instagramAccount || '',
 });
 
+const getWorkspaceFromState = (state: any, id = state.activeProfileId || 'primary'): ProfileWorkspace => ({
+  id,
+  profile: JSON.parse(JSON.stringify(state.profile || {})),
+  templateType: state.templateType,
+  templateValue: state.templateValue,
+  socialLinks: JSON.parse(JSON.stringify(state.socialLinks || [])),
+  customLinks: JSON.parse(JSON.stringify(state.customLinks || [])),
+  design: {
+    buttonStyle: state.buttonStyle,
+    buttonRoundness: state.buttonRoundness,
+    buttonShadow: state.buttonShadow,
+    buttonColor: state.buttonColor,
+    buttonTextColor: state.buttonTextColor,
+    buttonOpacity: state.buttonOpacity,
+    buttonTextOpacity: state.buttonTextOpacity,
+    fontFamily: state.fontFamily,
+    titleFontFamily: state.titleFontFamily,
+    pageTextColor: state.pageTextColor,
+    sticker: state.sticker,
+  },
+  createdAt: state.profileWorkspaces?.find((workspace: ProfileWorkspace) => workspace.id === id)?.createdAt || new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
+const getStateFromWorkspace = (workspace: ProfileWorkspace) => ({
+  profile: JSON.parse(JSON.stringify(workspace.profile)),
+  templateType: workspace.templateType || 'preset',
+  templateValue: workspace.templateValue || 'minimalist',
+  socialLinks: JSON.parse(JSON.stringify(workspace.socialLinks || [])),
+  customLinks: JSON.parse(JSON.stringify(workspace.customLinks || [])),
+  buttonStyle: workspace.design?.buttonStyle || 'solid',
+  buttonRoundness: workspace.design?.buttonRoundness || 'full',
+  buttonShadow: workspace.design?.buttonShadow || 'soft',
+  buttonColor: workspace.design?.buttonColor,
+  buttonTextColor: workspace.design?.buttonTextColor,
+  buttonOpacity: workspace.design?.buttonOpacity ?? 100,
+  buttonTextOpacity: workspace.design?.buttonTextOpacity ?? 100,
+  fontFamily: workspace.design?.fontFamily || 'Inter',
+  titleFontFamily: workspace.design?.titleFontFamily || '',
+  pageTextColor: workspace.design?.pageTextColor,
+  sticker: workspace.design?.sticker || '',
+});
+
 const recursivelyUpdateLink = (links: CustomLink[], id: string, updates: Partial<CustomLink>): CustomLink[] => {
   return links.map(link => {
     if (link.id === id) {
@@ -406,6 +467,8 @@ export const useStore = create<AppState>((set) => ({
   socialLinks: [],
   customLinks: [],
   profile: { name: '', username: '', bio: '', avatarUrl: '', hideWatermark: false },
+  profileWorkspaces: [],
+  activeProfileId: 'primary',
 
   buttonStyle: 'solid',
   buttonRoundness: 'full',
@@ -576,8 +639,96 @@ export const useStore = create<AppState>((set) => ({
     };
   }),
 
+  createProfileWorkspace: (name, username) => {
+    const id = `profile-${Date.now()}`;
+    set((state) => {
+      const currentWorkspace = getWorkspaceFromState(state);
+      const existing = state.profileWorkspaces.length > 0
+        ? state.profileWorkspaces.map((workspace) => workspace.id === currentWorkspace.id ? currentWorkspace : workspace)
+        : [currentWorkspace];
+      const workspace: ProfileWorkspace = {
+        id,
+        profile: { name, username, bio: '', avatarUrl: '', hideWatermark: false, showBio: true },
+        templateType: 'preset',
+        templateValue: 'minimalist',
+        socialLinks: [],
+        customLinks: [],
+        design: {
+          buttonStyle: 'solid',
+          buttonRoundness: 'full',
+          buttonShadow: 'soft',
+          buttonOpacity: 100,
+          buttonTextOpacity: 100,
+          fontFamily: 'Inter',
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const workspaceState = getStateFromWorkspace(workspace);
+      return {
+        ...workspaceState,
+        profileWorkspaces: [...existing, workspace],
+        activeProfileId: id,
+        savedSnapshot: getSnapshotFromState({ ...state, ...workspaceState }),
+        undoStack: [],
+        redoStack: [],
+        isDirty: true,
+      };
+    });
+    return id;
+  },
+
+  switchProfileWorkspace: (id) => set((state) => {
+    if (id === state.activeProfileId) return state;
+    const currentWorkspace = getWorkspaceFromState(state);
+    const workspaces = state.profileWorkspaces.length > 0
+      ? state.profileWorkspaces.map((workspace) => workspace.id === currentWorkspace.id ? currentWorkspace : workspace)
+      : [currentWorkspace];
+    const target = workspaces.find((workspace) => workspace.id === id);
+    if (!target) return state;
+    const workspaceState = getStateFromWorkspace(target);
+    return {
+      ...workspaceState,
+      profileWorkspaces: workspaces,
+      activeProfileId: id,
+      savedSnapshot: getSnapshotFromState({ ...state, ...workspaceState }),
+      undoStack: [],
+      redoStack: [],
+      isDirty: false,
+    };
+  }),
+
+  deleteProfileWorkspace: (id) => set((state) => {
+    if (state.profileWorkspaces.length <= 1) return state;
+    const remaining = state.profileWorkspaces.filter((workspace) => workspace.id !== id);
+    if (id !== state.activeProfileId) return { profileWorkspaces: remaining, isDirty: true };
+    const target = remaining[0];
+    const workspaceState = getStateFromWorkspace(target);
+    return {
+      ...workspaceState,
+      profileWorkspaces: remaining,
+      activeProfileId: target.id,
+      savedSnapshot: getSnapshotFromState({ ...state, ...workspaceState }),
+      undoStack: [],
+      redoStack: [],
+      isDirty: true,
+    };
+  }),
+
+  syncActiveProfileWorkspace: () => set((state) => {
+    const currentWorkspace = getWorkspaceFromState(state);
+    return {
+      profileWorkspaces: state.profileWorkspaces.length > 0
+        ? state.profileWorkspaces.map((workspace) => workspace.id === currentWorkspace.id ? currentWorkspace : workspace)
+        : [currentWorkspace],
+    };
+  }),
+
   loadData: (data) => set((state) => {
-    const newState = { ...state, ...data };
+    const requestedWorkspaces = data.profileWorkspaces as ProfileWorkspace[] | undefined;
+    const activeId = data.activeProfileId || requestedWorkspaces?.[0]?.id || state.activeProfileId || 'primary';
+    const activeWorkspace = requestedWorkspaces?.find((workspace) => workspace.id === activeId) || requestedWorkspaces?.[0];
+    const newState = { ...state, ...data, ...(activeWorkspace ? getStateFromWorkspace(activeWorkspace) : {}), activeProfileId: activeWorkspace?.id || activeId };
     const snap = getSnapshotFromState(newState);
     return {
       ...newState,
@@ -718,8 +869,12 @@ export const useStore = create<AppState>((set) => ({
 
   markSaved: () => set((state) => {
     const currentSnap = getSnapshotFromState(state);
+    const currentWorkspace = getWorkspaceFromState(state);
     return {
       savedSnapshot: currentSnap,
+      profileWorkspaces: state.profileWorkspaces.length > 0
+        ? state.profileWorkspaces.map((workspace) => workspace.id === currentWorkspace.id ? currentWorkspace : workspace)
+        : [currentWorkspace],
       undoStack: [],
       redoStack: [],
       isDirty: false
