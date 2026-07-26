@@ -404,7 +404,13 @@ const LinksEditor = () => {
     const activeId = e.dataTransfer.getData("text/plain");
     if (!activeId || activeId === targetId) return;
 
-    moveItemRelative(activeId, targetId);
+    // Calculate whether dropped on top half ('before') or bottom half ('after')
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dropY = e.clientY - rect.top;
+    const isBottomHalf = dropY > rect.height / 2;
+    const position = isBottomHalf ? 'after' : 'before';
+
+    moveItemRelative(activeId, targetId, position);
     setDraggedId(null);
   };
 

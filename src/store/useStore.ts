@@ -265,6 +265,7 @@ interface AppState {
   setProfile: (profile: UserProfile) => void;
   loadData: (data: Partial<AppState>) => void;
   reorderLinks: (newLinks: CustomLink[]) => void;
+  moveItemRelative: (activeId: string, targetId: string, position?: 'before' | 'after') => void;
   moveItemDirection: (id: string, direction: 'up' | 'down') => void;
 
   // Growth Actions
@@ -293,7 +294,6 @@ interface AppState {
   // Drag and Drop Actions
   moveItemToCollection: (itemId: string, targetCollectionId: string) => void;
   moveItemToRoot: (itemId: string) => void;
-  moveItemRelative: (activeId: string, targetId: string) => void;
 }
 
 const getSnapshotFromState = (state: any): AppStateSnapshot => ({
@@ -762,7 +762,7 @@ export const useStore = create<AppState>((set) => ({
     };
   }),
 
-  moveItemRelative: (activeId, targetId) => set((state) => {
+  moveItemRelative: (activeId, targetId, position = 'before') => set((state) => {
     if (activeId === targetId) return state;
 
     const snap = getSnapshotFromState(state);
@@ -791,7 +791,8 @@ export const useStore = create<AppState>((set) => ({
       const targetIdx = list.findIndex(item => item.id === targetId);
       if (targetIdx !== -1) {
         const newList = [...list];
-        newList.splice(targetIdx, 0, activeItem!);
+        const insertIndex = position === 'after' ? targetIdx + 1 : targetIdx;
+        newList.splice(insertIndex, 0, activeItem!);
         return newList;
       }
       return list.map(item => {
