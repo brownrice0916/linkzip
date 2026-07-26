@@ -304,13 +304,12 @@ const Admin = () => {
 
       {/* Independent top utility bar */}
       <div className="admin-utility-bar col-start-2 row-start-1 flex items-center justify-between gap-3 min-w-0">
-        <div className="h-full min-w-0 flex items-center gap-3 rounded-full border border-gray-200 bg-white px-5 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
-          <span className="shrink-0 text-xs font-black text-gray-900">{t("myLinkZip", state.language)}</span>
-          <a href={profileUrl} target="_blank" rel="noreferrer" className="truncate text-xs font-semibold text-gray-500 underline decoration-gray-300 underline-offset-4 transition hover:text-black">{profileUrl}</a>
-        </div>
-
-        <div className="flex h-full shrink-0 items-center gap-2">
-          <div className="flex h-full items-center gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
+        <div className="flex h-full min-w-0 items-center rounded-full border border-gray-200 bg-white p-1 pl-5 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
+          <div className="flex min-w-0 items-center gap-3 pr-4">
+            <span className="shrink-0 text-xs font-black text-gray-900">{t("myLinkZip", state.language)}</span>
+            <a href={profileUrl} target="_blank" rel="noreferrer" className="truncate text-xs font-semibold text-gray-500 underline decoration-gray-300 underline-offset-4 transition hover:text-black">{profileUrl}</a>
+          </div>
+          <div className="flex h-full shrink-0 items-center gap-1 border-l border-gray-200 pl-1">
             <button onClick={handleCopyLink} className="flex h-full items-center gap-1.5 rounded-full px-3 text-xs font-bold text-gray-700 transition hover:bg-gray-100 cursor-pointer">
               {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? t("copied", state.language) : t("copy", state.language)}
@@ -319,14 +318,14 @@ const Admin = () => {
               <Share2 className="w-3.5 h-3.5" />{t("share", state.language)}
             </button>
           </div>
+        </div>
 
-          <div className="flex h-full items-center gap-1 rounded-full border border-gray-200 bg-white px-3 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
-            <Globe className="w-3.5 h-3.5 text-gray-600" />
-            <select value={state.language} onChange={(e) => state.setLanguage(e.target.value as 'ko' | 'en')} className="bg-transparent pr-1 text-xs font-extrabold text-gray-900 focus:outline-hidden cursor-pointer" aria-label="언어 선택">
-              <option value="ko">🇰🇷 한국어</option>
-              <option value="en">🇺🇸 English</option>
-            </select>
-          </div>
+        <div className="flex h-full shrink-0 items-center gap-1 rounded-full border border-gray-200 bg-white px-3 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
+          <Globe className="w-3.5 h-3.5 text-gray-600" />
+          <select value={state.language} onChange={(e) => state.setLanguage(e.target.value as 'ko' | 'en')} className="bg-transparent pr-1 text-xs font-extrabold text-gray-900 focus:outline-hidden cursor-pointer" aria-label="언어 선택">
+            <option value="ko">🇰🇷 한국어</option>
+            <option value="en">🇺🇸 English</option>
+          </select>
         </div>
       </div>
 
