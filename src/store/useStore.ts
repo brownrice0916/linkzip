@@ -707,8 +707,7 @@ export const useStore = create<AppState>((set) => ({
     if (!extractedItem) return state;
 
     const itemToInsert: CustomLink = {
-      ...(extractedItem as CustomLink),
-      type: 'link'
+      ...(extractedItem as CustomLink)
     };
 
     const addToTarget = (list: CustomLink[]): CustomLink[] => {

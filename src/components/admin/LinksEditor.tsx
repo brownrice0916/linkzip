@@ -413,6 +413,25 @@ const LinksEditor = () => {
     const activeId = e.dataTransfer.getData("text/plain");
     if (!activeId) return;
 
+    // Check block type of activeId - prevent special blocks like reservation, donation, notice, sales, etc.
+    const findBlock = (links: CustomLink[]): CustomLink | null => {
+      for (const l of links) {
+        if (l.id === activeId) return l;
+        if (l.links) {
+          const found = findBlock(l.links);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const targetBlock = findBlock(customLinks);
+    if (targetBlock && targetBlock.type && targetBlock.type !== 'link') {
+      alert(`[${targetBlock.title || '해당'}] 블록은 독립적인 특수 블록이므로 그룹(컬렉션) 안으로 이동할 수 없습니다.`);
+      setDraggedId(null);
+      return;
+    }
+
     moveItemToCollection(activeId, collectionId);
     setDraggedId(null);
   };
@@ -723,9 +742,16 @@ const LinksEditor = () => {
         {!isCollapsed && (
           <div className="pl-4 border-l-2 border-indigo-100 space-y-3 pt-1 animate-in fade-in duration-200">
             {collection.links && collection.links.length > 0 ? (
-              collection.links.map((nestedLink) =>
-                renderLinkItem(nestedLink, true, collection.id)
-              )
+              collection.links.map((nestedLink) => {
+                if (nestedLink.type === "reservation") return renderReservationCard(nestedLink);
+                if (nestedLink.type === "donation") return renderDonationCard(nestedLink);
+                if (nestedLink.type === "file") return renderFileSharingCard(nestedLink);
+                if (nestedLink.type === "sns") return renderSNSCard(nestedLink);
+                if (nestedLink.type === "notice") return renderNoticeCard(nestedLink);
+                if (nestedLink.type === "customer_info") return renderCustomerInfoCard(nestedLink);
+                if (nestedLink.type === "sales") return renderSalesCard(nestedLink);
+                return renderLinkItem(nestedLink, true, collection.id);
+              })
             ) : (
               <div className="text-center py-4 text-xs font-semibold text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                 컬렉션이 비어있습니다. 아래 [ + ] 버튼을 눌러 링크를
