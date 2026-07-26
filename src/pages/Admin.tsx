@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useStore } from "../store/useStore";
 import LinkTreePreview from "../components/LinkTreePreview";
 import { useNavigate, useParams } from "react-router-dom";
@@ -18,7 +18,8 @@ import {
   BarChart3,
   Megaphone,
   Globe,
-  ArrowLeft
+  ArrowLeft,
+  X
 } from "lucide-react";
 import { logout } from "../lib/firebase";
 import clsx from "clsx";
@@ -43,6 +44,10 @@ const Admin = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const [copied, setCopied] = useState(false);
+  const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(true);
+  const [sheetDragOffset, setSheetDragOffset] = useState(0);
+  const sheetTouchStartY = useRef<number | null>(null);
+  const sheetDragOffsetRef = useRef(0);
 
   // Sync URL parameter to activeTab
   useEffect(() => {
@@ -166,6 +171,7 @@ const Admin = () => {
       target === "settings"
     ) {
       setActiveTab(target);
+      setIsMobileEditorOpen(true);
       const urlAlias = target === 'links' ? 'content'
         : target === 'profile' ? 'header'
         : target === 'appearance' ? 'design'
@@ -175,6 +181,27 @@ const Admin = () => {
         : 'settings';
       navigate(`/admin/${urlAlias}`);
     }
+  };
+
+  const handleSheetTouchStart = (event: React.TouchEvent) => {
+    sheetTouchStartY.current = event.touches[0]?.clientY ?? null;
+    sheetDragOffsetRef.current = 0;
+    setSheetDragOffset(0);
+  };
+
+  const handleSheetTouchMove = (event: React.TouchEvent) => {
+    if (sheetTouchStartY.current === null) return;
+    const distance = Math.max(0, (event.touches[0]?.clientY ?? sheetTouchStartY.current) - sheetTouchStartY.current);
+    const nextOffset = Math.min(distance, 160);
+    sheetDragOffsetRef.current = nextOffset;
+    setSheetDragOffset(nextOffset);
+  };
+
+  const handleSheetTouchEnd = () => {
+    if (sheetDragOffsetRef.current >= 72) setIsMobileEditorOpen(false);
+    sheetTouchStartY.current = null;
+    sheetDragOffsetRef.current = 0;
+    setSheetDragOffset(0);
   };
 
   const handleSaveAndContinue = async () => {
@@ -342,7 +369,11 @@ const Admin = () => {
       </div>
 
       {/* Main Workspace Area */}
-      <div className="admin-main-panel col-start-2 row-start-3 min-w-[700px] min-h-0 flex flex-col bg-[#F6F6F4] rounded-[24px] border border-gray-200 overflow-hidden shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
+      <div className={clsx("admin-main-panel col-start-2 row-start-3 min-w-[700px] min-h-0 flex flex-col bg-[#F6F6F4] rounded-[24px] border border-gray-200 overflow-hidden shadow-[0_16px_40px_rgba(15,23,42,0.08)]", !isMobileEditorOpen && "mobile-sheet-closed")} style={sheetDragOffset ? { transform: `translateY(${sheetDragOffset}px)` } : undefined}>
+        <div className="mobile-sheet-header hidden">
+          <div className="mobile-sheet-swipe-zone" onTouchStart={handleSheetTouchStart} onTouchMove={handleSheetTouchMove} onTouchEnd={handleSheetTouchEnd} aria-label="아래로 밀어 편집 패널 닫기"><span /></div>
+          <button type="button" onClick={() => setIsMobileEditorOpen(false)} className="mobile-sheet-close" aria-label="편집 패널 닫기"><X /></button>
+        </div>
 
         {/* Editor Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-7 bg-[#F6F6F4]">
@@ -511,6 +542,16 @@ const Admin = () => {
           </div>
         </div>
       </div>
+
+      {!isMobileEditorOpen && (
+        <div className="mobile-tab-dock hidden" aria-label="모바일 관리자 메뉴">
+          <button type="button" onClick={() => requestNavigation("links")}><Link2 /><span>{t("navLinks", state.language)}</span></button>
+          <button type="button" onClick={() => requestNavigation("profile")}><UserIcon /><span>{t("navProfile", state.language)}</span></button>
+          <button type="button" onClick={() => requestNavigation("appearance")}><Palette /><span>{t("navDesign", state.language)}</span></button>
+          <button type="button" onClick={() => requestNavigation("automation")}><Zap /><span>{t("navGrowth", state.language)}</span></button>
+          <button type="button" onClick={() => requestNavigation("settings")}><Settings /><span>{t("navSettings", state.language)}</span></button>
+        </div>
+      )}
 
       {/* Unsaved Changes Warning Modal */}
       {isUnsavedModalOpen && (
