@@ -912,7 +912,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   ],
                   autoNotification: false
                 };
+                const calendarYear = 2026;
                 const calendarMonth = 7;
+                const today = new Date();
                 const isScheduleListExpanded = expandedReservationIds[block.id] ?? false;
                 const schedulesForDay = (day: number) => config.schedules.filter((schedule) => isScheduleOnCalendarDay(schedule, calendarMonth, day));
                 const formatScheduleRange = (schedule: ReservationScheduleItem) => schedule.endDate
@@ -920,7 +922,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   : `${schedule.startDate}${schedule.startHour ? ` (${schedule.startHour}시)` : ''}`;
 
                 return (
-                  <div key={block.id} className="w-full bg-[#D1E7DD]/90 backdrop-blur-xs border border-[#B1D8C7] rounded-3xl p-5 space-y-4 font-sans text-gray-900 shadow-md" style={getCustomLinkStyle(block)}>
+                  <div
+                    key={block.id}
+                    className={clsx(
+                      "relative w-full overflow-visible bg-[#D1E7DD]/90 backdrop-blur-xs border border-[#B1D8C7] rounded-3xl p-5 space-y-4 font-sans text-gray-900 shadow-md",
+                      activeCalendarDay?.blockId === block.id ? "z-[200]" : "z-0"
+                    )}
+                    style={getCustomLinkStyle(block)}
+                  >
                     {/* Calendar Header with Navigation */}
                     <div className="flex items-center justify-center gap-4 px-2">
                       <button
@@ -950,6 +959,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         const daySchedules = schedulesForDay(d);
                         const hasSchedule = daySchedules.length > 0;
                         const isSelected = activeCalendarDay?.blockId === block.id && activeCalendarDay.day === d;
+                        const isToday = today.getFullYear() === calendarYear && today.getMonth() + 1 === calendarMonth && today.getDate() === d;
                         return (
                           <button
                             type="button"
@@ -957,7 +967,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             disabled={!hasSchedule}
                             onClick={() => hasSchedule && setActiveCalendarDay(isSelected ? null : { blockId: block.id, day: d })}
                             className={clsx(
-                              "group relative w-8 h-8 mx-auto rounded-full flex items-center justify-center font-bold transition-all text-xs",
+                              "group relative w-8 h-8 mx-auto rounded-full flex items-center justify-center transition-all text-xs",
+                              isSelected ? "z-[220]" : "z-0",
+                              isToday ? "font-black text-[13px]" : "font-semibold",
                               isSelected
                                 ? "bg-black text-white shadow-md scale-105"
                                 : hasSchedule
@@ -969,7 +981,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             {d}
                             {hasSchedule && <span className={clsx("absolute bottom-0.5 w-1.5 h-1.5 rounded-full transition-colors", isSelected ? "bg-emerald-300" : "bg-emerald-600 group-hover:bg-emerald-300")} />}
                             {isSelected && (
-                              <span className="absolute z-30 top-10 left-1/2 -translate-x-1/2 w-56 rounded-2xl bg-gray-950 text-white p-3.5 text-left shadow-2xl border border-white/10 cursor-default" onClick={(event) => event.stopPropagation()}>
+                              <span className="absolute z-[999] top-10 left-1/2 -translate-x-1/2 w-56 rounded-2xl bg-gray-950 text-white p-3.5 text-left shadow-2xl border border-white/10 cursor-default" onClick={(event) => event.stopPropagation()}>
                                 <span className="flex items-center gap-1.5 text-[11px] font-black mb-2"><CalendarDays className="w-3.5 h-3.5" /> 7월 {d}일 일정</span>
                                 <span className="block space-y-2">{daySchedules.map((schedule) => <span key={schedule.id} className="block border-t border-white/15 pt-2 first:border-0 first:pt-0"><span className="block text-[11px] font-black">{schedule.title}</span><span className="block text-[9px] text-white/65 mt-0.5">{schedule.status || 'OPEN'} · {formatScheduleRange(schedule)}</span></span>)}</span>
                               </span>
