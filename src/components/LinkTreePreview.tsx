@@ -172,6 +172,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const fontFamily = props.design?.fontFamily ?? store.fontFamily;
   const titleFontFamily = props.design?.titleFontFamily ?? store.titleFontFamily;
   const pageTextColor = props.design?.pageTextColor ?? store.pageTextColor;
+  const pageTextOpacity = props.design?.pageTextOpacity ?? store.pageTextOpacity;
+  const backgroundOpacity = props.design?.backgroundOpacity ?? store.backgroundOpacity;
   const sticker = props.design?.sticker ?? store.sticker;
 
   let fontClass = "font-sans";
@@ -199,14 +201,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
   let textClass = "text-gray-900";
   if (pageTextColor) {
-    containerStyle.color = pageTextColor;
+    containerStyle.color = colorWithOpacity(pageTextColor, pageTextOpacity ?? 100);
   }
 
   let themeDefaultBtnClass = "bg-black text-white hover:bg-gray-800 shadow-sm";
 
   // Preset & Color Theme Styles
   if (isColor) {
-    containerStyle.backgroundColor = templateValue;
+    containerStyle.backgroundColor = colorWithOpacity(templateValue, backgroundOpacity ?? 100);
     const isDark = templateValue === "#0f172a";
     if (!pageTextColor) textClass = isDark ? "text-white" : "text-gray-900";
     themeDefaultBtnClass = isDark
@@ -588,7 +590,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         : "bg-black/5 hover:bg-black/10 text-gray-900",
                       textClass
                     )}
-                    style={pageTextColor ? { color: pageTextColor } : {}}
+                    style={pageTextColor ? { color: colorWithOpacity(pageTextColor, pageTextOpacity ?? 100) } : {}}
                     title={link.platform}
                   >
                     <Icon className="w-5 h-5 object-contain" />

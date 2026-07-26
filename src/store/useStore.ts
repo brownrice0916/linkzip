@@ -163,6 +163,8 @@ export interface DesignSettings {
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
+  pageTextOpacity?: number;
+  backgroundOpacity?: number;
   sticker?: string;
 }
 
@@ -235,6 +237,8 @@ export interface AppStateSnapshot {
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
+  pageTextOpacity?: number;
+  backgroundOpacity?: number;
   sticker?: string;
   teamMembers?: TeamMember[];
   dmRules?: DMAutomationRule[];
@@ -280,6 +284,8 @@ interface AppState {
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
+  pageTextOpacity?: number;
+  backgroundOpacity?: number;
   sticker?: string;
 
   // Growth & Enterprise Data
@@ -369,6 +375,8 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   fontFamily: state.fontFamily,
   titleFontFamily: state.titleFontFamily,
   pageTextColor: state.pageTextColor,
+  pageTextOpacity: state.pageTextOpacity,
+  backgroundOpacity: state.backgroundOpacity,
   sticker: state.sticker,
   teamMembers: JSON.parse(JSON.stringify(state.teamMembers || [])),
   dmRules: JSON.parse(JSON.stringify(state.dmRules || [])),
@@ -395,6 +403,8 @@ const getWorkspaceFromState = (state: any, id = state.activeProfileId || 'primar
     fontFamily: state.fontFamily,
     titleFontFamily: state.titleFontFamily,
     pageTextColor: state.pageTextColor,
+    pageTextOpacity: state.pageTextOpacity,
+    backgroundOpacity: state.backgroundOpacity,
     sticker: state.sticker,
   },
   createdAt: state.profileWorkspaces?.find((workspace: ProfileWorkspace) => workspace.id === id)?.createdAt || new Date().toISOString(),
@@ -417,6 +427,8 @@ const getStateFromWorkspace = (workspace: ProfileWorkspace) => ({
   fontFamily: workspace.design?.fontFamily || 'Inter',
   titleFontFamily: workspace.design?.titleFontFamily || '',
   pageTextColor: workspace.design?.pageTextColor,
+  pageTextOpacity: workspace.design?.pageTextOpacity ?? 100,
+  backgroundOpacity: workspace.design?.backgroundOpacity ?? 100,
   sticker: workspace.design?.sticker || '',
 });
 
@@ -475,6 +487,8 @@ export const useStore = create<AppState>((set) => ({
   buttonShadow: 'soft',
   buttonOpacity: 100,
   buttonTextOpacity: 100,
+  pageTextOpacity: 100,
+  backgroundOpacity: 100,
   fontFamily: 'Inter',
   titleFontFamily: '',
   sticker: '',
@@ -521,14 +535,18 @@ export const useStore = create<AppState>((set) => ({
     return {
       templateType: type, 
       templateValue: value,
-      buttonColor: '',
-      buttonTextColor: '',
-      buttonOpacity: 100,
-      buttonTextOpacity: 100,
-      pageTextColor: '',
-      fontFamily: themeFontMap[value] || state.fontFamily,
-      titleFontFamily: '',
-      profile: { ...state.profile, titleColor: '' },
+      ...(type === 'preset' ? {
+        buttonColor: '',
+        buttonTextColor: '',
+        buttonOpacity: 100,
+        buttonTextOpacity: 100,
+        pageTextColor: '',
+        pageTextOpacity: 100,
+        backgroundOpacity: 100,
+        fontFamily: themeFontMap[value] || state.fontFamily,
+        titleFontFamily: '',
+        profile: { ...state.profile, titleColor: '' },
+      } : {}),
       undoStack: [...state.undoStack, snap],
       redoStack: [],
       isDirty: true
@@ -659,6 +677,8 @@ export const useStore = create<AppState>((set) => ({
           buttonShadow: 'soft',
           buttonOpacity: 100,
           buttonTextOpacity: 100,
+          pageTextOpacity: 100,
+          backgroundOpacity: 100,
           fontFamily: 'Inter',
         },
         createdAt: new Date().toISOString(),

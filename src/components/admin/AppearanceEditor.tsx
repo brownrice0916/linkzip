@@ -108,6 +108,8 @@ const AppearanceEditor = () => {
     fontFamily,
     titleFontFamily,
     pageTextColor,
+    pageTextOpacity,
+    backgroundOpacity,
     sticker,
     language,
     setDesignSettings 
@@ -496,31 +498,29 @@ const AppearanceEditor = () => {
           <hr className="border-gray-100" />
 
           {/* Page Text Color */}
-          <div className="flex items-center justify-between">
+          <div className="space-y-2">
             <span className="text-xs font-bold text-gray-700">{tr('페이지 글자색', 'Page text color')}</span>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={pageTextColor || '#000000'}
-                onChange={(e) => setDesignSettings({ pageTextColor: e.target.value })}
-                className="w-8 h-8 rounded-xl cursor-pointer border border-gray-200"
-              />
-              <span className="text-xs font-mono font-bold uppercase">{pageTextColor || '#000000'}</span>
-            </div>
+            <ColorPickerPopover
+              label={tr('페이지 글자색', 'Page text color')}
+              value={pageTextColor || '#000000'}
+              opacity={pageTextOpacity ?? 100}
+              onChange={(color) => setDesignSettings({ pageTextColor: color })}
+              onOpacityChange={(opacity) => setDesignSettings({ pageTextColor: pageTextColor || '#000000', pageTextOpacity: opacity })}
+              suggested={['#000000', '#FFFFFF', '#111827', '#4B5563', '#7C3AED', '#DC2626']}
+            />
           </div>
 
           {/* Background Color */}
-          <div className="flex items-center justify-between">
+          <div className="space-y-2">
             <span className="text-xs font-bold text-gray-700">{tr('배경 색상', 'Wallpaper background color')}</span>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={templateType === 'color' ? templateValue : '#FAF9F6'}
-                onChange={(e) => setTemplate('color', e.target.value)}
-                className="w-8 h-8 rounded-xl cursor-pointer border border-gray-200"
-              />
-              <span className="text-xs font-mono font-bold uppercase">{templateValue}</span>
-            </div>
+            <ColorPickerPopover
+              label={tr('배경 색상', 'Wallpaper background color')}
+              value={templateType === 'color' ? templateValue : '#FAF9F6'}
+              opacity={backgroundOpacity ?? 100}
+              onChange={(color) => setTemplate('color', color)}
+              onOpacityChange={(opacity) => setDesignSettings({ backgroundOpacity: opacity })}
+              suggested={['#FAF9F6', '#FFFFFF', '#FDEBDB', '#022B49', '#000000', '#C9CBEE']}
+            />
           </div>
         </div>
       </div>

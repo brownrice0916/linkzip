@@ -73,6 +73,8 @@ function App() {
                 fontFamily: data.design?.fontFamily || 'Inter',
                 titleFontFamily: data.design?.titleFontFamily || '',
                 pageTextColor: data.design?.pageTextColor,
+                pageTextOpacity: data.design?.pageTextOpacity ?? 100,
+                backgroundOpacity: data.design?.backgroundOpacity ?? 100,
                 sticker: data.design?.sticker || '',
               },
             };
@@ -97,6 +99,8 @@ function App() {
               fontFamily: data.design?.fontFamily || 'Inter',
               titleFontFamily: data.design?.titleFontFamily || '',
               pageTextColor: data.design?.pageTextColor,
+              pageTextOpacity: data.design?.pageTextOpacity ?? 100,
+              backgroundOpacity: data.design?.backgroundOpacity ?? 100,
               sticker: data.design?.sticker || '',
               teamMembers: data.teamMembers || [],
               dmRules: data.dmRules || localBackup?.dmRules || [],

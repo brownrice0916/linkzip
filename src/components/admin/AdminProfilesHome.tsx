@@ -23,6 +23,8 @@ const workspaceFromCurrentState = (state: ReturnType<typeof useStore.getState>):
     fontFamily: state.fontFamily,
     titleFontFamily: state.titleFontFamily,
     pageTextColor: state.pageTextColor,
+    pageTextOpacity: state.pageTextOpacity,
+    backgroundOpacity: state.backgroundOpacity,
     sticker: state.sticker,
   },
 });
@@ -38,7 +40,7 @@ const AdminProfilesHome: React.FC = () => {
 
   const workspaces = useMemo(
     () => state.profileWorkspaces.length > 0 ? state.profileWorkspaces : [workspaceFromCurrentState(state)],
-    [state.profileWorkspaces, state.activeProfileId, state.profile, state.templateType, state.templateValue, state.socialLinks, state.customLinks, state.buttonStyle, state.buttonRoundness, state.buttonShadow, state.buttonColor, state.buttonTextColor, state.buttonOpacity, state.buttonTextOpacity, state.fontFamily, state.titleFontFamily, state.pageTextColor, state.sticker],
+    [state.profileWorkspaces, state.activeProfileId, state.profile, state.templateType, state.templateValue, state.socialLinks, state.customLinks, state.buttonStyle, state.buttonRoundness, state.buttonShadow, state.buttonColor, state.buttonTextColor, state.buttonOpacity, state.buttonTextOpacity, state.fontFamily, state.titleFontFamily, state.pageTextColor, state.pageTextOpacity, state.backgroundOpacity, state.sticker],
   );
 
   const openWorkspace = (workspace: ProfileWorkspace) => {
@@ -79,7 +81,7 @@ const AdminProfilesHome: React.FC = () => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl px-4 pb-12 pt-7 sm:px-8 sm:pt-10">
+      <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-center px-4 py-10 sm:px-8">
         <div className="mb-7 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-3xl font-black tracking-[-0.04em] sm:text-5xl">{isKo ? '링크집을 관리하세요' : 'Manage your LinkZips'}</h2>
