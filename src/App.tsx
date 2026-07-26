@@ -34,6 +34,16 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+
+      // Check localStorage backup
+      let localBackup: any = null;
+      try {
+        const raw = localStorage.getItem("linkzip_saved_state");
+        if (raw) localBackup = JSON.parse(raw);
+      } catch (e) {
+        console.warn("Error reading local backup", e);
+      }
+
       if (user) {
         try {
           const { doc, getDoc } = await import('firebase/firestore');
@@ -44,11 +54,11 @@ function App() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             loadData({
-              profile: data.profile || { name: '', username: '', bio: '', avatarUrl: '' },
+              profile: data.profile || localBackup?.profile || { name: '', username: '', bio: '', avatarUrl: '' },
               templateType: data.template?.type || 'preset',
               templateValue: data.template?.value || 'minimalist',
-              socialLinks: data.socialLinks || [],
-              customLinks: data.customLinks || [],
+              socialLinks: data.socialLinks || localBackup?.socialLinks || [],
+              customLinks: data.customLinks || localBackup?.customLinks || [],
               buttonStyle: data.design?.buttonStyle || 'solid',
               buttonRoundness: data.design?.buttonRoundness || 'full',
               buttonShadow: data.design?.buttonShadow || 'soft',
@@ -58,12 +68,23 @@ function App() {
               titleFontFamily: data.design?.titleFontFamily || '',
               pageTextColor: data.design?.pageTextColor,
               sticker: data.design?.sticker || '',
+              teamMembers: data.teamMembers || [],
+              dmRules: data.dmRules || localBackup?.dmRules || [],
+              alimtalkSettings: data.alimtalkSettings || localBackup?.alimtalkSettings,
+              instagramAccount: data.instagramAccount || localBackup?.instagramAccount || '',
+              pageViews: data.pageViews || 0,
             });
+          } else if (localBackup) {
+            loadData(localBackup);
           }
         } catch (error) {
           console.error("Error loading user data", error);
+          if (localBackup) loadData(localBackup);
         }
+      } else if (localBackup) {
+        loadData(localBackup);
       }
+
       setLoading(false);
     });
     return () => unsubscribe();
