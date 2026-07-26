@@ -1013,6 +1013,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         const hasSchedule = daySchedules.length > 0;
                         const isSelected = activeCalendarDay?.blockId === block.id && activeCalendarDay.day === d;
                         const isToday = today.getFullYear() === calendarYear && today.getMonth() + 1 === calendarMonth && today.getDate() === d;
+                        const weekdayIndex = (firstWeekday + d - 1) % 7;
                         return (
                           <button
                             type="button"
@@ -1034,8 +1035,16 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             {d}
                             {hasSchedule && <span className={clsx("absolute bottom-0.5 w-1.5 h-1.5 rounded-full transition-colors", isSelected ? "bg-emerald-300" : "bg-emerald-600 group-hover:bg-emerald-300")} />}
                             {isSelected && (
-                              <span className="absolute z-[999] top-10 left-1/2 -translate-x-1/2 w-56 rounded-2xl bg-gray-950 text-white p-3.5 text-left shadow-2xl border border-white/10 cursor-default" onClick={(event) => event.stopPropagation()}>
-                                <span className="block space-y-2">{daySchedules.map((schedule) => <span key={schedule.id} className="block border-t border-white/15 pt-2 first:border-0 first:pt-0"><span className="flex items-baseline justify-between gap-2"><span className="min-w-0 flex-1 truncate text-[11px] font-black">{schedule.title}</span><span className="shrink-0 text-[9px] font-semibold text-white/60">{formatScheduleTime(schedule)}</span></span></span>)}</span>
+                              <span
+                                className={clsx(
+                                  "absolute z-[999] top-10 w-max max-w-[min(12rem,calc(100vw-2rem))] overflow-hidden rounded-xl bg-gray-950 text-white px-3 py-2.5 text-left shadow-2xl border border-white/10 cursor-default",
+                                  weekdayIndex <= 1 && "left-0",
+                                  weekdayIndex >= 5 && "right-0",
+                                  weekdayIndex > 1 && weekdayIndex < 5 && "left-1/2 -translate-x-1/2"
+                                )}
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <span className="block space-y-1.5">{daySchedules.map((schedule) => <span key={schedule.id} className="block border-t border-white/15 pt-1.5 first:border-0 first:pt-0"><span className="flex max-w-full items-baseline gap-2"><span className="min-w-0 whitespace-normal break-words text-[11px] font-black">{schedule.title}</span><span className="shrink-0 text-[9px] font-semibold text-white/60">{formatScheduleTime(schedule)}</span></span></span>)}</span>
                               </span>
                             )}
                           </button>
@@ -1059,14 +1068,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       {visibleSchedules.length === 0 ? <div className="py-3 text-center text-xs text-gray-600">예정된 일정이 없습니다.</div> : isScheduleListExpanded ? (
                         <div className="space-y-2">{visibleSchedules.map((sched) => (
                           <div key={sched.id} className="p-3 bg-[#B1D8C7]/80 rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-2xs animate-in fade-in slide-in-from-top-1">
-                            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2"><div className="truncate text-xs font-extrabold text-gray-900">{sched.title}</div><div className="shrink-0 text-[9px] font-bold text-gray-600">{formatCompactScheduleDate(sched)}</div></div>
+                            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2"><div className="truncate text-xs font-extrabold text-gray-900">{sched.title}</div><div className="shrink-0 text-[10px] font-bold text-gray-600">{formatCompactScheduleDate(sched)}</div></div>
                           </div>
                         ))}</div>
                       ) : (
                         <button type="button" onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: true }))} className="relative block w-full h-[78px] cursor-pointer group" aria-label={`예정 일정 ${visibleSchedules.length}개 펼치기`}>
                           {visibleSchedules.slice(0, 3).reverse().map((sched, reverseIndex, visible) => {
                             const depth = visible.length - reverseIndex - 1;
-                            return <span key={sched.id} className="absolute inset-x-0 top-0 p-3 bg-[#B1D8C7] rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-sm text-left transition-transform group-hover:-translate-y-1" style={{ transform: `translateY(${depth * 7}px) scale(${1 - depth * 0.025})`, zIndex: 10 - depth }}><span className="flex min-w-0 flex-1 items-baseline justify-between gap-2"><span className="truncate text-xs font-extrabold text-gray-900">{sched.title}</span><span className="shrink-0 text-[9px] font-bold text-gray-600">{formatCompactScheduleDate(sched)}</span></span><ChevronDown className="w-4 h-4 text-gray-600 shrink-0" /></span>;
+                            return <span key={sched.id} className="absolute inset-x-0 top-0 p-3 bg-[#B1D8C7] rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-sm text-left transition-transform group-hover:-translate-y-1" style={{ transform: `translateY(${depth * 7}px) scale(${1 - depth * 0.025})`, zIndex: 10 - depth }}><span className="flex min-w-0 flex-1 items-baseline justify-between gap-2"><span className="truncate text-xs font-extrabold text-gray-900">{sched.title}</span><span className="shrink-0 text-[10px] font-bold text-gray-600">{formatCompactScheduleDate(sched)}</span></span><ChevronDown className="w-4 h-4 text-gray-600 shrink-0" /></span>;
                           })}
                         </button>
                       )}
