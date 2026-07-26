@@ -23,7 +23,8 @@ import {
   Eye,
   Sparkles,
   LayoutGrid,
-  House
+  House,
+  Crown
 } from "lucide-react";
 import { logout } from "../lib/firebase";
 import clsx from "clsx";
@@ -38,8 +39,9 @@ const SettingsEditor = lazy(() => import("../components/admin/SettingsEditor"));
 const GrowthEditor = lazy(() => import("../components/admin/GrowthEditor"));
 const AnalyticsEditor = lazy(() => import("../components/admin/AnalyticsEditor").then((module) => ({ default: module.AnalyticsEditor })));
 const MarketingEditor = lazy(() => import("../components/admin/MarketingEditor").then((module) => ({ default: module.MarketingEditor })));
+const PlanManagementEditor = lazy(() => import("../components/admin/PlanManagementEditor"));
 
-type TabType = "links" | "profile" | "appearance" | "analytics" | "marketing" | "automation" | "settings";
+type TabType = "links" | "profile" | "appearance" | "analytics" | "marketing" | "automation" | "settings" | "plan";
 type TargetAction = TabType | "home" | "logout" | null;
 
 const Admin = () => {
@@ -70,6 +72,7 @@ const Admin = () => {
       else if (tabLower === 'marketing' || tabLower === 'dm') setActiveTab('marketing');
       else if (tabLower === 'growth' || tabLower === 'automation') setActiveTab('automation');
       else if (tabLower === 'settings') setActiveTab('settings');
+      else if (tabLower === 'plan' || tabLower === 'billing') setActiveTab('plan');
     }
   }, [urlTab]);
 
@@ -173,7 +176,8 @@ const Admin = () => {
       target === "analytics" ||
       target === "marketing" ||
       target === "automation" ||
-      target === "settings"
+      target === "settings" ||
+      target === "plan"
     ) {
       setActiveTab(target);
       setIsMobileEditorOpen(target !== 'appearance');
@@ -183,6 +187,7 @@ const Admin = () => {
         : target === 'analytics' ? 'analyze'
         : target === 'marketing' ? 'marketing'
         : target === 'automation' ? 'growth'
+        : target === 'plan' ? 'plan'
         : 'settings';
       navigate(`/admin/${urlAlias}`);
     }
@@ -364,6 +369,7 @@ const Admin = () => {
           {activeTab === "marketing" && t("navMarketing", state.language)}
           {activeTab === "automation" && t("navGrowth", state.language)}
           {activeTab === "settings" && t("navSettings", state.language)}
+          {activeTab === "plan" && (state.language === 'ko' ? '플랜 관리' : 'Plan')}
         </h1>
         <div className="ml-auto flex items-center gap-1">
           <button type="button" onClick={state.undo} disabled={state.undoStack.length === 0} className="mobile-toolbar-icon" aria-label="실행 취소"><Undo2 /></button>
@@ -394,6 +400,7 @@ const Admin = () => {
                 {activeTab === "marketing" && t("marketingTitle", state.language)}
                 {activeTab === "automation" && t("growthTitle", state.language)}
                 {activeTab === "settings" && t("settingsTitle", state.language)}
+                {activeTab === "plan" && (state.language === 'ko' ? '플랜 관리' : 'Plan management')}
               </h2>
 
               {/* Controls Row (Matching User Screenshot) */}
@@ -473,6 +480,7 @@ const Admin = () => {
               {activeTab === "marketing" && <MarketingEditor />}
               {activeTab === "automation" && <GrowthEditor />}
               {activeTab === "settings" && <SettingsEditor />}
+              {activeTab === "plan" && <PlanManagementEditor />}
             </Suspense>
           </div>
         </div>
@@ -555,7 +563,7 @@ const Admin = () => {
                 <div className="min-w-0"><p className="truncate text-sm font-black">{state.profile.name || state.profile.username}</p><p className="truncate text-[11px] font-semibold text-gray-400">linkzip.kr/{state.profile.username}</p></div>
               </div>
               <button type="button" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('home'); }}><LayoutGrid /><span>{state.language === 'ko' ? '프로필 목록' : 'All profiles'}</span></button>
-              <button type="button" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('settings'); }}><Settings /><span>{t('navSettings', state.language)}</span></button>
+              <button type="button" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('plan'); }}><Crown /><span>{state.language === 'ko' ? '플랜 관리' : 'Plan management'}</span></button>
               <button type="button" className="logout" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('logout'); }}><LogOut /><span>{t('navLogout', state.language)}</span></button>
             </div>
           )}
