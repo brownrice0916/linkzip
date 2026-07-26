@@ -59,7 +59,10 @@ const Admin = () => {
       const tabLower = urlTab.toLowerCase();
       if (tabLower === 'content' || tabLower === 'links') setActiveTab('links');
       else if (tabLower === 'header' || tabLower === 'profile') setActiveTab('profile');
-      else if (tabLower === 'design' || tabLower === 'appearance') setActiveTab('appearance');
+      else if (tabLower === 'design' || tabLower === 'appearance') {
+        setActiveTab('appearance');
+        setIsMobileEditorOpen(false);
+      }
       else if (tabLower === 'analyze' || tabLower === 'analytics') setActiveTab('analytics');
       else if (tabLower === 'marketing' || tabLower === 'dm') setActiveTab('marketing');
       else if (tabLower === 'growth' || tabLower === 'automation') setActiveTab('automation');
@@ -162,7 +165,7 @@ const Admin = () => {
       target === "settings"
     ) {
       setActiveTab(target);
-      setIsMobileEditorOpen(true);
+      setIsMobileEditorOpen(target !== 'appearance');
       const urlAlias = target === 'links' ? 'content'
         : target === 'profile' ? 'header'
         : target === 'appearance' ? 'design'
