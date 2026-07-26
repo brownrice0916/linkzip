@@ -11,6 +11,7 @@ interface ThemeDefaults {
   buttonColor?: string;
   buttonTextColor?: string;
   buttonOpacity?: number;
+  buttonTextOpacity?: number;
   buttonRoundness: 'none' | 'sm' | 'md' | 'full';
   buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
 }
@@ -33,6 +34,7 @@ interface EffectiveDefaults {
   fontSize: number;
   fontWeight: LinkButtonStyle['fontWeight'];
   shadow: LinkButtonStyle['shadow'];
+  textOpacity?: number;
 }
 
 const getVariant = (link: CustomLink, parentCollection?: CustomLink): EditorVariant => {
@@ -116,6 +118,7 @@ export const LinkStyleEditorModal: React.FC<LinkStyleEditorModalProps> = ({
     fontSize: style.fontSize ?? defaults.fontSize,
     fontWeight: style.fontWeight ?? defaults.fontWeight,
     opacity: style.opacity ?? themeDefaults.buttonOpacity ?? 100,
+    textOpacity: style.textOpacity ?? themeDefaults.buttonTextOpacity ?? 100,
     shadow: style.shadow && style.shadow !== 'inherit' ? style.shadow : defaults.shadow,
   };
   const isCollection = link.type === 'collection';
@@ -149,8 +152,8 @@ export const LinkStyleEditorModal: React.FC<LinkStyleEditorModalProps> = ({
       <section className="bg-white rounded-3xl border border-gray-100 shadow-xs p-6 space-y-6">
         <div><h3 className="text-xl font-black text-gray-950">디자인</h3><p className="text-xs text-gray-400 mt-1">{isCollection ? `컬렉션 안의 링크 ${link.links?.length || 0}개에 한 번에 적용됩니다.` : '이 항목에만 적용되는 스타일입니다.'}</p></div>
           <section className="space-y-4"><h4 className="text-sm font-black text-gray-900">색상</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-2 text-xs font-bold text-gray-600"><span>{variant === 'button' || variant.includes('group') || variant.includes('collection') ? '버튼 배경색' : '카드 배경색'}</span><ColorPickerPopover label="배경색" value={effective.backgroundColor} opacity={effective.opacity} onChange={(color) => updateVisual({ buttonColor: color })} onOpacityChange={(opacity) => updateStyle({ opacity })} /></div>
-            <div className="space-y-2 text-xs font-bold text-gray-600"><span>글자색</span><ColorPickerPopover label="글자색" value={effective.textColor} onChange={(color) => updateVisual({ buttonTextColor: color })} suggested={['#111827', '#FFFFFF', '#4B5563', '#7C3AED', '#DC2626', '#065F46']} /></div>
+            <div className="space-y-2 text-xs font-bold text-gray-600"><span>{variant === 'button' || variant.includes('group') || variant.includes('collection') ? '버튼 배경색' : '카드 배경색'}</span><ColorPickerPopover label="배경색" value={effective.backgroundColor} opacity={effective.opacity} onChange={(color) => updateVisual({ buttonColor: color })} onOpacityChange={(opacity) => updateVisual({ buttonColor: effective.backgroundColor, customStyle: { ...style, opacity } })} /></div>
+            <div className="space-y-2 text-xs font-bold text-gray-600"><span>글자색</span><ColorPickerPopover label="글자색" value={effective.textColor} opacity={effective.textOpacity} onChange={(color) => updateVisual({ buttonTextColor: color })} onOpacityChange={(textOpacity) => updateVisual({ buttonTextColor: effective.textColor, customStyle: { ...style, textOpacity } })} suggested={['#111827', '#FFFFFF', '#4B5563', '#7C3AED', '#DC2626', '#065F46']} /></div>
           </div></section>
 
           <section className="space-y-4"><h4 className="text-sm font-black text-gray-900">글자</h4><div className="grid grid-cols-2 gap-3">

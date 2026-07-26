@@ -105,6 +105,7 @@ const Admin = () => {
             buttonColor: state.buttonColor,
             buttonTextColor: state.buttonTextColor,
             buttonOpacity: state.buttonOpacity,
+            buttonTextOpacity: state.buttonTextOpacity,
             fontFamily: state.fontFamily,
             titleFontFamily: state.titleFontFamily,
             pageTextColor: state.pageTextColor,
@@ -194,9 +195,9 @@ const Admin = () => {
   };
 
   return (
-    <div className="linkzip-admin flex h-screen bg-[#F6F6F4] overflow-hidden select-none font-sans text-gray-900">
+    <div className="linkzip-admin admin-shell grid h-screen min-w-[1240px] grid-cols-[400px_minmax(700px,1fr)] grid-rows-[64px_minmax(0,1fr)] gap-5 bg-[#ECEFF1] p-5 overflow-x-auto overflow-y-hidden select-none font-sans text-gray-900">
       {/* Sidebar Navigation */}
-      <div className="w-22 bg-white border-r border-gray-200 flex flex-col items-center py-5 gap-5 z-20 shrink-0">
+      <div className="admin-top-nav col-start-2 row-start-1 w-full bg-white border border-gray-200 rounded-[24px] flex flex-row items-center px-3 py-2 gap-2 z-20 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
         <div
           onClick={() => requestNavigation("home")}
           className="w-10 h-10 rounded-xl bg-gray-950 text-white flex items-center justify-center font-bold text-xl cursor-pointer hover:bg-gray-800 transition"
@@ -206,7 +207,7 @@ const Admin = () => {
 
 
 
-        <nav className="flex flex-col gap-3 w-full px-2.5">
+        <nav className="admin-nav-items flex flex-row items-center gap-1.5 min-w-0">
           <button
             onClick={() => requestNavigation("links")}
             className={clsx(
@@ -311,7 +312,7 @@ const Admin = () => {
       </div>
 
       {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#F6F6F4]">
+      <div className="col-start-2 row-start-2 min-w-[700px] min-h-0 flex flex-col bg-[#F6F6F4] rounded-[24px] border border-gray-200 overflow-hidden shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
         {/* Top Header Bar */}
         <div className="h-16 bg-white border-b border-gray-200 px-6 lg:px-8 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-4">
@@ -523,7 +524,7 @@ const Admin = () => {
       </div>
 
       {/* Right Live Phone Preview (Desktop only) */}
-      <div className="hidden lg:flex w-[420px] bg-[#F0F0ED] border-l border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
+      <div className="admin-live-preview col-start-1 row-start-1 row-span-2 flex w-full bg-[#E5E8EB] rounded-[28px] border border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
         {/* Sleek Borderless Mobile Device Container */}
         <div className="w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-[0_18px_48px_rgba(15,23,42,0.14)] relative flex flex-col overflow-hidden border border-gray-200">
           <div className="w-full h-full overflow-y-auto scrollbar-none">

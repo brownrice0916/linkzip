@@ -104,6 +104,7 @@ const AppearanceEditor = () => {
     buttonColor, 
     buttonTextColor,
     buttonOpacity,
+    buttonTextOpacity,
     fontFamily,
     titleFontFamily,
     pageTextColor,
@@ -297,28 +298,13 @@ const AppearanceEditor = () => {
           {/* Button Color & Opacity */}
           <div className="space-y-3 pt-2">
             <div><span className="text-sm font-bold text-gray-900 block">Button color</span><span className="text-[11px] text-gray-400">색상과 투명도를 함께 조절합니다</span></div>
-            <ColorPickerPopover label="버튼 색상" value={buttonColor || '#FFFFFF'} opacity={buttonOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonOpacity: nextOpacity })} suggested={['#022B49', '#FFFFFF', '#FDEBDB', '#000000', '#7C3AED', '#EC4899', '#10B981', '#F59E0B']} />
+            <ColorPickerPopover label="버튼 색상" value={buttonColor || '#FFFFFF'} opacity={buttonOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonColor: buttonColor || '#FFFFFF', buttonOpacity: nextOpacity })} suggested={['#022B49', '#FFFFFF', '#FDEBDB', '#000000', '#7C3AED', '#EC4899', '#10B981', '#F59E0B']} />
           </div>
 
           {/* Button Text Color */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-gray-900">Button text color</span>
-            <div className="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-2xl bg-white shadow-xs">
-              <label className="w-6 h-6 rounded-lg cursor-pointer border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center" style={{ backgroundColor: buttonTextColor || '#000000' }}>
-                <input
-                  type="color"
-                  value={buttonTextColor || '#000000'}
-                  onChange={(e) => setDesignSettings({ buttonTextColor: e.target.value })}
-                  className="opacity-0 w-full h-full cursor-pointer"
-                />
-              </label>
-              <input
-                type="text"
-                value={buttonTextColor || '#000000'}
-                onChange={(e) => setDesignSettings({ buttonTextColor: e.target.value })}
-                className="w-20 text-xs font-mono font-bold text-gray-800 uppercase focus:outline-none"
-              />
-            </div>
+          <div className="space-y-3">
+            <div><span className="text-sm font-bold text-gray-900 block">Button text color</span><span className="text-[11px] text-gray-400">글자색과 투명도를 별도로 조절합니다</span></div>
+            <ColorPickerPopover label="버튼 글자색" value={buttonTextColor || '#000000'} opacity={buttonTextOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonTextColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonTextColor: buttonTextColor || '#000000', buttonTextOpacity: nextOpacity })} suggested={['#000000', '#FFFFFF', '#111827', '#4B5563', '#7C3AED', '#DC2626']} />
           </div>
 
         </div>

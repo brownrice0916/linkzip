@@ -93,6 +93,7 @@ const LinksEditor = () => {
     buttonColor,
     buttonTextColor,
     buttonOpacity,
+    buttonTextOpacity,
     buttonRoundness,
     buttonShadow,
     socialLinks,
@@ -2699,6 +2700,7 @@ const LinksEditor = () => {
           buttonColor,
           buttonTextColor,
           buttonOpacity,
+          buttonTextOpacity,
           buttonRoundness,
           buttonShadow,
         }}

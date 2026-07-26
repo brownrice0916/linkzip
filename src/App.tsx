@@ -65,6 +65,8 @@ function App() {
               buttonShadow: data.design?.buttonShadow || 'soft',
               buttonColor: data.design?.buttonColor,
               buttonTextColor: data.design?.buttonTextColor,
+              buttonOpacity: data.design?.buttonOpacity ?? 100,
+              buttonTextOpacity: data.design?.buttonTextOpacity ?? 100,
               fontFamily: data.design?.fontFamily || 'Inter',
               titleFontFamily: data.design?.titleFontFamily || '',
               pageTextColor: data.design?.pageTextColor,

@@ -76,3 +76,60 @@
   outline: 2px solid rgb(124 58 237 / 0.55);
   outline-offset: 2px;
 }
+
+/* Keep the live phone and editor as two stable columns while desktop zoom changes. */
+.linkzip-admin.admin-shell {
+  scrollbar-gutter: stable;
+}
+
+.linkzip-admin .admin-top-nav .admin-nav-items > button {
+  width: auto;
+  min-width: 0;
+  flex-direction: row;
+  gap: 0.4rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.linkzip-admin .admin-top-nav .admin-nav-items > button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.linkzip-admin .admin-top-nav .admin-nav-items > button span {
+  font-size: 0.68rem;
+}
+
+.linkzip-admin .admin-top-nav > .mt-auto {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+@media (pointer: coarse) and (max-width: 800px) {
+  .linkzip-admin.admin-shell {
+    min-width: 0;
+    gap: 0;
+    padding: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .linkzip-admin .admin-live-preview {
+    display: none;
+  }
+
+  .linkzip-admin .admin-top-nav {
+    grid-column: 1;
+    grid-row: 1;
+    border-radius: 0;
+    overflow-x: auto;
+  }
+
+  .linkzip-admin .admin-top-nav + div {
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+    border-radius: 0;
+  }
+}

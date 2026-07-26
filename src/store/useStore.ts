@@ -142,6 +142,7 @@ export interface LinkButtonStyle {
   borderWidth?: number;
   borderRadius?: number;
   opacity?: number;
+  textOpacity?: number;
   shadow?: 'inherit' | 'none' | 'soft' | 'medium' | 'strong';
 }
 
@@ -158,6 +159,7 @@ export interface DesignSettings {
   buttonColor?: string;
   buttonTextColor?: string;
   buttonOpacity?: number;
+  buttonTextOpacity?: number;
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
@@ -229,6 +231,7 @@ export interface AppStateSnapshot {
   buttonColor?: string;
   buttonTextColor?: string;
   buttonOpacity?: number;
+  buttonTextOpacity?: number;
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
@@ -259,6 +262,7 @@ interface AppState {
   buttonColor?: string;
   buttonTextColor?: string;
   buttonOpacity?: number;
+  buttonTextOpacity?: number;
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
@@ -343,6 +347,7 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   buttonColor: state.buttonColor,
   buttonTextColor: state.buttonTextColor,
   buttonOpacity: state.buttonOpacity,
+  buttonTextOpacity: state.buttonTextOpacity,
   fontFamily: state.fontFamily,
   titleFontFamily: state.titleFontFamily,
   pageTextColor: state.pageTextColor,
@@ -406,6 +411,7 @@ export const useStore = create<AppState>((set) => ({
   buttonRoundness: 'full',
   buttonShadow: 'soft',
   buttonOpacity: 100,
+  buttonTextOpacity: 100,
   fontFamily: 'Inter',
   titleFontFamily: '',
   sticker: '',
@@ -455,6 +461,7 @@ export const useStore = create<AppState>((set) => ({
       buttonColor: '',
       buttonTextColor: '',
       buttonOpacity: 100,
+      buttonTextOpacity: 100,
       pageTextColor: '',
       fontFamily: themeFontMap[value] || state.fontFamily,
       titleFontFamily: '',

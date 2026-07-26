@@ -99,6 +99,19 @@ const isScheduleOnCalendarDay = (schedule: ReservationScheduleItem, month: numbe
   return day >= Math.min(start.day, end.day) && day <= Math.max(start.day, end.day);
 };
 
+const colorWithOpacity = (color: string, opacity: number) => {
+  const clampedOpacity = Math.max(0, Math.min(100, opacity));
+  if (clampedOpacity === 100) return color;
+  const hex = color.trim().match(/^#([0-9a-f]{6})$/i)?.[1];
+  if (hex) {
+    const red = parseInt(hex.slice(0, 2), 16);
+    const green = parseInt(hex.slice(2, 4), 16);
+    const blue = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${red}, ${green}, ${blue}, ${clampedOpacity / 100})`;
+  }
+  return `color-mix(in srgb, ${color} ${clampedOpacity}%, transparent)`;
+};
+
 const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const store = useStore();
   const profile = props.profile || store.profile;
@@ -155,6 +168,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const buttonColor = props.design?.buttonColor ?? store.buttonColor;
   const buttonTextColor = props.design?.buttonTextColor ?? store.buttonTextColor;
   const buttonOpacity = props.design?.buttonOpacity ?? store.buttonOpacity;
+  const buttonTextOpacity = props.design?.buttonTextOpacity ?? store.buttonTextOpacity;
   const fontFamily = props.design?.fontFamily ?? store.fontFamily;
   const titleFontFamily = props.design?.titleFontFamily ?? store.titleFontFamily;
   const pageTextColor = props.design?.pageTextColor ?? store.pageTextColor;
@@ -278,9 +292,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   }
   let buttonClass = `w-full py-4 px-4 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-95 text-center flex items-center justify-between ${roundnessClass} ${shadowClass}`;
   let customButtonStyle: React.CSSProperties = {};
-  if (buttonColor) customButtonStyle.backgroundColor = buttonColor;
-  if (buttonTextColor) customButtonStyle.color = buttonTextColor;
-  if (buttonOpacity !== undefined) customButtonStyle.opacity = buttonOpacity / 100;
+  if (buttonColor) customButtonStyle.backgroundColor = colorWithOpacity(buttonColor, buttonOpacity ?? 100);
+  if (buttonTextColor) customButtonStyle.color = colorWithOpacity(buttonTextColor, buttonTextOpacity ?? 100);
 
   const getCustomLinkStyle = (link: CustomLink): React.CSSProperties => {
     const style = link.customStyle;
@@ -291,10 +304,15 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
       strong: '0 12px 30px rgba(15, 23, 42, 0.28)',
     };
 
+    const backgroundColor = link.buttonColor || buttonColor;
+    const textColor = link.buttonTextColor || buttonTextColor;
+    const backgroundOpacity = style?.opacity ?? buttonOpacity ?? 100;
+    const textOpacity = style?.textOpacity ?? buttonTextOpacity ?? 100;
+
     return {
       ...customButtonStyle,
-      ...(link.buttonColor ? { backgroundColor: link.buttonColor } : {}),
-      ...(link.buttonTextColor ? { color: link.buttonTextColor } : {}),
+      ...(backgroundColor ? { backgroundColor: colorWithOpacity(backgroundColor, backgroundOpacity) } : {}),
+      ...(textColor ? { color: colorWithOpacity(textColor, textOpacity) } : {}),
       ...(style?.fontFamily === 'sans' ? { fontFamily: 'sans-serif' } : {}),
       ...(style?.fontFamily === 'serif' ? { fontFamily: 'serif' } : {}),
       ...(style?.fontFamily === 'mono' ? { fontFamily: 'monospace' } : {}),
@@ -303,7 +321,6 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
       ...(style?.borderColor ? { borderColor: style.borderColor } : {}),
       ...(style?.borderWidth !== undefined ? { borderWidth: `${style.borderWidth}px` } : {}),
       ...(style?.borderRadius !== undefined ? { borderRadius: `${style.borderRadius}px` } : {}),
-      ...(style?.opacity !== undefined ? { opacity: style.opacity / 100 } : {}),
       ...(style?.shadow && style.shadow !== 'inherit' ? { boxShadow: shadowMap[style.shadow] } : {}),
     };
   };
