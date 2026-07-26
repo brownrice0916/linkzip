@@ -85,16 +85,33 @@ const getSocialUrl = (platform: string, id: string) => {
   }
 };
 
-const getScheduleMonthDay = (value?: string) => {
+const getScheduleDate = (value: string | undefined, fallbackYear: number) => {
   const match = value?.match(/(?:(\d{4})[-./])?(\d{1,2})[-./](\d{1,2})/);
-  return match ? { month: Number(match[2]), day: Number(match[3]) } : null;
+  if (!match) return null;
+  const year = match[1] ? Number(match[1]) : fallbackYear;
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
 };
 
-const isScheduleOnCalendarDay = (schedule: ReservationScheduleItem, month: number, day: number) => {
-  const start = getScheduleMonthDay(schedule.startDate);
-  const end = getScheduleMonthDay(schedule.endDate) || start;
-  if (!start || !end || start.month !== month || end.month !== month) return false;
-  return day >= Math.min(start.day, end.day) && day <= Math.max(start.day, end.day);
+const isScheduleOnCalendarDay = (schedule: ReservationScheduleItem, year: number, month: number, day: number) => {
+  const fallbackYear = new Date().getFullYear();
+  const start = getScheduleDate(schedule.startDate, fallbackYear);
+  let end = getScheduleDate(schedule.endDate, start?.getFullYear() || fallbackYear) || start;
+  if (!start || !end) return false;
+  if (!/\d{4}/.test(schedule.endDate || '') && end.getTime() < start.getTime()) {
+    end = new Date(end.getFullYear() + 1, end.getMonth(), end.getDate());
+  }
+  const target = new Date(year, month - 1, day);
+  return target.getTime() >= start.getTime() && target.getTime() <= end.getTime();
+};
+
+const getInitialCalendarView = (schedules: ReservationScheduleItem[]) => {
+  const today = new Date();
+  const firstScheduleDate = schedules.map((schedule) => getScheduleDate(schedule.startDate, today.getFullYear())).find(Boolean);
+  const initialDate = firstScheduleDate || today;
+  return { year: initialDate.getFullYear(), month: initialDate.getMonth() + 1 };
 };
 
 const colorWithOpacity = (color: string, opacity: number) => {
@@ -158,6 +175,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
   const [expandedReservationIds, setExpandedReservationIds] = useState<Record<string, boolean>>({});
   const [activeCalendarDay, setActiveCalendarDay] = useState<{ blockId: string; day: number } | null>(null);
+  const [calendarViews, setCalendarViews] = useState<Record<string, { year: number; month: number }>>({});
   const isColor = templateType === "color";
   const buttonStyle = props.design?.buttonStyle ?? store.buttonStyle;
   const buttonRoundness = props.design?.buttonRoundness ?? store.buttonRoundness;
@@ -914,11 +932,20 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   ],
                   autoNotification: false
                 };
-                const calendarYear = 2026;
-                const calendarMonth = 7;
                 const today = new Date();
+                const initialCalendarView = getInitialCalendarView(config.schedules);
+                const calendarView = calendarViews[block.id] || initialCalendarView;
+                const calendarYear = calendarView.year;
+                const calendarMonth = calendarView.month;
+                const firstWeekday = new Date(calendarYear, calendarMonth - 1, 1).getDay();
+                const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
                 const isScheduleListExpanded = expandedReservationIds[block.id] ?? false;
-                const schedulesForDay = (day: number) => config.schedules.filter((schedule) => isScheduleOnCalendarDay(schedule, calendarMonth, day));
+                const schedulesForDay = (day: number) => config.schedules.filter((schedule) => isScheduleOnCalendarDay(schedule, calendarYear, calendarMonth, day));
+                const changeCalendarMonth = (offset: number) => {
+                  const nextDate = new Date(calendarYear, calendarMonth - 1 + offset, 1);
+                  setCalendarViews((current) => ({ ...current, [block.id]: { year: nextDate.getFullYear(), month: nextDate.getMonth() + 1 } }));
+                  setActiveCalendarDay(null);
+                };
                 const formatScheduleRange = (schedule: ReservationScheduleItem) => schedule.endDate
                   ? `${schedule.startDate}${schedule.startHour ? ` (${schedule.startHour}시)` : ''} ~ ${schedule.endDate}${schedule.endHour ? ` (${schedule.endHour}시)` : ''}`
                   : `${schedule.startDate}${schedule.startHour ? ` (${schedule.startHour}시)` : ''}`;
@@ -936,14 +963,18 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     <div className="flex items-center justify-center gap-4 px-2">
                       <button
                         type="button"
+                        onClick={() => changeCalendarMonth(-1)}
                         className="p-1 text-gray-700 hover:text-black hover:bg-black/10 rounded-full font-bold cursor-pointer text-xs"
+                        aria-label={`${calendarYear}년 ${calendarMonth}월 이전 달`}
                       >
                         &lt;
                       </button>
-                      <span className="font-extrabold text-base tracking-tight text-gray-900">2026.07</span>
+                      <span className="font-extrabold text-base tracking-tight text-gray-900">{calendarYear}.{String(calendarMonth).padStart(2, '0')}</span>
                       <button
                         type="button"
+                        onClick={() => changeCalendarMonth(1)}
                         className="p-1 text-gray-700 hover:text-black hover:bg-black/10 rounded-full font-bold cursor-pointer text-xs"
+                        aria-label={`${calendarYear}년 ${calendarMonth}월 다음 달`}
                       >
                         &gt;
                       </button>
@@ -956,8 +987,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
                     {/* Days Grid */}
                     <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-semibold">
-                      <span /><span /><span />
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
+                      {Array.from({ length: firstWeekday }, (_, index) => <span key={`empty-${index}`} />)}
+                      {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
                         const daySchedules = schedulesForDay(d);
                         const hasSchedule = daySchedules.length > 0;
                         const isSelected = activeCalendarDay?.blockId === block.id && activeCalendarDay.day === d;
@@ -978,7 +1009,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                   ? "text-gray-900 bg-white/55 hover:bg-black hover:text-white hover:scale-110 hover:shadow-md cursor-pointer"
                                   : "text-gray-700 cursor-default"
                             )}
-                            aria-label={hasSchedule ? `7월 ${d}일 일정 ${daySchedules.length}개` : `7월 ${d}일`}
+                            aria-label={hasSchedule ? `${calendarMonth}월 ${d}일 일정 ${daySchedules.length}개` : `${calendarMonth}월 ${d}일`}
                           >
                             {d}
                             {hasSchedule && <span className={clsx("absolute bottom-0.5 w-1.5 h-1.5 rounded-full transition-colors", isSelected ? "bg-emerald-300" : "bg-emerald-600 group-hover:bg-emerald-300")} />}
