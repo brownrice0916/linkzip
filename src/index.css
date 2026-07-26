@@ -245,6 +245,12 @@
     align-items: center;
     justify-content: center;
     touch-action: none;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .linkzip-admin .mobile-sheet-swipe-zone:active {
+    cursor: grabbing;
   }
 
   .linkzip-admin .mobile-sheet-swipe-zone span {
@@ -264,6 +270,18 @@
     border-radius: 999px;
     background: #eef0ec;
     color: #6b7280;
+    cursor: pointer;
+    transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+  }
+
+  .linkzip-admin .mobile-sheet-close:hover {
+    background: #111827;
+    color: #fff;
+    transform: scale(1.06);
+  }
+
+  .linkzip-admin .mobile-sheet-close:active {
+    transform: scale(0.94);
   }
 
   .linkzip-admin .mobile-sheet-close svg {
@@ -304,8 +322,8 @@
     height: 19px;
   }
 
-  .linkzip-admin .admin-main-panel > div:first-child {
-    padding: 34px 14px 28px;
+  .linkzip-admin .admin-editor-body {
+    padding: 52px 14px 28px;
     overflow: visible;
     background: #fff;
   }

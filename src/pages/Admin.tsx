@@ -46,7 +46,7 @@ const Admin = () => {
   const [copied, setCopied] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(true);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
-  const sheetTouchStartY = useRef<number | null>(null);
+  const sheetPointerStartY = useRef<number | null>(null);
   const sheetDragOffsetRef = useRef(0);
 
   // Sync URL parameter to activeTab
@@ -183,23 +183,25 @@ const Admin = () => {
     }
   };
 
-  const handleSheetTouchStart = (event: React.TouchEvent) => {
-    sheetTouchStartY.current = event.touches[0]?.clientY ?? null;
+  const handleSheetPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    sheetPointerStartY.current = event.clientY;
     sheetDragOffsetRef.current = 0;
     setSheetDragOffset(0);
   };
 
-  const handleSheetTouchMove = (event: React.TouchEvent) => {
-    if (sheetTouchStartY.current === null) return;
-    const distance = Math.max(0, (event.touches[0]?.clientY ?? sheetTouchStartY.current) - sheetTouchStartY.current);
-    const nextOffset = Math.min(distance, 160);
+  const handleSheetPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (sheetPointerStartY.current === null) return;
+    const distance = Math.max(0, event.clientY - sheetPointerStartY.current);
+    const nextOffset = Math.min(distance, 220);
     sheetDragOffsetRef.current = nextOffset;
     setSheetDragOffset(nextOffset);
   };
 
-  const handleSheetTouchEnd = () => {
-    if (sheetDragOffsetRef.current >= 72) setIsMobileEditorOpen(false);
-    sheetTouchStartY.current = null;
+  const handleSheetPointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (sheetDragOffsetRef.current >= 56) setIsMobileEditorOpen(false);
+    sheetPointerStartY.current = null;
     sheetDragOffsetRef.current = 0;
     setSheetDragOffset(0);
   };
@@ -371,12 +373,12 @@ const Admin = () => {
       {/* Main Workspace Area */}
       <div className={clsx("admin-main-panel col-start-2 row-start-3 min-w-[700px] min-h-0 flex flex-col bg-[#F6F6F4] rounded-[24px] border border-gray-200 overflow-hidden shadow-[0_16px_40px_rgba(15,23,42,0.08)]", !isMobileEditorOpen && "mobile-sheet-closed")} style={sheetDragOffset ? { transform: `translateY(${sheetDragOffset}px)` } : undefined}>
         <div className="mobile-sheet-header hidden">
-          <div className="mobile-sheet-swipe-zone" onTouchStart={handleSheetTouchStart} onTouchMove={handleSheetTouchMove} onTouchEnd={handleSheetTouchEnd} aria-label="아래로 밀어 편집 패널 닫기"><span /></div>
+          <div className="mobile-sheet-swipe-zone" onPointerDown={handleSheetPointerDown} onPointerMove={handleSheetPointerMove} onPointerUp={handleSheetPointerEnd} onPointerCancel={handleSheetPointerEnd} aria-label="아래로 밀어 편집 패널 닫기"><span /></div>
           <button type="button" onClick={() => setIsMobileEditorOpen(false)} className="mobile-sheet-close" aria-label="편집 패널 닫기"><X /></button>
         </div>
 
         {/* Editor Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-7 bg-[#F6F6F4]">
+        <div className="admin-editor-body flex-1 overflow-y-auto p-4 sm:p-7 bg-[#F6F6F4]">
           <div className="admin-editor-canvas max-w-3xl mx-auto bg-white rounded-[20px] p-5 sm:p-7 border border-gray-200 space-y-6">
             
             {/* Section Header with Title (Left) and Undo / Redo / Cancel / Save (Right) */}
