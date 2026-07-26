@@ -89,6 +89,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const templateValue = props.templateValue || store.templateValue;
   const socialLinks = props.socialLinks || store.socialLinks;
   const customLinks = props.customLinks || store.customLinks;
+  const recordLinkClick = store.recordLinkClick;
   const isPublic = props.isPublic || false;
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -952,6 +953,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   href={hrefTarget}
                   target={isGuestbookBlock || isNoticeBlock ? "_self" : "_blank"}
                   rel="noopener noreferrer"
+                  onClick={() => recordLinkClick(block.id)}
                   className={buttonClass}
                   style={customButtonStyle}
                 >
