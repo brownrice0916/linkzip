@@ -279,7 +279,7 @@ service cloud.firestore {
         && request.resource.data.content.size() <= 1000
         && (
           (ownsUsername(resource.data.targetUsername)
-            && resource.data.authorUid == null
+            && (!resource.data.keys().hasAll(['authorUid']) || resource.data.authorUid == null)
             && request.resource.data.authorUid == request.auth.uid
             && (request.resource.data.authorPhotoUrl == null || request.resource.data.authorPhotoUrl is string)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authorUid', 'authorPhotoUrl']))

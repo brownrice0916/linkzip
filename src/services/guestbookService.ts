@@ -161,7 +161,6 @@ export async function setGuestbookEntryHidden(entryId: string, isHidden: boolean
 export async function deleteGuestbookEntry(entryId: string, replyIds: string[]): Promise<void> {
   const batch = writeBatch(db);
   batch.delete(doc(db, 'guestbooks', entryId));
-  batch.delete(doc(db, 'guestbookSecrets', entryId));
   replyIds.forEach((replyId) => batch.delete(doc(db, 'guestbookReplies', replyId)));
   await batch.commit();
 }
@@ -281,7 +280,6 @@ export async function updateGuestbookReplyWithPassword(
 export async function deleteGuestbookReply(replyId: string): Promise<void> {
   const batch = writeBatch(db);
   batch.delete(doc(db, 'guestbookReplies', replyId));
-  batch.delete(doc(db, 'guestbookReplySecrets', replyId));
   await batch.commit();
 }
 
