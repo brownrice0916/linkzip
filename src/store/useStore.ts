@@ -120,6 +120,7 @@ export interface AffiliateProductConfig {
 
 export interface MapConfig {
   query: string;
+  displayMode?: 'classic' | 'featured';
 }
 
 export interface CustomLink {

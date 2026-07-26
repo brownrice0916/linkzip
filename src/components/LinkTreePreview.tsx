@@ -1225,6 +1225,15 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 if (!mapQuery) return null;
                 const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
                 const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;
+                if (block.mapConfig?.displayMode === 'classic') {
+                  return (
+                    <a key={block.id} href={mapUrl} target="_blank" rel="noopener noreferrer" onClick={() => recordLinkClick(block.id)} className={buttonClass} style={getCustomLinkStyle(block)}>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/5"><MapPin className="h-5 w-5" /></span>
+                      <span className="min-w-0 flex-1 text-center"><span className="block truncate text-[15px] font-bold">{block.title || (store.language === 'ko' ? '오시는 길' : 'Location')}</span><span className="mt-0.5 block truncate text-xs font-medium opacity-65">{mapQuery}</span></span>
+                      <ExternalLink className="h-4 w-4 shrink-0 opacity-45" />
+                    </a>
+                  );
+                }
                 return (
                   <div key={block.id} className="overflow-hidden rounded-3xl border border-white/30 bg-white/20 shadow-sm backdrop-blur-md" style={getCustomLinkStyle(block)}>
                     <iframe title={`${block.title || '지도'} 지도`} src={mapEmbedUrl} className="h-52 w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />

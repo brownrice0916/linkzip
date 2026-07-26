@@ -411,7 +411,7 @@ const LinksEditor = () => {
         title: isKo ? "오시는 길" : "Location",
         isVisible: true,
         iconName: "map-pin",
-        mapConfig: { query: "" },
+        mapConfig: { query: "", displayMode: "featured" },
       });
     } else if (blockType === "reservation" || blockType === "booking") {
       addBlockToTarget({
@@ -2739,7 +2739,7 @@ const LinksEditor = () => {
   };
 
   const renderMapCard = (link: CustomLink) => {
-    const config = link.mapConfig || { query: "" };
+    const config = link.mapConfig || { query: "", displayMode: "featured" as const };
     const isCollapsed = isBlockCollapsed(link.id);
     const mapQuery = config.query.trim();
     const mapSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
@@ -2751,9 +2751,16 @@ const LinksEditor = () => {
           <div className="flex shrink-0 items-center gap-2">{renderCollapseControl(link.id, isCollapsed)}<button type="button" onClick={() => removeCustomLink(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" aria-label={isKo ? "지도 삭제" : "Delete map"}><Trash2 className="h-4 w-4" /></button></div>
         </div>
         {!isCollapsed && <div className="space-y-3">
+          <div data-no-style-editor>
+            <p className="mb-2 text-xs font-black text-gray-700">{isKo ? "지도 디스플레이" : "Map display"}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => updateCustomLink(link.id, { mapConfig: { ...config, displayMode: "classic" } })} className={clsx("flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border bg-white p-3 transition", config.displayMode === "classic" ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-400")} aria-pressed={config.displayMode === "classic"}><span className="flex h-10 w-full items-center gap-2 rounded-full bg-gray-100 px-2"><MapPinned className="h-5 w-5 text-gray-400" /><span className="h-2 flex-1 rounded-full bg-gray-300" /></span><span className="text-xs font-black">{isKo ? "클래식" : "Classic"}</span></button>
+              <button type="button" onClick={() => updateCustomLink(link.id, { mapConfig: { ...config, displayMode: "featured" } })} className={clsx("flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border bg-white p-3 transition", (config.displayMode || "featured") === "featured" ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-400")} aria-pressed={(config.displayMode || "featured") === "featured"}><span className="flex h-12 w-20 flex-col overflow-hidden rounded-xl bg-gray-100"><span className="h-8 bg-gradient-to-br from-emerald-200 to-sky-200" /><span className="mx-auto mt-1 h-1.5 w-10 rounded-full bg-gray-300" /></span><span className="text-xs font-black">{isKo ? "대표 지도형" : "Featured"}</span></button>
+            </div>
+          </div>
           <label className="block text-xs font-black text-gray-700">{isKo ? "지도 제목" : "Map title"}<input value={link.title} onChange={(event) => updateCustomLink(link.id, { title: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-bold outline-none focus:border-sky-400" /></label>
           <label className="block text-xs font-black text-gray-700">{isKo ? "장소명 또는 주소 검색" : "Search place or address"}<div className="mt-1.5 flex gap-2"><input value={config.query} onChange={(event) => updateCustomLink(link.id, { mapConfig: { query: event.target.value } })} className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder={isKo ? "예: 성수동 서울숲" : "e.g. Seoul Forest"} /><a href={mapQuery ? mapSearchUrl : undefined} target="_blank" rel="noreferrer" className={clsx("flex shrink-0 items-center rounded-xl px-4 text-xs font-black", mapQuery ? "bg-sky-600 text-white hover:bg-sky-700" : "pointer-events-none bg-gray-100 text-gray-400")}>{isKo ? "검색 확인" : "Check"}</a></div></label>
-          {mapQuery && <iframe title={`${link.title} 지도 미리보기`} src={mapEmbedUrl} className="h-48 w-full rounded-2xl border border-gray-200" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
+          {mapQuery && (config.displayMode || "featured") === "featured" && <iframe title={`${link.title} 지도 미리보기`} src={mapEmbedUrl} className="h-48 w-full rounded-2xl border border-gray-200" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
         </div>}
       </div>
     );
