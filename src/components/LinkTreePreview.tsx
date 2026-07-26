@@ -114,6 +114,19 @@ const getInitialCalendarView = (schedules: ReservationScheduleItem[]) => {
   return { year: initialDate.getFullYear(), month: initialDate.getMonth() + 1 };
 };
 
+const isSchedulePast = (schedule: ReservationScheduleItem, now = new Date()) => {
+  const fallbackYear = now.getFullYear();
+  const start = getScheduleDate(schedule.startDate, fallbackYear);
+  let end = getScheduleDate(schedule.endDate, start?.getFullYear() || fallbackYear) || start;
+  if (!start || !end) return false;
+  if (!/\d{4}/.test(schedule.endDate || '') && end.getTime() < start.getTime()) {
+    end = new Date(end.getFullYear() + 1, end.getMonth(), end.getDate());
+  }
+  const endHour = schedule.endDate && schedule.endHour ? Number(schedule.endHour) : 23;
+  end.setHours(Number.isFinite(endHour) ? endHour : 23, 59, 59, 999);
+  return end.getTime() < now.getTime();
+};
+
 const colorWithOpacity = (color: string, opacity: number) => {
   const clampedOpacity = Math.max(0, Math.min(100, opacity));
   if (clampedOpacity === 100) return color;
@@ -933,14 +946,15 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   autoNotification: false
                 };
                 const today = new Date();
-                const initialCalendarView = getInitialCalendarView(config.schedules);
+                const visibleSchedules = config.schedules.filter((schedule) => !isSchedulePast(schedule, today));
+                const initialCalendarView = getInitialCalendarView(visibleSchedules);
                 const calendarView = calendarViews[block.id] || initialCalendarView;
                 const calendarYear = calendarView.year;
                 const calendarMonth = calendarView.month;
                 const firstWeekday = new Date(calendarYear, calendarMonth - 1, 1).getDay();
                 const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
                 const isScheduleListExpanded = expandedReservationIds[block.id] ?? false;
-                const schedulesForDay = (day: number) => config.schedules.filter((schedule) => isScheduleOnCalendarDay(schedule, calendarYear, calendarMonth, day));
+                const schedulesForDay = (day: number) => visibleSchedules.filter((schedule) => isScheduleOnCalendarDay(schedule, calendarYear, calendarMonth, day));
                 const changeCalendarMonth = (offset: number) => {
                   const nextDate = new Date(calendarYear, calendarMonth - 1 + offset, 1);
                   setCalendarViews((current) => ({ ...current, [block.id]: { year: nextDate.getFullYear(), month: nextDate.getMonth() + 1 } }));
@@ -1015,8 +1029,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             {hasSchedule && <span className={clsx("absolute bottom-0.5 w-1.5 h-1.5 rounded-full transition-colors", isSelected ? "bg-emerald-300" : "bg-emerald-600 group-hover:bg-emerald-300")} />}
                             {isSelected && (
                               <span className="absolute z-[999] top-10 left-1/2 -translate-x-1/2 w-56 rounded-2xl bg-gray-950 text-white p-3.5 text-left shadow-2xl border border-white/10 cursor-default" onClick={(event) => event.stopPropagation()}>
-                                <span className="flex items-center gap-1.5 text-[11px] font-black mb-2"><CalendarDays className="w-3.5 h-3.5" /> 7월 {d}일 일정</span>
-                                <span className="block space-y-2">{daySchedules.map((schedule) => <span key={schedule.id} className="block border-t border-white/15 pt-2 first:border-0 first:pt-0"><span className="block text-[11px] font-black">{schedule.title}</span><span className="block text-[9px] text-white/65 mt-0.5">{schedule.status || 'OPEN'} · {formatScheduleRange(schedule)}</span></span>)}</span>
+                                <span className="flex items-center gap-1.5 text-[11px] font-black mb-2"><CalendarDays className="w-3.5 h-3.5" /> {calendarMonth}월 {d}일 일정</span>
+                                <span className="block space-y-2">{daySchedules.map((schedule) => <span key={schedule.id} className="block border-t border-white/15 pt-2 first:border-0 first:pt-0"><span className="block text-[11px] font-black">{schedule.title}</span><span className="block text-[9px] text-white/65 mt-0.5">{formatScheduleRange(schedule)}</span></span>)}</span>
                               </span>
                             )}
                           </button>
@@ -1033,25 +1047,24 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
                     {/* Scheduled Events: stacked when collapsed */}
                     <div className="pt-1">
-                      <button type="button" onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: !isScheduleListExpanded }))} className="w-full flex items-center justify-between px-1 pb-2 text-xs font-black text-gray-800 cursor-pointer group">
-                        <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> 일정 {config.schedules.length}개</span>
-                        <span className="flex items-center gap-1 text-[10px] text-gray-600 group-hover:text-black">{isScheduleListExpanded ? '접기' : '펼치기'}<ChevronDown className={clsx("w-3.5 h-3.5 transition-transform", isScheduleListExpanded && "rotate-180")} /></span>
+                      <button type="button" disabled={visibleSchedules.length === 0} onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: !isScheduleListExpanded }))} className="w-full flex items-center justify-between px-1 pb-2 text-xs font-black text-gray-800 enabled:cursor-pointer group">
+                        <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> 예정 일정 {visibleSchedules.length}개</span>
+                        {visibleSchedules.length > 0 && <span className="flex items-center gap-1 text-[10px] text-gray-600 group-hover:text-black">{isScheduleListExpanded ? '접기' : '펼치기'}<ChevronDown className={clsx("w-3.5 h-3.5 transition-transform", isScheduleListExpanded && "rotate-180")} /></span>}
                       </button>
-                      {isScheduleListExpanded ? (
-                        <div className="space-y-2">{config.schedules.map((sched) => (
+                      {visibleSchedules.length === 0 ? <div className="py-3 text-center text-xs text-gray-600">예정된 일정이 없습니다.</div> : isScheduleListExpanded ? (
+                        <div className="space-y-2">{visibleSchedules.map((sched) => (
                           <div key={sched.id} className="p-3 bg-[#B1D8C7]/80 rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-2xs animate-in fade-in slide-in-from-top-1">
-                            <span className="w-8 h-8 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0">{sched.status || "OPEN"}</span>
                             <div className="min-w-0 flex-1"><div className="text-[11px] text-gray-700 font-bold">{formatScheduleRange(sched)}</div><div className="text-xs font-extrabold text-gray-900 truncate">{sched.title}</div></div>
                           </div>
                         ))}</div>
-                      ) : config.schedules.length > 0 ? (
-                        <button type="button" onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: true }))} className="relative block w-full h-[78px] cursor-pointer group" aria-label={`일정 ${config.schedules.length}개 펼치기`}>
-                          {config.schedules.slice(0, 3).reverse().map((sched, reverseIndex, visible) => {
+                      ) : (
+                        <button type="button" onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: true }))} className="relative block w-full h-[78px] cursor-pointer group" aria-label={`예정 일정 ${visibleSchedules.length}개 펼치기`}>
+                          {visibleSchedules.slice(0, 3).reverse().map((sched, reverseIndex, visible) => {
                             const depth = visible.length - reverseIndex - 1;
-                            return <span key={sched.id} className="absolute inset-x-0 top-0 p-3 bg-[#B1D8C7] rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-sm text-left transition-transform group-hover:-translate-y-1" style={{ transform: `translateY(${depth * 7}px) scale(${1 - depth * 0.025})`, zIndex: 10 - depth }}><span className="w-8 h-8 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0">{sched.status || 'OPEN'}</span><span className="min-w-0 flex-1"><span className="block text-[10px] text-gray-700 font-bold truncate">{formatScheduleRange(sched)}</span><span className="block text-xs font-extrabold text-gray-900 truncate">{sched.title}</span></span><ChevronDown className="w-4 h-4 text-gray-600 shrink-0" /></span>;
+                            return <span key={sched.id} className="absolute inset-x-0 top-0 p-3 bg-[#B1D8C7] rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-sm text-left transition-transform group-hover:-translate-y-1" style={{ transform: `translateY(${depth * 7}px) scale(${1 - depth * 0.025})`, zIndex: 10 - depth }}><span className="min-w-0 flex-1"><span className="block text-[10px] text-gray-700 font-bold truncate">{formatScheduleRange(sched)}</span><span className="block text-xs font-extrabold text-gray-900 truncate">{sched.title}</span></span><ChevronDown className="w-4 h-4 text-gray-600 shrink-0" /></span>;
                           })}
                         </button>
-                      ) : <div className="py-3 text-center text-xs text-gray-600">등록된 일정이 없습니다.</div>}
+                      )}
                     </div>
                   </div>
                 );

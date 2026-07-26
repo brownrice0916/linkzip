@@ -1655,19 +1655,6 @@ const LinksEditor = () => {
                     className="p-3.5 bg-white border border-gray-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {/* Status Badge Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextStatus = sched.status === 'OPEN' ? 'CLOSED' : sched.status === 'CLOSED' ? 'FULL' : 'OPEN';
-                          handleUpdateSchedule(sched.id, { status: nextStatus });
-                        }}
-                        className="w-9 h-9 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs hover:scale-105 transition"
-                        title="상태 변경 (OPEN / CLOSED / FULL)"
-                      >
-                        {sched.status || "OPEN"}
-                      </button>
-
                       {/* Time Range (Clickable to open Edit Modal) & Title Input */}
                       <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
