@@ -345,6 +345,21 @@ export const MarketingEditor: React.FC = () => {
               </div>
             </div>
 
+            {/* Custom Automated Message Input Field */}
+            <div className="space-y-1.5 pt-2 border-t border-amber-200/60">
+              <label className="block text-xs font-black text-amber-950 flex items-center justify-between">
+                <span>💬 자동 발송 카카오 알림톡 문구 내용 (직접 수정)</span>
+                <span className="text-[10px] text-amber-700 font-bold">실시간 수정 가능</span>
+              </label>
+              <textarea
+                value={alimtalkSettings?.customMessage !== undefined ? alimtalkSettings.customMessage : '[LinkZip] 안녕하세요! 요청하신 정보/주문이 성공적으로 수신되었습니다.'}
+                onChange={(e) => setAlimtalkSettings({ customMessage: e.target.value })}
+                placeholder="고객이 폼 등록 또는 결제 완료 시 자동으로 전송할 카카오 알림톡/문자 메시지 내용을 작성해주세요."
+                rows={3}
+                className="w-full p-3 border border-amber-200 rounded-xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400 resize-none leading-relaxed bg-white shadow-2xs"
+              />
+            </div>
+
             <div className="flex justify-end pt-1">
               <button
                 type="button"

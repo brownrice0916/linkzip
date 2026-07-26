@@ -168,6 +168,7 @@ export interface AlimtalkSettings {
   apiSecret: string;
   senderPhone: string;
   templateCode: string;
+  customMessage?: string;
   isEnabled: boolean;
 }
 
