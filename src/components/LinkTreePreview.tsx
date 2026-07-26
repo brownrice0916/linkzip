@@ -939,10 +939,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 block.title?.toLowerCase().includes('notice') ||
                 block.url?.includes('notice');
 
+              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linkzip.kr';
               const hrefTarget = isGuestbookBlock
-                ? `/${profile.username || 'preview'}/guestbook`
+                ? `${origin}/${profile.username || 'preview'}/guestbook`
                 : isNoticeBlock
-                ? `/${profile.username || 'preview'}/notice`
+                ? `${origin}/${profile.username || 'preview'}/notice`
                 : block.url?.match(/^https?:\/\//)
                 ? block.url
                 : `https://${block.url}`;

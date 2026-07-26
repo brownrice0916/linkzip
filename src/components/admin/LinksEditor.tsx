@@ -283,7 +283,7 @@ const LinksEditor = () => {
         id: `link-${Date.now()}`,
         type: "notice",
         title: "📢 8월 주요 공지사항",
-        url: `/${userHandle}/notice`,
+        url: `https://linkzip.kr/${userHandle}/notice`,
         isVisible: true,
         iconName: "megaphone",
         noticeConfig: {
@@ -297,7 +297,7 @@ const LinksEditor = () => {
       addCustomLink({
         id: `link-${Date.now()}`,
         title: "✏️ 팬 방명록 (응원 메시지 남기기)",
-        url: `/${userHandle}/guestbook`,
+        url: `https://linkzip.kr/${userHandle}/guestbook`,
         isVisible: true,
         iconName: "pen-tool",
       });
@@ -306,7 +306,7 @@ const LinksEditor = () => {
         id: `link-${Date.now()}`,
         type: "customer_info",
         title: "Customer info (뉴스레터 구독 신청)",
-        url: `/${userHandle}/customer_info`,
+        url: `https://linkzip.kr/${userHandle}/customer_info`,
         isVisible: true,
         iconName: "credit-card",
         customerInfoConfig: {
