@@ -82,5 +82,20 @@ service cloud.firestore {
         && request.resource.data.likes == 0;
       allow update, delete: if false;
     }
+
+    match /guestbookReplies/{replyId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly([
+        'entryId', 'targetUsername', 'authorName', 'content', 'createdAt'
+      ])
+        && request.resource.data.entryId is string
+        && request.resource.data.targetUsername is string
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 50
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 1000;
+      allow update, delete: if false;
+    }
   }
 }

@@ -18,6 +18,15 @@ export interface GuestbookEntry {
   createdAt: { seconds?: number } | null;
 }
 
+export interface GuestbookReply {
+  id: string;
+  entryId: string;
+  targetUsername: string;
+  authorName: string;
+  content: string;
+  createdAt: { seconds?: number } | null;
+}
+
 export function subscribeToGuestbook(
   targetUsername: string,
   onEntries: (entries: GuestbookEntry[]) => void,
@@ -43,6 +52,35 @@ export async function addGuestbookEntry(
 ): Promise<void> {
   await addDoc(collection(db, 'guestbooks'), {
     ...entry,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export function subscribeToGuestbookReplies(
+  targetUsername: string,
+  onReplies: (replies: GuestbookReply[]) => void,
+  onError: (error: Error) => void,
+): Unsubscribe {
+  const repliesQuery = query(
+    collection(db, 'guestbookReplies'),
+    where('targetUsername', '==', targetUsername),
+  );
+
+  return onSnapshot(repliesQuery, (snapshot) => {
+    const replies = snapshot.docs.map((item) => ({
+      id: item.id,
+      ...item.data(),
+    })) as GuestbookReply[];
+    replies.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+    onReplies(replies);
+  }, onError);
+}
+
+export async function addGuestbookReply(
+  reply: Omit<GuestbookReply, 'id' | 'createdAt'>,
+): Promise<void> {
+  await addDoc(collection(db, 'guestbookReplies'), {
+    ...reply,
     createdAt: serverTimestamp(),
   });
 }

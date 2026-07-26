@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Send, Lock, User, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Send, Lock, User, Sparkles, CheckCircle2, Reply, X } from 'lucide-react';
 import type { UserProfile } from '../store/useStore';
 import clsx from 'clsx';
 import { resolveUserByUsername } from '../services/userService';
-import { addGuestbookEntry, subscribeToGuestbook, type GuestbookEntry } from '../services/guestbookService';
+import { addGuestbookEntry, addGuestbookReply, subscribeToGuestbook, subscribeToGuestbookReplies, type GuestbookEntry, type GuestbookReply } from '../services/guestbookService';
 import { normalizeUsername } from '../domain/profileData';
 
 const GuestbookPage = () => {
@@ -14,6 +14,7 @@ const GuestbookPage = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
+  const [replies, setReplies] = useState<GuestbookReply[]>([]);
 
   // Form input state
   const [authorName, setAuthorName] = useState('');
@@ -21,6 +22,10 @@ const GuestbookPage = () => {
   const [isSecret, setIsSecret] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyAuthorName, setReplyAuthorName] = useState('');
+  const [replyContent, setReplyContent] = useState('');
+  const [submittingReplyId, setSubmittingReplyId] = useState<string | null>(null);
 
   const cleanUsername = normalizeUsername(username || '');
 
@@ -48,6 +53,13 @@ const GuestbookPage = () => {
     fetchProfile();
   }, [cleanUsername]);
 
+  useEffect(() => {
+    if (!cleanUsername) return;
+    return subscribeToGuestbookReplies(cleanUsername, setReplies, (err) => {
+      console.warn('Realtime guestbook reply listener error:', err);
+    });
+  }, [cleanUsername]);
+
   // 2. Fetch Guestbook Messages (Realtime listener with fallback)
   useEffect(() => {
     if (!cleanUsername) return;
@@ -71,7 +83,7 @@ const GuestbookPage = () => {
       return;
     }
 
-    const nameToUse = authorName.trim() || '익명 팬';
+    const nameToUse = authorName.trim() || '익명';
     setSubmitting(true);
 
     const newEntry = {
@@ -108,6 +120,31 @@ const GuestbookPage = () => {
       alert('방명록 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReplySubmit = async (event: React.FormEvent, entryId: string) => {
+    event.preventDefault();
+    const trimmedContent = replyContent.trim();
+    if (!trimmedContent) return;
+
+    const nameToUse = replyAuthorName.trim() || '익명';
+    setSubmittingReplyId(entryId);
+    try {
+      await addGuestbookReply({
+        entryId,
+        targetUsername: cleanUsername,
+        authorName: nameToUse,
+        content: trimmedContent,
+      });
+      setReplyingToId(null);
+      setReplyAuthorName('');
+      setReplyContent('');
+    } catch (error) {
+      console.error('Failed to submit guestbook reply:', error);
+      alert('답글 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSubmittingReplyId(null);
     }
   };
 
@@ -244,11 +281,10 @@ const GuestbookPage = () => {
               <p className="text-[11px]">첫 번째 응원 방명록 메시지를 남겨보세요!</p>
             </div>
           ) : (
-            entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs space-y-2 transition hover:border-purple-300"
-              >
+            entries.map((entry) => {
+              const entryReplies = replies.filter((reply) => reply.entryId === entry.id);
+              return (
+              <div key={entry.id} className="bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs space-y-3 transition hover:border-purple-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center">
@@ -272,8 +308,45 @@ const GuestbookPage = () => {
                 <p className="text-xs font-medium text-gray-800 leading-relaxed whitespace-pre-wrap pl-9">
                   {entry.content}
                 </p>
+
+                {entryReplies.length > 0 && (
+                  <div className="ml-9 space-y-2 border-l-2 border-purple-100 pl-3">
+                    {entryReplies.map((reply) => (
+                      <div key={reply.id} className="rounded-2xl bg-gray-50 px-3.5 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Reply className="h-3.5 w-3.5 shrink-0 text-purple-500" />
+                            <span className="truncate text-[11px] font-extrabold text-gray-800">{reply.authorName}</span>
+                          </div>
+                          <span className="shrink-0 text-[9px] font-medium text-gray-400">{reply.createdAt?.seconds ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString() : '방금 전'}</span>
+                        </div>
+                        <p className="mt-1.5 whitespace-pre-wrap pl-5.5 text-[11px] font-medium leading-relaxed text-gray-700">{reply.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => { const nextId = replyingToId === entry.id ? null : entry.id; setReplyingToId(nextId); setReplyAuthorName(''); setReplyContent(''); }} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-gray-500 transition hover:bg-purple-50 hover:text-purple-700 cursor-pointer">
+                    {replyingToId === entry.id ? <X className="h-3.5 w-3.5" /> : <Reply className="h-3.5 w-3.5" />}
+                    <span>{replyingToId === entry.id ? '취소' : `답글${entryReplies.length ? ` ${entryReplies.length}` : ''}`}</span>
+                  </button>
+                </div>
+
+                {replyingToId === entry.id && (
+                  <form onSubmit={(event) => handleReplySubmit(event, entry.id)} className="ml-9 space-y-2 rounded-2xl border border-purple-100 bg-purple-50/50 p-3">
+                    <input type="text" value={replyAuthorName} onChange={(event) => setReplyAuthorName(event.target.value)} placeholder="미입력 시 익명" maxLength={50} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[11px] font-semibold outline-none focus:border-purple-400" />
+                    <textarea autoFocus value={replyContent} onChange={(event) => setReplyContent(event.target.value)} placeholder="답글을 입력해주세요" maxLength={1000} rows={2} className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[11px] font-semibold outline-none focus:border-purple-400" />
+                    <div className="flex justify-end">
+                      <button type="submit" disabled={!replyContent.trim() || submittingReplyId === entry.id} className={clsx('flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-extrabold transition', replyContent.trim() && submittingReplyId !== entry.id ? 'bg-purple-600 text-white hover:bg-purple-700 cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed')}>
+                        <Send className="h-3 w-3" /><span>{submittingReplyId === entry.id ? '등록 중...' : '답글 등록'}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
 
