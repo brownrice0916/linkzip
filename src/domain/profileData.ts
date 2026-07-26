@@ -9,6 +9,15 @@ export const isValidUsername = (username: string) =>
 export function sanitizePublicLinks(links: CustomLink[]): CustomLink[] {
   return links.map((link) => {
     const sanitized: CustomLink = { ...link };
+    if (link.type === 'affiliate_product') {
+      const imageUrl = link.affiliateProductConfig?.imageUrl || link.icon || '';
+      sanitized.affiliateProductConfig = {
+        affiliateUrl: link.affiliateProductConfig?.affiliateUrl || link.url || '',
+        ...link.affiliateProductConfig,
+        ...(imageUrl ? { imageUrl } : {}),
+      };
+      if (imageUrl) sanitized.icon = imageUrl;
+    }
     if (link.donationConfig) {
       sanitized.donationConfig = { ...link.donationConfig };
       delete sanitized.donationConfig.idNumber;

@@ -29,6 +29,23 @@ test('removes identity numbers from nested public donation blocks', () => {
   assert.equal(links[0].links?.[0].donationConfig?.idNumber, undefined);
 });
 
+test('keeps legacy affiliate product images on public profiles', () => {
+  const [product] = sanitizePublicLinks([{
+    id: 'affiliate',
+    type: 'affiliate_product',
+    title: 'product',
+    url: 'https://example.com/product',
+    icon: 'https://example.com/product.jpg',
+    affiliateProductConfig: {
+      affiliateUrl: 'https://example.com/product',
+      currency: 'KRW',
+    },
+  }]);
+
+  assert.equal(product.affiliateProductConfig?.imageUrl, 'https://example.com/product.jpg');
+  assert.equal(product.icon, 'https://example.com/product.jpg');
+});
+
 test('applies server click totals recursively without mutating input', () => {
   const source = [{
     id: 'collection',

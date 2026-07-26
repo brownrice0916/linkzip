@@ -1208,6 +1208,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
               if (block.type === 'affiliate_product') {
                 const affiliate = block.affiliateProductConfig;
+                const affiliateImageUrl = affiliate?.imageUrl || block.icon || '';
                 const productUrl = getLinkDestination(block).href;
                 const currency = affiliate?.currency || 'KRW';
                 const formattedPrice = affiliate?.price !== undefined
@@ -1216,7 +1217,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 if ((affiliate?.displayMode || 'compact') === 'compact') {
                   return (
                     <a key={block.id} href={productUrl} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordLinkClick(block.id)} className={buttonClass} style={getCustomLinkStyle(block)}>
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/5">{affiliate?.imageUrl ? <img src={affiliate.imageUrl} alt={block.title} className="h-full w-full object-cover" /> : <ShoppingBag className="h-5 w-5 opacity-50" />}</span>
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/5">{affiliateImageUrl ? <img src={affiliateImageUrl} alt={block.title} className="h-full w-full object-cover" /> : <ShoppingBag className="h-5 w-5 opacity-50" />}</span>
                       <span className="min-w-0 flex-1 text-center"><span className="block truncate text-[15px] font-bold">{block.title || (store.language === 'ko' ? '추천 상품' : 'Recommended product')}</span>{formattedPrice && <span className="mt-0.5 block text-xs font-semibold opacity-65">{formattedPrice}</span>}</span>
                       <ExternalLink className="h-4 w-4 shrink-0 opacity-45" />
                     </a>
@@ -1224,7 +1225,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 }
                 return (
                   <a key={block.id} href={productUrl} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordLinkClick(block.id)} className={clsx(buttonClass, "group !block overflow-hidden !p-0 text-left")} style={getCustomLinkStyle(block)}>
-                    <div className="aspect-[16/10] w-full overflow-hidden bg-black/5">{affiliate?.imageUrl ? <img src={affiliate.imageUrl} alt={block.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><ShoppingBag className="h-10 w-10 opacity-30" /></div>}</div>
+                    <div className="aspect-[16/10] w-full overflow-hidden bg-black/5">{affiliateImageUrl ? <img src={affiliateImageUrl} alt={block.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><ShoppingBag className="h-10 w-10 opacity-30" /></div>}</div>
                     <div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="truncate text-[15px] font-extrabold">{block.title || (store.language === 'ko' ? '추천 상품' : 'Recommended product')}</p>{formattedPrice && <p className="mt-1 text-sm font-bold opacity-70">{formattedPrice}</p>}</div><ExternalLink className="h-5 w-5 shrink-0 opacity-50 transition group-hover:opacity-100" /></div>
                   </a>
                 );
