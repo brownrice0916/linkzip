@@ -14,7 +14,8 @@ import {
   ShieldCheck, 
   ExternalLink,
   ChevronRight,
-  Bot
+  Bot,
+  HelpCircle
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { InstagramDmWizardModal } from './InstagramDmWizardModal';
@@ -270,41 +271,72 @@ export const MarketingEditor: React.FC = () => {
       </div>
 
       {/* 2. Kakao Alimtalk & Customer Marketing Card */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-5">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-6">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-400 text-black flex items-center justify-center font-black">
               <Bell className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-extrabold text-base text-gray-900">카카오 알림톡 & 자동 문자 마케팅</h3>
-              <p className="text-xs text-gray-500 font-medium">고객 정보 수집 블록을 통해 들어온 회원에게 구매 알림 및 프로모션 메시지를 자동 발송합니다.</p>
+              <p className="text-xs text-gray-500 font-medium">고객 정보 수집 블록을 통해 수집된 회원에게 주문 알림 및 프로모션 메시지를 자동 발송합니다.</p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setAlimtalkSettings({ isEnabled: !alimtalkSettings?.isEnabled })}
-            className={clsx(
-              "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
-              alimtalkSettings?.isEnabled ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
-            )}
-          >
-            <span className={clsx("transition-transform duration-200 font-extrabold", alimtalkSettings?.isEnabled ? "translate-x-0 ml-0.5" : "translate-x-5")}>
-              {alimtalkSettings?.isEnabled ? "ON" : "OFF"}
-            </span>
-            <div
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => alert(`[카카오 알림톡 연동 4단계 가이드]
+
+1단계: 카카오 비즈니스 채널 개설 (카카오톡 채널 관리자센터)
+2단계: 알림톡 발송 중계사(SOLAPI / CoolSMS) 가입 및 API Key 발급
+3단계: 알림톡 템플릿 등록 및 승인 (템플릿 코드 생성: 예: TP_LINKZIP_01)
+4단계: 아래 입력란에 발신번호, API Key, 템플릿 코드를 입력 후 상단 스위치를 [ON]으로 켜주세요!`)}
+              className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>연동 방법 안내</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAlimtalkSettings({ isEnabled: !alimtalkSettings?.isEnabled })}
               className={clsx(
-                "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
-                alimtalkSettings?.isEnabled ? "translate-x-6" : "translate-x-0"
+                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                alimtalkSettings?.isEnabled ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
               )}
-            />
-          </button>
+            >
+              <span className={clsx("transition-transform duration-200 font-extrabold", alimtalkSettings?.isEnabled ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                {alimtalkSettings?.isEnabled ? "ON" : "OFF"}
+              </span>
+              <div
+                className={clsx(
+                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs",
+                  alimtalkSettings?.isEnabled ? "translate-x-6" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
         </div>
 
+        {/* Setup Steps Accordion Guide */}
+        <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl space-y-2 text-xs text-amber-900">
+          <div className="font-extrabold flex items-center gap-1.5 text-amber-950">
+            <Sparkles className="w-4 h-4 text-amber-600" />
+            <span>카카오 알림톡 4단계 설정 가이드</span>
+          </div>
+          <ol className="list-decimal list-inside space-y-1 text-[11px] font-medium text-amber-900 leading-relaxed">
+            <li><strong>카카오 비즈니스 채널 개설</strong>: 카카오톡 채널 관리자센터에서 비즈니스 채널을 만듭니다.</li>
+            <li><strong>발송 API Key 발급</strong>: 솔라피(SOLAPI) 또는 메시지 서비스에 가입하여 API Key를 발급받습니다.</li>
+            <li><strong>알림톡 템플릿 승인</strong>: 카카오에 알림톡 문구 템플릿을 등록하고 템플릿 코드를 받습니다.</li>
+            <li><strong>설정 완료</strong>: 아래에 발신번호, API Key, 템플릿 코드를 입력하고 스위치를 <strong>[ON]</strong>으로 켭니다.</li>
+          </ol>
+        </div>
+
+        {/* Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-600">발신번호 (등록된 번호)</label>
+            <label className="block text-xs font-bold text-gray-600">발신번호 (사전 등록된 전화번호)</label>
             <input
               type="text"
               value={alimtalkSettings?.senderPhone || ''}
@@ -320,7 +352,29 @@ export const MarketingEditor: React.FC = () => {
               type="text"
               value={alimtalkSettings?.templateCode || ''}
               onChange={(e) => setAlimtalkSettings({ templateCode: e.target.value })}
-              placeholder="TP_LINKZIP_NOTIFICATION"
+              placeholder="예: TP_LINKZIP_NOTIFICATION"
+              className="w-full p-3 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-gray-600">SOLAPI / CoolSMS API Key</label>
+            <input
+              type="text"
+              value={alimtalkSettings?.apiKey || ''}
+              onChange={(e) => setAlimtalkSettings({ apiKey: e.target.value })}
+              placeholder="NCKXXXXXXXXXXXXXXXXX"
+              className="w-full p-3 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-gray-600">API Secret Key</label>
+            <input
+              type="password"
+              value={alimtalkSettings?.apiSecret || ''}
+              onChange={(e) => setAlimtalkSettings({ apiSecret: e.target.value })}
+              placeholder="••••••••••••••••••••••••••••••••"
               className="w-full p-3 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black"
             />
           </div>
