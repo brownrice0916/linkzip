@@ -95,7 +95,10 @@ export interface ReservationScheduleItem {
   id: string;
   startDate: string;
   endDate: string;
+  startHour?: string;
+  endHour?: string;
   title: string;
+  linkUrl?: string;
   status?: 'OPEN' | 'CLOSED' | 'FULL';
 }
 

@@ -45,6 +45,7 @@ import { AddBlockModal } from "./AddBlockModal";
 import { ProfitAccountModal } from "./ProfitAccountModal";
 import { NoticeModal } from "./NoticeModal";
 import { ProductRegistrationModal } from "./ProductRegistrationModal";
+import { AddReservationScheduleModal } from "./AddReservationScheduleModal";
 import clsx from "clsx";
 import type {
   DonationConfig,
@@ -108,6 +109,7 @@ const LinksEditor = () => {
 
   // Add Block Modal State
   const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false);
+  const [activeReservationScheduleLink, setActiveReservationScheduleLink] = useState<CustomLink | null>(null);
 
   // Universal Block Collapse State (Default: expanded false)
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<
@@ -1656,8 +1658,8 @@ const LinksEditor = () => {
 
               <button
                 type="button"
-                onClick={handleAddSchedule}
-                className="w-full py-3 bg-black hover:bg-gray-800 text-white font-extrabold text-xs rounded-2xl transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                onClick={() => setActiveReservationScheduleLink(link)}
+                className="w-full py-3.5 bg-black hover:bg-gray-800 text-white font-extrabold text-xs rounded-2xl transition cursor-pointer shadow-md flex items-center justify-center gap-1.5 hover:scale-[1.01] active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ 일정 추가</span>
@@ -2949,6 +2951,40 @@ const LinksEditor = () => {
               updateCustomLink(targetBlock.id, { snsLinks: updatedSnsLinks });
             }
             setActiveSNSIconPick(null);
+          }}
+        />
+      )}
+
+      {/* Add Reservation Schedule Modal */}
+      {activeReservationScheduleLink && (
+        <AddReservationScheduleModal
+          isOpen={!!activeReservationScheduleLink}
+          onClose={() => setActiveReservationScheduleLink(null)}
+          onSave={(scheduleData) => {
+            const currentConfig = activeReservationScheduleLink.reservationConfig || {
+              headerText: "",
+              schedules: [],
+              autoNotification: false
+            };
+
+            const newSchedule: ReservationScheduleItem = {
+              id: `sched-${Date.now()}`,
+              startDate: scheduleData.startDate,
+              endDate: scheduleData.endDate,
+              startHour: scheduleData.startHour,
+              endHour: scheduleData.endHour,
+              title: scheduleData.title,
+              linkUrl: scheduleData.linkUrl,
+              status: 'OPEN'
+            };
+
+            updateCustomLink(activeReservationScheduleLink.id, {
+              reservationConfig: {
+                ...currentConfig,
+                schedules: [...currentConfig.schedules, newSchedule]
+              }
+            });
+            setActiveReservationScheduleLink(null);
           }}
         />
       )}
