@@ -23,6 +23,7 @@ import { resolveUserByUsername } from '../services/userService';
 import {
   addGuestbookEntry,
   addGuestbookReply,
+  claimLegacyGuestbookReply,
   deleteGuestbookEntry,
   deleteGuestbookReply,
   setGuestbookEntryHidden,
@@ -101,6 +102,19 @@ const GuestbookPage = () => {
     if (!cleanUsername) return;
     return subscribeToGuestbookReplies(cleanUsername, setReplies, (error) => console.warn('Guestbook reply listener error:', error));
   }, [cleanUsername]);
+
+  useEffect(() => {
+    if (!isProfileOwner || !currentUser || !profile?.name) return;
+    const legacyOwnerReplies = replies.filter(
+      (reply) => !reply.authorUid && reply.authorName.trim() === profile.name.trim(),
+    );
+    if (legacyOwnerReplies.length === 0) return;
+    void Promise.all(legacyOwnerReplies.map((reply) => claimLegacyGuestbookReply(
+      reply.id,
+      currentUser.uid,
+      profile.avatarUrl || currentUser.photoURL || null,
+    ))).catch((error) => console.warn('Unable to connect legacy owner replies:', error));
+  }, [currentUser, isProfileOwner, profile?.avatarUrl, profile?.name, replies]);
 
   const closeComposer = () => {
     setComposerOpen(false);

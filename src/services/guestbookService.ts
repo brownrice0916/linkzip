@@ -207,3 +207,14 @@ export async function deleteGuestbookReply(replyId: string): Promise<void> {
   batch.delete(doc(db, 'guestbookReplies', replyId));
   await batch.commit();
 }
+
+export async function claimLegacyGuestbookReply(
+  replyId: string,
+  authorUid: string,
+  authorPhotoUrl: string | null,
+): Promise<void> {
+  await updateDoc(doc(db, 'guestbookReplies', replyId), {
+    authorUid,
+    authorPhotoUrl,
+  });
+}
