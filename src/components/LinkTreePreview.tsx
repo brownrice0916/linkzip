@@ -858,7 +858,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="text-[11px] text-gray-700 font-bold">
-                              {sched.startDate} ~ {sched.endDate}
+                              {sched.endDate 
+                                ? `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시)' : ''} ~ ${sched.endDate}${sched.endHour ? ' (' + sched.endHour + '시)' : ''}`
+                                : `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시 업로드)' : ''}`}
                             </div>
                             <div className="text-xs font-extrabold text-gray-900 truncate">
                               {sched.title}

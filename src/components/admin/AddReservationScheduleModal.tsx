@@ -20,8 +20,8 @@ export const AddReservationScheduleModal: React.FC<AddReservationScheduleModalPr
   const [title, setTitle] = useState(initialData?.title || '');
   const [startDate, setStartDate] = useState(initialData?.startDate || '2026-07-26');
   const [startHour, setStartHour] = useState(initialData?.startHour || '12');
-  const [endDate, setEndDate] = useState(initialData?.endDate || '2026-07-26');
-  const [endHour, setEndHour] = useState(initialData?.endHour || '13');
+  const [endDate, setEndDate] = useState(initialData?.endDate || '');
+  const [endHour, setEndHour] = useState(initialData?.endHour || '');
   const [linkUrl, setLinkUrl] = useState(initialData?.linkUrl || '');
 
   // Format date helper: 2026.07.26 Sunday format display
@@ -120,11 +120,25 @@ export const AddReservationScheduleModal: React.FC<AddReservationScheduleModalPr
             </div>
           </div>
 
-          {/* 종료 날짜 & 종료 시간 */}
+          {/* 종료 날짜 & 종료 시간 (선택 사항) */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-gray-700">
-              종료 날짜<span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-gray-700">
+                종료 날짜 <span className="text-gray-400 font-normal">(선택)</span>
+              </label>
+              {endDate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEndDate('');
+                    setEndHour('');
+                  }}
+                  className="text-[10px] font-bold text-gray-400 hover:text-red-500 underline cursor-pointer"
+                >
+                  종료 날짜 삭제
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2 relative">
                 <input
@@ -139,14 +153,17 @@ export const AddReservationScheduleModal: React.FC<AddReservationScheduleModalPr
                 onChange={(e) => setEndHour(e.target.value)}
                 className="p-3.5 border border-gray-300 rounded-2xl text-xs font-extrabold text-gray-900 focus:ring-2 focus:ring-black bg-white cursor-pointer"
               >
+                <option value="">시 선택</option>
                 {hoursList.map((h) => (
                   <option key={h} value={h}>{h}</option>
                 ))}
               </select>
             </div>
-            <div className="text-[10px] text-gray-400 font-medium pl-1">
-              선택된 날짜: {formatDateDisplay(endDate)}
-            </div>
+            {endDate && (
+              <div className="text-[10px] text-gray-400 font-medium pl-1">
+                선택된 날짜: {formatDateDisplay(endDate)}
+              </div>
+            )}
           </div>
 
           {/* 연결 링크 */}

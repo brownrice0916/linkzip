@@ -1690,15 +1690,19 @@ const LinksEditor = () => {
                       <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                           type="text"
-                          value={`${sched.startDate} ~ ${sched.endDate}`}
+                          value={
+                            sched.endDate
+                              ? `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시)' : ''} ~ ${sched.endDate}${sched.endHour ? ' (' + sched.endHour + '시)' : ''}`
+                              : `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시 업로드)' : ''}`
+                          }
                           onChange={(e) => {
                             const parts = e.target.value.split('~');
                             handleUpdateSchedule(sched.id, {
                               startDate: parts[0]?.trim() || sched.startDate,
-                              endDate: parts[1]?.trim() || sched.endDate
+                              endDate: parts[1]?.trim() || ''
                             });
                           }}
-                          className="text-xs font-bold text-gray-500 bg-gray-50 border border-gray-200 rounded-xl p-2"
+                          className="text-xs font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-2"
                         />
                         <input
                           type="text"
