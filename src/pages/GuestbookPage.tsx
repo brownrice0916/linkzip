@@ -31,6 +31,8 @@ import {
   subscribeToGuestbookReplies,
   updateGuestbookEntryAsUser,
   updateGuestbookEntryWithPassword,
+  updateGuestbookReplyAsUser,
+  updateGuestbookReplyWithPassword,
   type GuestbookEntry,
   type GuestbookReply,
 } from '../services/guestbookService';
@@ -59,6 +61,8 @@ const GuestbookPage = () => {
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyAuthorName, setReplyAuthorName] = useState('');
   const [replyContent, setReplyContent] = useState('');
+  const [replyEditPassword, setReplyEditPassword] = useState('');
+  const [editingReply, setEditingReply] = useState<GuestbookReply | null>(null);
   const [submittingReplyId, setSubmittingReplyId] = useState<string | null>(null);
   const [busyReplyId, setBusyReplyId] = useState<string | null>(null);
 
@@ -217,19 +221,38 @@ const GuestbookPage = () => {
     event.preventDefault();
     const trimmedContent = replyContent.trim();
     if (!trimmedContent) return;
+    if (!currentUser && !editingReply && replyEditPassword.length < 4) {
+      alert('답글 편집에 사용할 비밀번호를 4자 이상 입력해주세요.');
+      return;
+    }
+    const replyName = currentUser ? signedInName : (replyAuthorName.trim() || '익명');
     setSubmittingReplyId(entryId);
     try {
-      await addGuestbookReply({
-        entryId,
-        targetUsername: cleanUsername,
-        authorUid: currentUser?.uid || null,
-        authorPhotoUrl: isProfileOwner ? (profile?.avatarUrl || null) : (currentUser?.photoURL || null),
-        authorName: currentUser ? signedInName : (replyAuthorName.trim() || '익명'),
-        content: trimmedContent,
-      });
+      if (editingReply) {
+        if (currentUser) {
+          await updateGuestbookReplyAsUser(editingReply.id, replyName, trimmedContent);
+        } else {
+          if (!replyEditPassword) {
+            alert('답글 작성 시 설정한 비밀번호를 입력해주세요.');
+            return;
+          }
+          await updateGuestbookReplyWithPassword(editingReply.id, cleanUsername, replyEditPassword, replyName, trimmedContent);
+        }
+      } else {
+        await addGuestbookReply({
+          entryId,
+          targetUsername: cleanUsername,
+          authorUid: currentUser?.uid || null,
+          authorPhotoUrl: isProfileOwner ? (profile?.avatarUrl || null) : (currentUser?.photoURL || null),
+          authorName: replyName,
+          content: trimmedContent,
+        }, currentUser ? undefined : replyEditPassword);
+      }
       setReplyingToId(null);
+      setEditingReply(null);
       setReplyAuthorName('');
       setReplyContent('');
+      setReplyEditPassword('');
     } catch (error) {
       console.error('Failed to submit guestbook reply:', error);
       alert('답글 등록 중 오류가 발생했습니다.');
@@ -328,17 +351,19 @@ const GuestbookPage = () => {
 
                 {entryReplies.length > 0 && <div className="ml-10 space-y-2 border-l-2 border-purple-100 pl-3">{entryReplies.map((reply) => (
                   <div key={reply.id} className="rounded-2xl bg-gray-50 px-3.5 py-3">
-                    <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2"><div className={clsx('flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full text-[9px] font-black', reply.authorUid === targetOwnerUid ? 'bg-amber-50 ring-1 ring-amber-300' : 'bg-purple-100 text-purple-700')}>{reply.authorPhotoUrl ? <img src={reply.authorPhotoUrl} alt={reply.authorName} className="h-full w-full object-cover" /> : reply.authorName.charAt(0)}</div><span className="truncate text-[11px] font-extrabold text-gray-800">{reply.authorName}</span>{reply.authorUid === targetOwnerUid && <Crown className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-600" aria-label="주인장" />}</div><div className="flex shrink-0 items-center gap-1"><span className="text-[9px] text-gray-400">{reply.createdAt?.seconds ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString() : '방금 전'}</span>{isProfileOwner && <button type="button" disabled={busyReplyId === reply.id} onClick={() => void handleDeleteReply(reply)} title="답글 삭제" className="cursor-pointer rounded-full p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3 w-3" /></button>}</div></div>
+                    <div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2"><div className={clsx('flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full text-[9px] font-black', reply.authorUid === targetOwnerUid ? 'bg-amber-50 ring-1 ring-amber-300' : 'bg-purple-100 text-purple-700')}>{reply.authorPhotoUrl ? <img src={reply.authorPhotoUrl} alt={reply.authorName} className="h-full w-full object-cover" /> : reply.authorName.charAt(0)}</div><span className="truncate text-[11px] font-extrabold text-gray-800">{reply.authorName}</span>{reply.authorUid === targetOwnerUid && <Crown className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-600" aria-label="주인장" />}</div><div className="flex shrink-0 items-center gap-1"><span className="text-[9px] text-gray-400">{reply.createdAt?.seconds ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString() : '방금 전'}</span>{((currentUser && reply.authorUid === currentUser.uid) || (!currentUser && reply.hasEditPassword)) && <button type="button" onClick={() => { setEditingReply(reply); setReplyingToId(entry.id); setReplyAuthorName(reply.authorName); setReplyContent(reply.content); setReplyEditPassword(''); }} title="답글 편집" className="cursor-pointer rounded-full p-1.5 text-gray-400 transition hover:bg-purple-50 hover:text-purple-700"><Pencil className="h-3 w-3" /></button>}{isProfileOwner && <button type="button" disabled={busyReplyId === reply.id} onClick={() => void handleDeleteReply(reply)} title="답글 삭제" className="cursor-pointer rounded-full p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3 w-3" /></button>}</div></div>
                     <p className="mt-1.5 whitespace-pre-wrap pl-8 text-[11px] font-medium text-gray-700">{reply.content}</p>
                   </div>
                 ))}</div>}
 
-                <div className="flex justify-end"><button type="button" onClick={() => { setReplyingToId(replyingToId === entry.id ? null : entry.id); setReplyAuthorName(''); setReplyContent(''); }} className="flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-gray-500 transition hover:bg-purple-50 hover:text-purple-700">{replyingToId === entry.id ? <X className="h-3.5 w-3.5" /> : <Reply className="h-3.5 w-3.5" />} {replyingToId === entry.id ? '취소' : `답글${entryReplies.length ? ` ${entryReplies.length}` : ''}`}</button></div>
+                <div className="flex justify-end"><button type="button" onClick={() => { setReplyingToId(replyingToId === entry.id ? null : entry.id); setEditingReply(null); setReplyAuthorName(''); setReplyContent(''); setReplyEditPassword(''); }} className="flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-gray-500 transition hover:bg-purple-50 hover:text-purple-700">{replyingToId === entry.id ? <X className="h-3.5 w-3.5" /> : <Reply className="h-3.5 w-3.5" />} {replyingToId === entry.id ? '취소' : `답글${entryReplies.length ? ` ${entryReplies.length}` : ''}`}</button></div>
 
                 {replyingToId === entry.id && <form onSubmit={(event) => handleReplySubmit(event, entry.id)} className="ml-10 space-y-2 rounded-2xl border border-purple-100 bg-purple-50/50 p-3">
-                  {currentUser ? <p className="text-[10px] font-bold text-purple-700">{signedInName}(으)로 답글 작성</p> : <input type="text" value={replyAuthorName} onChange={(event) => setReplyAuthorName(event.target.value)} placeholder="미입력 시 익명" maxLength={50} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[11px] font-semibold outline-none focus:border-purple-400" />}
+                  <p className="text-[10px] font-bold text-purple-700">{editingReply ? '답글 편집' : currentUser ? `${signedInName}(으)로 답글 작성` : '답글 작성'}</p>
+                  {!currentUser && <input type="text" value={replyAuthorName} onChange={(event) => setReplyAuthorName(event.target.value)} placeholder="미입력 시 익명" maxLength={50} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[11px] font-semibold outline-none focus:border-purple-400" />}
                   <textarea autoFocus value={replyContent} onChange={(event) => setReplyContent(event.target.value)} placeholder="답글을 입력해주세요" maxLength={1000} rows={2} className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[11px] font-semibold outline-none focus:border-purple-400" />
-                  <div className="flex justify-end"><button type="submit" disabled={!replyContent.trim() || submittingReplyId === entry.id} className={clsx('flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-extrabold transition', replyContent.trim() ? 'cursor-pointer bg-purple-600 text-white hover:bg-purple-700' : 'cursor-not-allowed bg-gray-200 text-gray-400')}><Send className="h-3 w-3" />{submittingReplyId === entry.id ? '등록 중...' : '답글 등록'}</button></div>
+                  {!currentUser && <div className="relative"><KeyRound className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" /><input type="password" value={replyEditPassword} onChange={(event) => setReplyEditPassword(event.target.value)} placeholder={editingReply ? '작성할 때 설정한 비밀번호' : '편집 비밀번호 4자 이상'} minLength={editingReply ? undefined : 4} required className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-[11px] font-semibold outline-none focus:border-purple-400" /></div>}
+                  <div className="flex justify-end"><button type="submit" disabled={!replyContent.trim() || submittingReplyId === entry.id} className={clsx('flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-extrabold transition', replyContent.trim() ? 'cursor-pointer bg-purple-600 text-white hover:bg-purple-700' : 'cursor-not-allowed bg-gray-200 text-gray-400')}><Send className="h-3 w-3" />{submittingReplyId === entry.id ? '저장 중...' : editingReply ? '변경 저장' : '답글 등록'}</button></div>
                 </form>}
               </article>
             );

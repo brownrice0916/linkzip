@@ -27,6 +27,16 @@ service cloud.firestore {
         && challenge.data.isSecret == request.resource.data.isSecret;
     }
 
+    function validGuestbookReplyPasswordEdit(replyId) {
+      let challenge = getAfter(/databases/$(database)/documents/guestbookReplyEditChallenges/$(request.resource.data.editChallengeId));
+      return resource.data.hasEditPassword == true
+        && request.resource.data.editChallengeId is string
+        && challenge.data.replyId == replyId
+        && challenge.data.targetUsername == resource.data.targetUsername
+        && challenge.data.authorName == request.resource.data.authorName
+        && challenge.data.content == request.resource.data.content;
+    }
+
     match /users/{uid} {
       allow read, create, update, delete: if isOwner(uid);
 
@@ -166,26 +176,83 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /guestbookReplySecrets/{replyId} {
+      allow read: if false;
+      allow create: if !signedIn()
+        && request.resource.data.keys().hasOnly(['targetUsername', 'passwordHash', 'createdAt'])
+        && request.resource.data.targetUsername is string
+        && request.resource.data.passwordHash is string
+        && request.resource.data.passwordHash.size() == 64
+        && getAfter(/databases/$(database)/documents/guestbookReplies/$(replyId)).data.targetUsername == request.resource.data.targetUsername
+        && getAfter(/databases/$(database)/documents/guestbookReplies/$(replyId)).data.hasEditPassword == true;
+      allow update: if false;
+      allow delete: if ownsUsername(resource.data.targetUsername);
+    }
+
+    match /guestbookReplyEditChallenges/{challengeId} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly([
+          'replyId', 'targetUsername', 'passwordHash', 'authorName', 'content', 'createdAt'
+        ])
+        && request.resource.data.replyId is string
+        && request.resource.data.targetUsername is string
+        && request.resource.data.passwordHash is string
+        && request.resource.data.passwordHash.size() == 64
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 50
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 1000
+        && get(/databases/$(database)/documents/guestbookReplySecrets/$(request.resource.data.replyId)).data.targetUsername == request.resource.data.targetUsername
+        && get(/databases/$(database)/documents/guestbookReplySecrets/$(request.resource.data.replyId)).data.passwordHash == request.resource.data.passwordHash;
+      allow update, delete: if false;
+    }
+
     match /guestbookReplies/{replyId} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasOnly([
-        'entryId', 'targetUsername', 'authorUid', 'authorPhotoUrl', 'authorName', 'content', 'createdAt'
+        'entryId', 'targetUsername', 'authorUid', 'authorPhotoUrl', 'authorName',
+        'content', 'hasEditPassword', 'createdAt'
       ])
         && request.resource.data.entryId is string
         && request.resource.data.targetUsername is string
         && request.resource.data.authorName is string
         && request.resource.data.authorName.size() <= 50
-        && ((signedIn() && request.resource.data.authorUid == request.auth.uid)
-          || (!signedIn() && request.resource.data.authorUid == null))
+        && ((signedIn()
+            && request.resource.data.authorUid == request.auth.uid
+            && request.resource.data.hasEditPassword == false)
+          || (!signedIn()
+            && request.resource.data.authorUid == null
+            && request.resource.data.hasEditPassword == true))
         && (request.resource.data.authorPhotoUrl == null || request.resource.data.authorPhotoUrl is string)
         && request.resource.data.content is string
         && request.resource.data.content.size() > 0
         && request.resource.data.content.size() <= 1000;
-      allow update: if ownsUsername(resource.data.targetUsername)
-        && resource.data.authorUid == null
-        && request.resource.data.authorUid == request.auth.uid
-        && (request.resource.data.authorPhotoUrl == null || request.resource.data.authorPhotoUrl is string)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authorUid', 'authorPhotoUrl']);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'authorUid', 'authorPhotoUrl', 'authorName', 'content', 'updatedAt', 'editChallengeId'
+        ])
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 50
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 1000
+        && (
+          (ownsUsername(resource.data.targetUsername)
+            && resource.data.authorUid == null
+            && request.resource.data.authorUid == request.auth.uid
+            && (request.resource.data.authorPhotoUrl == null || request.resource.data.authorPhotoUrl is string)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authorUid', 'authorPhotoUrl']))
+          || (signedIn()
+            && resource.data.authorUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'authorName', 'content', 'updatedAt'
+            ]))
+          || (request.resource.data.keys().hasAll(['editChallengeId'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'authorName', 'content', 'updatedAt', 'editChallengeId'
+            ])
+            && validGuestbookReplyPasswordEdit(replyId))
+        );
       allow delete: if ownsUsername(resource.data.targetUsername);
     }
   }

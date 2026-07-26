@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   doc,
   onSnapshot,
@@ -36,7 +35,10 @@ export interface GuestbookReply {
   authorPhotoUrl: string | null;
   authorName: string;
   content: string;
+  hasEditPassword: boolean;
+  editChallengeId?: string;
   createdAt: { seconds?: number } | null;
+  updatedAt?: { seconds?: number } | null;
 }
 
 export interface GuestbookEntryDraft {
@@ -185,7 +187,10 @@ export function subscribeToGuestbookReplies(
         authorPhotoUrl: data.authorPhotoUrl || null,
         authorName: data.authorName || '익명',
         content: data.content || '',
+        hasEditPassword: Boolean(data.hasEditPassword),
+        editChallengeId: data.editChallengeId,
         createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
       } satisfies GuestbookReply;
     });
     replies.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
@@ -194,17 +199,70 @@ export function subscribeToGuestbookReplies(
 }
 
 export async function addGuestbookReply(
-  reply: Omit<GuestbookReply, 'id' | 'createdAt'>,
+  reply: Omit<GuestbookReply, 'id' | 'createdAt' | 'updatedAt' | 'hasEditPassword' | 'editChallengeId'>,
+  editPassword?: string,
 ): Promise<void> {
-  await addDoc(collection(db, 'guestbookReplies'), {
+  const replyRef = doc(collection(db, 'guestbookReplies'));
+  const hasEditPassword = !reply.authorUid && Boolean(editPassword);
+  const batch = writeBatch(db);
+  batch.set(replyRef, {
     ...reply,
+    hasEditPassword,
     createdAt: serverTimestamp(),
   });
+
+  if (hasEditPassword && editPassword) {
+    batch.set(doc(db, 'guestbookReplySecrets', replyRef.id), {
+      targetUsername: reply.targetUsername,
+      passwordHash: await hashGuestbookPassword(replyRef.id, editPassword),
+      createdAt: serverTimestamp(),
+    });
+  }
+  await batch.commit();
+}
+
+export async function updateGuestbookReplyAsUser(
+  replyId: string,
+  authorName: string,
+  content: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'guestbookReplies', replyId), {
+    authorName,
+    content,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateGuestbookReplyWithPassword(
+  replyId: string,
+  targetUsername: string,
+  password: string,
+  authorName: string,
+  content: string,
+): Promise<void> {
+  const challengeRef = doc(collection(db, 'guestbookReplyEditChallenges'));
+  const batch = writeBatch(db);
+  batch.set(challengeRef, {
+    replyId,
+    targetUsername,
+    passwordHash: await hashGuestbookPassword(replyId, password),
+    authorName,
+    content,
+    createdAt: serverTimestamp(),
+  });
+  batch.update(doc(db, 'guestbookReplies', replyId), {
+    authorName,
+    content,
+    editChallengeId: challengeRef.id,
+    updatedAt: serverTimestamp(),
+  });
+  await batch.commit();
 }
 
 export async function deleteGuestbookReply(replyId: string): Promise<void> {
   const batch = writeBatch(db);
   batch.delete(doc(db, 'guestbookReplies', replyId));
+  batch.delete(doc(db, 'guestbookReplySecrets', replyId));
   await batch.commit();
 }
 
