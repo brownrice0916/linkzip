@@ -109,6 +109,7 @@ const Admin = () => {
             buttonShadow: state.buttonShadow,
             buttonColor: state.buttonColor,
             buttonTextColor: state.buttonTextColor,
+            buttonOpacity: state.buttonOpacity,
             fontFamily: state.fontFamily,
             titleFontFamily: state.titleFontFamily,
             pageTextColor: state.pageTextColor,

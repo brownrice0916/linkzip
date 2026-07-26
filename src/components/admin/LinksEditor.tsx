@@ -87,6 +87,13 @@ const LinksEditor = () => {
   const {
     profile,
     setProfile,
+    templateType,
+    templateValue,
+    buttonColor,
+    buttonTextColor,
+    buttonOpacity,
+    buttonRoundness,
+    buttonShadow,
     socialLinks,
     addSocialLink,
     updateSocialLink,
@@ -108,18 +115,23 @@ const LinksEditor = () => {
     useState<CustomLink | null>(null);
   const [activeStyleLinkId, setActiveStyleLinkId] = useState<string | null>(null);
 
-  const findLinkById = (links: CustomLink[], id: string): CustomLink | undefined => {
+  const findLinkContext = (
+    links: CustomLink[],
+    id: string,
+    parentCollection?: CustomLink,
+  ): { link: CustomLink; parentCollection?: CustomLink } | undefined => {
     for (const link of links) {
-      if (link.id === id) return link;
-      const nested = link.links ? findLinkById(link.links, id) : undefined;
+      if (link.id === id) return { link, parentCollection };
+      const nested = link.links ? findLinkContext(link.links, id, link) : undefined;
       if (nested) return nested;
     }
     return undefined;
   };
 
-  const activeStyleLink = activeStyleLinkId
-    ? findLinkById(customLinks, activeStyleLinkId)
+  const activeStyleContext = activeStyleLinkId
+    ? findLinkContext(customLinks, activeStyleLinkId)
     : undefined;
+  const activeStyleLink = activeStyleContext?.link;
 
   const handleCardStyleClick = (event: React.MouseEvent, linkId: string) => {
     const target = event.target as HTMLElement;
@@ -2623,6 +2635,26 @@ const LinksEditor = () => {
     );
   };
 
+  if (activeStyleLink) {
+    return (
+      <LinkStyleEditorModal
+        link={activeStyleLink}
+        parentCollection={activeStyleContext?.parentCollection}
+        themeDefaults={{
+          templateType,
+          templateValue,
+          buttonColor,
+          buttonTextColor,
+          buttonOpacity,
+          buttonRoundness,
+          buttonShadow,
+        }}
+        onClose={() => setActiveStyleLinkId(null)}
+        onUpdate={(updates) => updateCustomLink(activeStyleLink.id, updates)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans">
       {/* Top User Profile Header with Social Icons (Matching User Screenshot) */}
@@ -2941,13 +2973,6 @@ const LinksEditor = () => {
         />
       )}
 
-      {activeStyleLink && (
-        <LinkStyleEditorModal
-          link={activeStyleLink}
-          onClose={() => setActiveStyleLinkId(null)}
-          onUpdate={(updates) => updateCustomLink(activeStyleLink.id, updates)}
-        />
-      )}
     </div>
   );
 };

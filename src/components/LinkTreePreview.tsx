@@ -139,6 +139,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const buttonShadow = props.design?.buttonShadow ?? store.buttonShadow;
   const buttonColor = props.design?.buttonColor ?? store.buttonColor;
   const buttonTextColor = props.design?.buttonTextColor ?? store.buttonTextColor;
+  const buttonOpacity = props.design?.buttonOpacity ?? store.buttonOpacity;
   const fontFamily = props.design?.fontFamily ?? store.fontFamily;
   const titleFontFamily = props.design?.titleFontFamily ?? store.titleFontFamily;
   const pageTextColor = props.design?.pageTextColor ?? store.pageTextColor;
@@ -264,6 +265,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   let customButtonStyle: React.CSSProperties = {};
   if (buttonColor) customButtonStyle.backgroundColor = buttonColor;
   if (buttonTextColor) customButtonStyle.color = buttonTextColor;
+  if (buttonOpacity !== undefined) customButtonStyle.opacity = buttonOpacity / 100;
 
   const getCustomLinkStyle = (link: CustomLink): React.CSSProperties => {
     const style = link.customStyle;

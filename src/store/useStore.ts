@@ -157,6 +157,7 @@ export interface DesignSettings {
   buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
   buttonColor?: string;
   buttonTextColor?: string;
+  buttonOpacity?: number;
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
@@ -227,6 +228,7 @@ export interface AppStateSnapshot {
   buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
   buttonColor?: string;
   buttonTextColor?: string;
+  buttonOpacity?: number;
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
@@ -256,6 +258,7 @@ interface AppState {
   buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
   buttonColor?: string;
   buttonTextColor?: string;
+  buttonOpacity?: number;
   fontFamily: string;
   titleFontFamily?: string;
   pageTextColor?: string;
@@ -339,6 +342,7 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   buttonShadow: state.buttonShadow,
   buttonColor: state.buttonColor,
   buttonTextColor: state.buttonTextColor,
+  buttonOpacity: state.buttonOpacity,
   fontFamily: state.fontFamily,
   titleFontFamily: state.titleFontFamily,
   pageTextColor: state.pageTextColor,
@@ -401,6 +405,7 @@ export const useStore = create<AppState>((set) => ({
   buttonStyle: 'solid',
   buttonRoundness: 'full',
   buttonShadow: 'soft',
+  buttonOpacity: 100,
   fontFamily: 'Inter',
   titleFontFamily: '',
   sticker: '',
@@ -449,6 +454,7 @@ export const useStore = create<AppState>((set) => ({
       templateValue: value,
       buttonColor: '',
       buttonTextColor: '',
+      buttonOpacity: 100,
       pageTextColor: '',
       fontFamily: themeFontMap[value] || state.fontFamily,
       titleFontFamily: '',
