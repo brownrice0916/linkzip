@@ -195,18 +195,9 @@ const Admin = () => {
   };
 
   return (
-    <div className="linkzip-admin admin-shell grid h-screen min-w-[1240px] grid-cols-[400px_minmax(700px,1fr)] grid-rows-[64px_minmax(0,1fr)] gap-5 bg-[#ECEFF1] p-5 overflow-x-auto overflow-y-hidden select-none font-sans text-gray-900">
+    <div className="linkzip-admin admin-shell grid h-screen min-w-[1240px] grid-cols-[400px_minmax(700px,1fr)] grid-rows-[48px_64px_minmax(0,1fr)] gap-4 bg-[#ECEFF1] p-5 overflow-x-auto overflow-y-hidden select-none font-sans text-gray-900">
       {/* Sidebar Navigation */}
-      <div className="admin-top-nav col-start-2 row-start-1 w-full bg-white border border-gray-200 rounded-[24px] flex flex-row items-center px-3 py-2 gap-2 z-20 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
-        <div
-          onClick={() => requestNavigation("home")}
-          className="w-10 h-10 rounded-xl bg-gray-950 text-white flex items-center justify-center font-bold text-xl cursor-pointer hover:bg-gray-800 transition"
-        >
-          <Link2 className="w-5 h-5" />
-        </div>
-
-
-
+      <div className="admin-top-nav col-start-2 row-start-2 w-full bg-white border border-gray-200 rounded-[24px] flex flex-row items-center px-3 py-2 gap-2 z-20 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
         <nav className="admin-nav-items flex flex-row items-center gap-1.5 min-w-0">
           <button
             onClick={() => requestNavigation("links")}
@@ -311,59 +302,36 @@ const Admin = () => {
         </div>
       </div>
 
-      {/* Main Workspace Area */}
-      <div className="col-start-2 row-start-2 min-w-[700px] min-h-0 flex flex-col bg-[#F6F6F4] rounded-[24px] border border-gray-200 overflow-hidden shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
-        {/* Top Header Bar */}
-        <div className="h-16 bg-white border-b border-gray-200 px-6 lg:px-8 flex items-center justify-between z-10 shrink-0">
-          <div className="flex items-center gap-4">
-            <span className="font-bold text-sm text-gray-900 tracking-tight">
-              {t("myLinkZip", state.language)}
-            </span>
-            <a
-              href={profileUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-semibold text-gray-500 hover:text-black underline underline-offset-4 decoration-gray-300 transition truncate max-w-xs"
-            >
-              {profileUrl}
-            </a>
-          </div>
+      {/* Independent top utility bar */}
+      <div className="admin-utility-bar col-start-2 row-start-1 flex items-center justify-between gap-3 min-w-0">
+        <div className="h-full min-w-0 flex items-center gap-3 rounded-full border border-gray-200 bg-white px-5 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
+          <span className="shrink-0 text-xs font-black text-gray-900">{t("myLinkZip", state.language)}</span>
+          <a href={profileUrl} target="_blank" rel="noreferrer" className="truncate text-xs font-semibold text-gray-500 underline decoration-gray-300 underline-offset-4 transition hover:text-black">{profileUrl}</a>
+        </div>
 
-          <div className="flex items-center gap-3">
-            {/* Language Selector Dropdown */}
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-full border border-gray-200/80 shadow-2xs">
-              <Globe className="w-3.5 h-3.5 text-gray-600 ml-2" />
-              <select
-                value={state.language}
-                onChange={(e) => state.setLanguage(e.target.value as 'ko' | 'en')}
-                className="bg-transparent text-xs font-extrabold text-gray-900 focus:outline-hidden cursor-pointer pr-2.5"
-              >
-                <option value="ko">🇰🇷 한국어</option>
-                <option value="en">🇺🇸 English</option>
-              </select>
-            </div>
-
-            <button
-              onClick={handleCopyLink}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 border border-gray-200 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-            >
-              {copied ? (
-                <Check className="w-3.5 h-3.5 text-green-600" />
-              ) : (
-                <Copy className="w-3.5 h-3.5" />
-              )}
+        <div className="flex h-full shrink-0 items-center gap-2">
+          <div className="flex h-full items-center gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
+            <button onClick={handleCopyLink} className="flex h-full items-center gap-1.5 rounded-full px-3 text-xs font-bold text-gray-700 transition hover:bg-gray-100 cursor-pointer">
+              {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? t("copied", state.language) : t("copy", state.language)}
             </button>
-
-            <button
-              onClick={() => window.open(`/${username}`, "_blank")}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-black text-white rounded-full text-xs font-bold hover:bg-gray-800 transition cursor-pointer"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              {t("share", state.language)}
+            <button onClick={() => window.open(`/${username}`, "_blank")} className="flex h-full items-center gap-1.5 rounded-full bg-gray-950 px-3.5 text-xs font-bold text-white transition hover:bg-gray-800 cursor-pointer">
+              <Share2 className="w-3.5 h-3.5" />{t("share", state.language)}
             </button>
           </div>
+
+          <div className="flex h-full items-center gap-1 rounded-full border border-gray-200 bg-white px-3 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
+            <Globe className="w-3.5 h-3.5 text-gray-600" />
+            <select value={state.language} onChange={(e) => state.setLanguage(e.target.value as 'ko' | 'en')} className="bg-transparent pr-1 text-xs font-extrabold text-gray-900 focus:outline-hidden cursor-pointer" aria-label="언어 선택">
+              <option value="ko">🇰🇷 한국어</option>
+              <option value="en">🇺🇸 English</option>
+            </select>
+          </div>
         </div>
+      </div>
+
+      {/* Main Workspace Area */}
+      <div className="col-start-2 row-start-3 min-w-[700px] min-h-0 flex flex-col bg-[#F6F6F4] rounded-[24px] border border-gray-200 overflow-hidden shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
 
         {/* Editor Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-7 bg-[#F6F6F4]">
@@ -524,7 +492,7 @@ const Admin = () => {
       </div>
 
       {/* Right Live Phone Preview (Desktop only) */}
-      <div className="admin-live-preview col-start-1 row-start-1 row-span-2 flex w-full bg-[#E5E8EB] rounded-[28px] border border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
+      <div className="admin-live-preview col-start-1 row-start-1 row-span-3 flex w-full bg-[#E5E8EB] rounded-[28px] border border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
         {/* Sleek Borderless Mobile Device Container */}
         <div className="w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-[0_18px_48px_rgba(15,23,42,0.14)] relative flex flex-col overflow-hidden border border-gray-200">
           <div className="w-full h-full overflow-y-auto scrollbar-none">

@@ -112,7 +112,7 @@
     gap: 0;
     padding: 0;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
   }
 
   .linkzip-admin .admin-live-preview {
@@ -121,14 +121,21 @@
 
   .linkzip-admin .admin-top-nav {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 2;
     border-radius: 0;
     overflow-x: auto;
   }
 
-  .linkzip-admin .admin-top-nav + div {
+  .linkzip-admin .admin-utility-bar {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1;
+    overflow-x: auto;
+    padding: 0.5rem;
+  }
+
+  .linkzip-admin .admin-utility-bar + div {
+    grid-column: 1;
+    grid-row: 3;
     min-width: 0;
     border-radius: 0;
   }
