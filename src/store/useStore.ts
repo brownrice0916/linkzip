@@ -224,6 +224,10 @@ interface AppState {
   metaAccessToken?: string;
   instagramAccount?: string;
 
+  // Language & Localization
+  language: 'ko' | 'en';
+  setLanguage: (lang: 'ko' | 'en') => void;
+
   // Change Tracking & History (Undo / Redo / Cancel / Save)
   isDirty: boolean;
   undoStack: AppStateSnapshot[];
@@ -370,6 +374,17 @@ export const useStore = create<AppState>((set) => ({
   },
   metaAccessToken: '',
   instagramAccount: '',
+
+  // Language state & Action
+  language: (typeof localStorage !== 'undefined' && localStorage.getItem('linkzip_language') as 'ko' | 'en') || 'ko',
+  setLanguage: (lang) => {
+    try {
+      localStorage.setItem('linkzip_language', lang);
+    } catch (e) {
+      console.warn(e);
+    }
+    set({ language: lang });
+  },
 
   // History & Change Tracking
   isDirty: false,

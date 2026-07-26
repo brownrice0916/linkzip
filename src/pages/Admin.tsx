@@ -17,10 +17,12 @@ import {
   X,
   Zap,
   BarChart3,
-  Megaphone
+  Megaphone,
+  Globe
 } from "lucide-react";
 import { auth, logout } from "../lib/firebase";
 import clsx from "clsx";
+import { t } from "../lib/i18n";
 
 import LinksEditor from "../components/admin/LinksEditor";
 import ProfileEditor from "../components/admin/ProfileEditor";
@@ -235,7 +237,7 @@ const Admin = () => {
             )}
           >
             <Link2 className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Content</span>
+            <span className="text-[10px] font-bold">{t("navLinks", state.language)}</span>
           </button>
 
           <button
@@ -248,7 +250,7 @@ const Admin = () => {
             )}
           >
             <UserIcon className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Header</span>
+            <span className="text-[10px] font-bold">{t("navProfile", state.language)}</span>
           </button>
 
           <button
@@ -261,7 +263,7 @@ const Admin = () => {
             )}
           >
             <Palette className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Design</span>
+            <span className="text-[10px] font-bold">{t("navDesign", state.language)}</span>
           </button>
 
           <button
@@ -274,7 +276,7 @@ const Admin = () => {
             )}
           >
             <BarChart3 className="w-5 h-5 text-indigo-400" />
-            <span className="text-[10px] font-bold">Analyze</span>
+            <span className="text-[10px] font-bold">{t("navAnalytics", state.language)}</span>
           </button>
 
           <button
@@ -287,7 +289,7 @@ const Admin = () => {
             )}
           >
             <Megaphone className="w-5 h-5 text-pink-500" />
-            <span className="text-[10px] font-bold">Marketing</span>
+            <span className="text-[10px] font-bold">{t("navMarketing", state.language)}</span>
           </button>
 
           <button
@@ -300,7 +302,7 @@ const Admin = () => {
             )}
           >
             <Zap className="w-5 h-5 text-purple-400" />
-            <span className="text-[10px] font-bold">Growth</span>
+            <span className="text-[10px] font-bold">{t("navGrowth", state.language)}</span>
           </button>
 
           <button
@@ -313,7 +315,7 @@ const Admin = () => {
             )}
           >
             <Settings className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Settings</span>
+            <span className="text-[10px] font-bold">{t("navSettings", state.language)}</span>
           </button>
         </nav>
 
@@ -321,7 +323,7 @@ const Admin = () => {
           <button
             onClick={() => requestNavigation("logout")}
             className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition cursor-pointer"
-            title="Logout"
+            title={t("navLogout", state.language)}
           >
             <LogOut className="w-5 h-5" />
           </button>
@@ -334,7 +336,7 @@ const Admin = () => {
         <div className="h-16 bg-white border-b border-gray-200 px-8 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-4">
             <span className="font-bold text-sm text-gray-900 tracking-tight">
-              My LinkZip:
+              {t("myLinkZip", state.language)}
             </span>
             <a
               href={profileUrl}
@@ -355,9 +357,22 @@ const Admin = () => {
 
             {state.isDirty && (
               <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                ● Unsaved Changes
+                {t("unsavedChanges", state.language)}
               </span>
             )}
+
+            {/* Language Selector Dropdown */}
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-full border border-gray-200/80 shadow-2xs">
+              <Globe className="w-3.5 h-3.5 text-gray-600 ml-2" />
+              <select
+                value={state.language}
+                onChange={(e) => state.setLanguage(e.target.value as 'ko' | 'en')}
+                className="bg-transparent text-xs font-extrabold text-gray-900 focus:outline-hidden cursor-pointer pr-2.5"
+              >
+                <option value="ko">🇰🇷 한국어</option>
+                <option value="en">🇺🇸 English</option>
+              </select>
+            </div>
 
             <button
               onClick={handleCopyLink}
@@ -368,7 +383,7 @@ const Admin = () => {
               ) : (
                 <Copy className="w-3.5 h-3.5" />
               )}
-              {copied ? "Copied!" : "Copy"}
+              {copied ? t("copied", state.language) : t("copy", state.language)}
             </button>
 
             <button
@@ -376,7 +391,7 @@ const Admin = () => {
               className="flex items-center gap-1.5 px-4 py-1.5 bg-black text-white rounded-full text-xs font-bold hover:bg-gray-800 transition cursor-pointer"
             >
               <Share2 className="w-3.5 h-3.5" />
-              Share
+              {t("share", state.language)}
             </button>
           </div>
         </div>
@@ -388,13 +403,13 @@ const Admin = () => {
             {/* Section Header with Title (Left) and Undo / Redo / Cancel / Save (Right) */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
               <h2 className="text-2xl font-black text-gray-900 capitalize tracking-tight">
-                {activeTab === "links" && "Links"}
-                {activeTab === "profile" && "Profile"}
-                {activeTab === "appearance" && "Design"}
-                {activeTab === "analytics" && "Analytics & CTR"}
-                {activeTab === "marketing" && "Marketing & DM"}
-                {activeTab === "automation" && "Growth"}
-                {activeTab === "settings" && "Settings"}
+                {activeTab === "links" && t("linksTitle", state.language)}
+                {activeTab === "profile" && t("profileTitle", state.language)}
+                {activeTab === "appearance" && t("designTitle", state.language)}
+                {activeTab === "analytics" && t("analyticsTitle", state.language)}
+                {activeTab === "marketing" && t("marketingTitle", state.language)}
+                {activeTab === "automation" && t("growthTitle", state.language)}
+                {activeTab === "settings" && t("settingsTitle", state.language)}
               </h2>
 
               {/* Controls Row (Matching User Screenshot) */}
@@ -446,7 +461,7 @@ const Admin = () => {
                       : "border-gray-200 text-gray-300 cursor-not-allowed"
                   )}
                 >
-                  Cancel
+                  {t("cancel", state.language)}
                 </button>
 
                 {/* Save Button */}
@@ -454,7 +469,7 @@ const Admin = () => {
                   onClick={handleManualSave}
                   className="px-6 py-2 rounded-full font-extrabold text-xs transition cursor-pointer shadow-md flex items-center gap-1.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white ring-2 ring-purple-300 shadow-lg hover:scale-105 active:scale-95"
                 >
-                  <span>Save</span>
+                  <span>{t("save", state.language)}</span>
                 </button>
               </div>
             </div>
