@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   useStore,
   type UserProfile,
@@ -215,6 +216,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
   const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
   const [activeMapBlock, setActiveMapBlock] = useState<CustomLink | null>(null);
+  const [activeMapContainer, setActiveMapContainer] = useState<HTMLElement | null>(null);
   const [expandedReservationIds, setExpandedReservationIds] = useState<Record<string, boolean>>({});
   const [activeCalendarDay, setActiveCalendarDay] = useState<{ blockId: string; day: number } | null>(null);
   const [calendarViews, setCalendarViews] = useState<Record<string, { year: number; month: number }>>({});
@@ -451,6 +453,12 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     e.stopPropagation();
     setShareModalItem(linkItem);
     setLinkCopied(false);
+  };
+
+  const handleOpenMap = (event: React.MouseEvent<HTMLElement>, block: CustomLink) => {
+    recordLinkClick(block.id);
+    setActiveMapContainer(event.currentTarget.closest<HTMLElement>('[data-map-popup-container]'));
+    setActiveMapBlock(block);
   };
 
   return (
@@ -1227,7 +1235,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 if (!mapQuery) return null;
                 if (block.mapConfig?.displayMode === 'classic') {
                   return (
-                    <button key={block.id} type="button" onClick={() => { recordLinkClick(block.id); setActiveMapBlock(block); }} className={buttonClass} style={getCustomLinkStyle(block)}>
+                    <button key={block.id} type="button" onClick={(event) => handleOpenMap(event, block)} className={buttonClass} style={getCustomLinkStyle(block)}>
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/5"><MapPin className="h-5 w-5" /></span>
                       <span className="min-w-0 flex-1 text-center"><span className="block truncate text-[15px] font-bold">{block.title || (store.language === 'ko' ? '오시는 길' : 'Location')}</span><span className="mt-0.5 block truncate text-xs font-medium opacity-65">{mapQuery}</span></span>
                       <MapPin className="h-4 w-4 shrink-0 opacity-45" />
@@ -1235,8 +1243,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   );
                 }
                 return (
-                  <button key={block.id} type="button" onClick={() => { recordLinkClick(block.id); setActiveMapBlock(block); }} className={clsx(buttonClass, "group !block overflow-hidden !p-0 text-left")} style={getCustomLinkStyle(block)}>
-                    <MapIllustration className="h-52 w-full transition duration-300 group-hover:scale-[1.02]" />
+                  <button key={block.id} type="button" onClick={(event) => handleOpenMap(event, block)} className={clsx(buttonClass, "group !block overflow-hidden !p-0 text-left")} style={getCustomLinkStyle(block)}>
+                    <MapIllustration className="h-36 w-full transition duration-300 group-hover:scale-[1.02]" />
                     <span className="flex items-center gap-3 p-4"><MapPin className="h-5 w-5 shrink-0" /><span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-bold">{block.title || (store.language === 'ko' ? '지도에서 보기' : 'View map')}</span><span className="mt-0.5 block truncate text-xs font-medium opacity-65">{mapQuery}</span></span><MapPin className="h-4 w-4 shrink-0 opacity-50" /></span>
                   </button>
                 );
@@ -1367,16 +1375,18 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           )}
         </div>
 
-        {activeMapBlock && (
-          <div className="absolute inset-0 z-[200] flex min-h-full flex-col bg-white text-gray-950 font-sans">
-            <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
-              <button type="button" onClick={() => setActiveMapBlock(null)} className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-gray-100 transition hover:bg-gray-200" aria-label={store.language === 'ko' ? '지도 닫기' : 'Close map'}><X className="h-6 w-6" /></button>
-              <div className="min-w-0 flex-1"><h2 className="truncate text-base font-black">{activeMapBlock.title || (store.language === 'ko' ? '오시는 길' : 'Location')}</h2><p className="truncate text-xs font-semibold text-gray-500">{activeMapBlock.mapConfig?.query}</p></div>
-            </div>
-            <iframe title={`${activeMapBlock.title || '지도'} 전체화면 지도`} src={`https://www.google.com/maps?q=${encodeURIComponent(activeMapBlock.mapConfig?.query || '')}&output=embed`} className="min-h-0 flex-1 border-0" loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" />
-          </div>
-        )}
       </div>
+
+      {activeMapBlock && createPortal(
+        <div className={clsx(activeMapContainer ? "absolute" : "fixed", "inset-[5%] z-[200] flex flex-col overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white text-gray-950 shadow-2xl font-sans")}>
+          <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
+            <div className="min-w-0 flex-1"><h2 className="truncate text-base font-black">{activeMapBlock.title || (store.language === 'ko' ? '오시는 길' : 'Location')}</h2><p className="truncate text-xs font-semibold text-gray-500">{activeMapBlock.mapConfig?.query}</p></div>
+            <button type="button" onClick={() => setActiveMapBlock(null)} className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-gray-100 text-gray-700 transition hover:scale-105 hover:bg-gray-200 hover:text-black" aria-label={store.language === 'ko' ? '지도 닫기' : 'Close map'} title={store.language === 'ko' ? '닫기' : 'Close'}><X className="h-5 w-5" /></button>
+          </div>
+          <iframe title={`${activeMapBlock.title || '지도'} 전체화면 지도`} src={`https://www.google.com/maps?q=${encodeURIComponent(activeMapBlock.mapConfig?.query || '')}&output=embed`} className="min-h-0 flex-1 border-0" loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" />
+        </div>,
+        activeMapContainer || document.body
+      )}
 
       {/* Share Specific Link Modal Popup */}
       {shareModalItem && (
