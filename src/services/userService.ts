@@ -35,13 +35,14 @@ export async function resolveUserByUsername(username: string): Promise<ResolvedU
   return null;
 }
 
-const toPublicProfile = (data: DocumentData, username: string) => {
+const toPublicProfile = (data: DocumentData, username: string, ownerUid: string) => {
   const profile = { ...(data.profile || {}), username };
   delete profile.verifiedAccount;
   if (!profile.showEmail) delete profile.email;
   delete profile.phone;
 
   return {
+    ownerUid,
     username,
     profile,
     template: data.template || { type: 'preset', value: 'minimalist' },
@@ -124,7 +125,7 @@ export async function saveUserProfilesData(
       });
       transaction.set(
         doc(db, 'publicProfiles', publicProfileId),
-        toPublicProfile(workspaceToDocumentData(workspace), workspace.profile.username),
+        toPublicProfile(workspaceToDocumentData(workspace), workspace.profile.username, uid),
       );
     });
 
@@ -178,7 +179,7 @@ export async function saveUserData(
     }
 
     transaction.set(usernameRef, { uid, updatedAt: new Date().toISOString() });
-    transaction.set(publicProfileRef, toPublicProfile(data, normalized));
+    transaction.set(publicProfileRef, toPublicProfile(data, normalized, uid));
     transaction.set(userRef, {
       ...data,
       username: normalized,

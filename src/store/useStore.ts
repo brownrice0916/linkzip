@@ -448,13 +448,18 @@ const recursivelyUpdateLink = (links: CustomLink[], id: string, updates: Partial
   });
 };
 
-export const resetLinkThemeOverrides = (links: CustomLink[]): CustomLink[] => links.map((link) => ({
-  ...link,
-  buttonColor: undefined,
-  buttonTextColor: undefined,
-  customStyle: undefined,
-  ...(link.links ? { links: resetLinkThemeOverrides(link.links) } : {}),
-}));
+export const resetLinkThemeOverrides = (links: CustomLink[]): CustomLink[] => links.map((link) => {
+  const {
+    buttonColor: _buttonColor,
+    buttonTextColor: _buttonTextColor,
+    customStyle: _customStyle,
+    ...rest
+  } = link;
+  return {
+    ...rest,
+    ...(link.links ? { links: resetLinkThemeOverrides(link.links) } : {}),
+  };
+});
 
 const recursivelyRemoveLink = (links: CustomLink[], id: string): CustomLink[] => {
   return links.filter(link => link.id !== id).map(link => {

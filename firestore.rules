@@ -10,6 +10,12 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isOwnedPublicProfile(profileId) {
+      return signedIn()
+        && (profileId == request.auth.uid
+          || profileId.matches(request.auth.uid + '_.*'));
+    }
+
     function ownsUsername(username) {
       return signedIn()
         && exists(/databases/$(database)/documents/usernames/$(username))
@@ -49,9 +55,9 @@ service cloud.firestore {
       }
     }
 
-    match /publicProfiles/{uid} {
+    match /publicProfiles/{profileId} {
       allow read: if true;
-      allow write: if isOwner(uid);
+      allow create, update, delete: if isOwnedPublicProfile(profileId);
     }
 
     match /usernames/{username} {

@@ -51,6 +51,8 @@ const Admin = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const [copied, setCopied] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(true);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
@@ -119,7 +121,9 @@ const Admin = () => {
   };
 
   const handleManualSave = async () => {
-    if (!state.isDirty) return;
+    if (!state.isDirty || isSaving) return false;
+    setIsSaving(true);
+    setSaveError('');
     try {
       state.syncActiveProfileWorkspace();
       const latestState = useStore.getState();
@@ -149,8 +153,13 @@ const Admin = () => {
       }
 
       state.markSaved();
+      return true;
     } catch (error) {
       console.error("Failed to save", error);
+      setSaveError(error instanceof Error ? error.message : (state.language === 'ko' ? '저장에 실패했습니다.' : 'Failed to save.'));
+      return false;
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -222,7 +231,8 @@ const Admin = () => {
   };
 
   const handleSaveAndContinue = async () => {
-    await handleManualSave();
+    const saved = await handleManualSave();
+    if (!saved) return;
     setIsUnsavedModalOpen(false);
     if (pendingTarget) {
       executeNavigation(pendingTarget);
@@ -375,7 +385,7 @@ const Admin = () => {
           <button type="button" onClick={state.undo} disabled={state.undoStack.length === 0} className="mobile-toolbar-icon" aria-label="실행 취소"><Undo2 /></button>
           <button type="button" onClick={state.redo} disabled={state.redoStack.length === 0} className="mobile-toolbar-icon" aria-label="다시 실행"><Redo2 /></button>
           <button type="button" onClick={() => state.isDirty && state.cancelChanges()} disabled={!state.isDirty} className="mobile-toolbar-cancel">{t("cancel", state.language)}</button>
-          <button type="button" onClick={handleManualSave} disabled={!state.isDirty} className="mobile-toolbar-save">{t("save", state.language)}</button>
+          <button type="button" onClick={handleManualSave} disabled={!state.isDirty || isSaving} className="mobile-toolbar-save">{isSaving ? (state.language === 'ko' ? '저장 중' : 'Saving') : t("save", state.language)}</button>
         </div>
       </div>
 
@@ -444,10 +454,10 @@ const Admin = () => {
                       }
                     }
                   }}
-                  disabled={!state.isDirty}
+                  disabled={!state.isDirty || isSaving}
                   className={clsx(
                     "px-5 py-2 rounded-full border text-xs font-bold transition cursor-pointer",
-                    state.isDirty
+                    state.isDirty && !isSaving
                       ? "border-gray-300 text-gray-700 hover:bg-gray-50"
                       : "border-gray-200 text-gray-300 cursor-not-allowed"
                   )}
@@ -458,18 +468,19 @@ const Admin = () => {
                 {/* Save Button */}
                 <button
                   onClick={handleManualSave}
-                  disabled={!state.isDirty}
+                  disabled={!state.isDirty || isSaving}
                   className={clsx(
                     "px-6 py-2 rounded-full font-extrabold text-xs transition flex items-center gap-1.5",
-                    state.isDirty
+                    state.isDirty && !isSaving
                       ? "cursor-pointer bg-gray-950 hover:bg-gray-800 text-white shadow-sm active:scale-95"
                       : "cursor-not-allowed bg-gray-100 text-gray-300 border border-gray-200 shadow-none"
                   )}
                 >
-                  <span>{t("save", state.language)}</span>
+                  <span>{isSaving ? (state.language === 'ko' ? '저장 중' : 'Saving') : t("save", state.language)}</span>
                 </button>
               </div>
             </div>
+            {saveError && <p role="alert" className="-mt-3 rounded-xl bg-red-50 px-4 py-3 text-xs font-bold text-red-600">{saveError}</p>}
 
             {/* Tab Editor Views */}
             <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500">{state.language === 'ko' ? '편집기 불러오는 중...' : 'Loading editor...'}</div>}>

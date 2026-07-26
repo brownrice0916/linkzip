@@ -18,6 +18,10 @@ test('resets link overrides recursively when applying a theme', () => {
   assert.equal(links[0].customStyle, undefined);
   assert.equal(links[0].links?.[0].buttonTextColor, undefined);
   assert.equal(links[0].links?.[0].customStyle, undefined);
+  assert.equal(Object.hasOwn(links[0], 'buttonColor'), false);
+  assert.equal(Object.hasOwn(links[0], 'customStyle'), false);
+  assert.equal(Object.hasOwn(links[0].links?.[0] || {}, 'buttonTextColor'), false);
+  assert.equal(Object.hasOwn(links[0].links?.[0] || {}, 'customStyle'), false);
 });
 
 test('applies global button design over individual link overrides', () => {
