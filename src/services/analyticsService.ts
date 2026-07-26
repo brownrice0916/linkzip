@@ -4,11 +4,14 @@ import {
   getDoc,
   getDocs,
   increment,
+  onSnapshot,
   setDoc,
+  type Unsubscribe,
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { AnalyticsDailyItem } from '../store/useStore';
+import { shouldRecordAnalytics } from '../domain/analytics';
 
 const localDateKey = () => {
   const now = new Date();
@@ -16,6 +19,7 @@ const localDateKey = () => {
 };
 
 export async function recordPageView(ownerUid: string): Promise<void> {
+  if (!shouldRecordAnalytics()) return;
   const date = localDateKey();
   await Promise.all([
     setDoc(doc(db, 'analytics', ownerUid), { pageViews: increment(1) }, { merge: true }),
@@ -28,6 +32,7 @@ export async function recordPageView(ownerUid: string): Promise<void> {
 }
 
 export async function recordPublicLinkClick(ownerUid: string, linkId: string): Promise<void> {
+  if (!shouldRecordAnalytics()) return;
   const date = localDateKey();
   await Promise.all([
     setDoc(doc(db, 'analytics', ownerUid, 'links', linkId), {
@@ -67,6 +72,45 @@ export async function getAnalytics(ownerUid: string): Promise<{
     daily,
     linkClicks,
   };
+}
+
+export function subscribeToAnalytics(
+  ownerUid: string,
+  onAnalytics: (analytics: {
+    pageViews: number;
+    daily: AnalyticsDailyItem[];
+    linkClicks: Record<string, number>;
+  }) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  let pageViews = 0;
+  let daily: AnalyticsDailyItem[] = [];
+  let linkClicks: Record<string, number> = {};
+
+  const emit = () => onAnalytics({ pageViews, daily, linkClicks });
+  const handleError = (error: Error) => onError?.(error);
+
+  const unsubscribers = [
+    onSnapshot(doc(db, 'analytics', ownerUid), (snapshot) => {
+      pageViews = Number(snapshot.data()?.pageViews || 0);
+      emit();
+    }, handleError),
+    onSnapshot(collection(db, 'analytics', ownerUid, 'daily'), (snapshot) => {
+      daily = snapshot.docs
+        .map((item) => item.data() as AnalyticsDailyItem)
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(-7);
+      emit();
+    }, handleError),
+    onSnapshot(collection(db, 'analytics', ownerUid, 'links'), (snapshot) => {
+      linkClicks = Object.fromEntries(
+        snapshot.docs.map((item) => [item.id, Number(item.data().clicks || 0)]),
+      );
+      emit();
+    }, handleError),
+  ];
+
+  return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
 }
 
 export async function resetAnalyticsData(ownerUid: string): Promise<void> {

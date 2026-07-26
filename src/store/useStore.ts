@@ -124,6 +124,7 @@ export interface CustomLink {
   iconName?: string; // selected icon key e.g. 'link', 'globe', 'instagram', etc.
   buttonColor?: string; // Custom button background color
   buttonTextColor?: string; // Custom button text color
+  customStyle?: LinkButtonStyle;
   donationConfig?: DonationConfig;
   fileConfig?: FileConfig;
   snsLinks?: SNSItem[];
@@ -131,6 +132,17 @@ export interface CustomLink {
   customerInfoConfig?: CustomerInfoConfig;
   salesConfig?: SalesConfig;
   reservationConfig?: ReservationConfig;
+}
+
+export interface LinkButtonStyle {
+  fontFamily?: 'inherit' | 'sans' | 'serif' | 'mono';
+  fontSize?: number;
+  fontWeight?: 400 | 500 | 600 | 700 | 800 | 900;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
+  opacity?: number;
+  shadow?: 'inherit' | 'none' | 'soft' | 'medium' | 'strong';
 }
 
 export interface AnalyticsDailyItem {
@@ -301,6 +313,7 @@ interface AppState {
   // Analytics & Performance Metrics
   pageViews: number;
   analyticsDailyHistory: AnalyticsDailyItem[];
+  analyticsLinkClicks: Record<string, number>;
   incrementPageViews: () => void;
   recordLinkClick: (linkId: string) => void;
   resetAnalytics: () => void;
@@ -854,6 +867,7 @@ export const useStore = create<AppState>((set) => ({
   // Analytics Initial State & Handlers
   pageViews: 0,
   analyticsDailyHistory: [],
+  analyticsLinkClicks: {},
 
   incrementPageViews: () => set((state) => ({ pageViews: state.pageViews + 1 })),
 
@@ -877,14 +891,16 @@ export const useStore = create<AppState>((set) => ({
 
   resetAnalytics: () => set((state) => ({
     pageViews: 0,
-    customLinks: state.customLinks.map(l => ({ ...l, clicks: 0 })),
+    customLinks: applyLinkClicks(state.customLinks, {}),
     analyticsDailyHistory: [],
+    analyticsLinkClicks: {},
   })),
 
   loadAnalytics: ({ pageViews, daily, linkClicks }) => set((state) => {
     return {
       pageViews,
       analyticsDailyHistory: daily,
+      analyticsLinkClicks: linkClicks,
       customLinks: applyLinkClicks(state.customLinks, linkClicks),
     };
   }),

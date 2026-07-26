@@ -445,7 +445,7 @@ const Admin = () => {
                   onClick={() => {
                     if (state.isDirty) {
                       if (confirm('변경사항을 취소하시겠습니까?')) {
-                        state.undo();
+                        state.cancelChanges();
                       }
                     }
                   }}
@@ -564,10 +564,10 @@ const Admin = () => {
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900">
-                  저장되지 않은 변경사항이 있습니다
+                  {state.language === 'ko' ? '저장하지 않은 변경사항' : 'Unsaved changes'}
                 </h3>
                 <p className="text-xs text-gray-500">
-                  이동하기 전에 변경사항을 저장하시겠습니까?
+                  {state.language === 'ko' ? '이동하기 전에 저장할까요?' : 'Save before leaving?'}
                 </p>
               </div>
             </div>
@@ -577,13 +577,13 @@ const Admin = () => {
                 onClick={handleSaveAndContinue}
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-bold shadow-md transition cursor-pointer"
               >
-                저장하고 이동하기 (Save & Continue)
+                {state.language === 'ko' ? '저장하고 이동' : 'Save and continue'}
               </button>
               <button
                 onClick={handleDiscardAndContinue}
                 className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl text-xs font-bold transition cursor-pointer"
               >
-                저장하지 않고 이동하기 (Discard Changes)
+                {state.language === 'ko' ? '저장하지 않고 이동' : 'Discard and continue'}
               </button>
               <button
                 onClick={() => {
@@ -592,7 +592,7 @@ const Admin = () => {
                 }}
                 className="w-full py-2.5 text-gray-500 hover:text-black text-xs font-bold transition cursor-pointer"
               >
-                취소 (Keep Editing)
+                {state.language === 'ko' ? '계속 편집' : 'Keep editing'}
               </button>
             </div>
           </div>

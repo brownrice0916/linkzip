@@ -14,14 +14,12 @@ import {
   CornerDownRight,
   Image as ImageIcon,
   ChevronDown,
-  ChevronUp,
   ChevronRight,
   ArrowUp,
   ArrowDown,
   Phone,
   Smartphone,
   Gift,
-  Clock,
   Lock,
   HelpCircle,
   CalendarCheck
@@ -56,6 +54,7 @@ import type {
   ReservationScheduleItem,
 } from "../../store/useStore";
 import { BlockList } from "./BlockList";
+import { LinkStyleEditorModal } from "./LinkStyleEditorModal";
 
 const getSocialIconComp = (platform: string) => {
   switch (platform) {
@@ -107,6 +106,26 @@ const LinksEditor = () => {
   const [isOverRootArea, setIsOverRootArea] = useState(false);
   const [activeThumbnailLink, setActiveThumbnailLink] =
     useState<CustomLink | null>(null);
+  const [activeStyleLinkId, setActiveStyleLinkId] = useState<string | null>(null);
+
+  const findLinkById = (links: CustomLink[], id: string): CustomLink | undefined => {
+    for (const link of links) {
+      if (link.id === id) return link;
+      const nested = link.links ? findLinkById(link.links, id) : undefined;
+      if (nested) return nested;
+    }
+    return undefined;
+  };
+
+  const activeStyleLink = activeStyleLinkId
+    ? findLinkById(customLinks, activeStyleLinkId)
+    : undefined;
+
+  const handleCardStyleClick = (event: React.MouseEvent, linkId: string) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
+    setActiveStyleLinkId(linkId);
+  };
 
   // Add / Edit Reservation Schedule Modal State
   const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false);
@@ -284,7 +303,7 @@ const LinksEditor = () => {
         id: `link-${Date.now()}`,
         type: "notice",
         title: "📢 8월 주요 공지사항",
-        url: `https://linkzip.kr/${userHandle}/notice`,
+        url: `/${userHandle}/notice`,
         isVisible: true,
         iconName: "megaphone",
         noticeConfig: {
@@ -298,7 +317,7 @@ const LinksEditor = () => {
       addCustomLink({
         id: `link-${Date.now()}`,
         title: "✏️ 팬 방명록 (응원 메시지 남기기)",
-        url: `https://linkzip.kr/${userHandle}/guestbook`,
+        url: `/${userHandle}/guestbook`,
         isVisible: true,
         iconName: "pen-tool",
       });
@@ -456,6 +475,8 @@ const LinksEditor = () => {
     return (
       <div
         key={link.id}
+        data-testid={`link-card-${link.id}`}
+        onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -541,41 +562,8 @@ const LinksEditor = () => {
             />
           </div>
 
-          {/* Actions: Color Picker, Visibility Toggle & Delete */}
+          {/* Actions: Visibility Toggle & Delete */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Custom Button Color Picker */}
-            <div
-              className="flex items-center gap-1"
-              title="특정 버튼 색상 지정 (기본은 전체 통일)"
-            >
-              <input
-                type="color"
-                value={link.buttonColor || "#ffffff"}
-                onChange={(e) =>
-                  updateCustomLink(link.id, {
-                    buttonColor: e.target.value,
-                    buttonTextColor: "#000000",
-                  })
-                }
-                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              />
-              {link.buttonColor && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateCustomLink(link.id, {
-                      buttonColor: undefined,
-                      buttonTextColor: undefined,
-                    })
-                  }
-                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
-                  title="기본 통일 색상으로 복원"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
             <button
               onClick={() =>
                 updateCustomLink(link.id, { isVisible: !link.isVisible })
@@ -793,6 +781,8 @@ const LinksEditor = () => {
     return (
       <div
         key={link.id}
+        data-testid={`link-card-${link.id}`}
+        onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -868,40 +858,8 @@ const LinksEditor = () => {
             </div>
           </div>
 
-          {/* Right Controls: Color Picker, ON/OFF Switch & Delete */}
+          {/* Right Controls: ON/OFF Switch & Delete */}
           <div className="flex items-center gap-2 shrink-0">
-            <div
-              className="flex items-center gap-1"
-              title="특정 카드 색상 지정 (기본은 전체 통일)"
-            >
-              <input
-                type="color"
-                value={link.buttonColor || "#ffffff"}
-                onChange={(e) =>
-                  updateCustomLink(link.id, {
-                    buttonColor: e.target.value,
-                    buttonTextColor: "#000000",
-                  })
-                }
-                className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              />
-              {link.buttonColor && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateCustomLink(link.id, {
-                      buttonColor: undefined,
-                      buttonTextColor: undefined,
-                    })
-                  }
-                  className="text-[10px] text-gray-400 hover:text-red-500 font-bold px-1"
-                  title="기본 통일 색상으로 복원"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
             <button
               type="button"
               onClick={() =>
@@ -1110,6 +1068,8 @@ const LinksEditor = () => {
     return (
       <div
         key={link.id}
+        data-testid={`link-card-${link.id}`}
+        onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -1172,18 +1132,6 @@ const LinksEditor = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <input
-              type="color"
-              value={link.buttonColor || "#ffffff"}
-              onChange={(e) =>
-                updateCustomLink(link.id, {
-                  buttonColor: e.target.value,
-                  buttonTextColor: "#000000",
-                })
-              }
-              className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              title="카드 색상 지정"
-            />
             <button
               type="button"
               onClick={() =>
@@ -1332,6 +1280,8 @@ const LinksEditor = () => {
     return (
       <div
         key={link.id}
+        data-testid={`link-card-${link.id}`}
+        onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -1580,6 +1530,8 @@ const LinksEditor = () => {
     return (
       <div
         key={link.id}
+        data-testid={`link-card-${link.id}`}
+        onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -1600,6 +1552,20 @@ const LinksEditor = () => {
             >
               <GripVertical className="w-4 h-4" />
             </div>
+
+            <button
+              type="button"
+              onClick={() => toggleBlockCollapse(link.id)}
+              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+              title={isCollapsed ? "펼치기" : "접기"}
+            >
+              <ChevronDown
+                className={clsx(
+                  "w-4 h-4 transition-transform duration-200",
+                  isCollapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black"
+                )}
+              />
+            </button>
 
             {/* ON / OFF Switch */}
             <button
@@ -1624,11 +1590,6 @@ const LinksEditor = () => {
               className="text-base font-black text-gray-900 border-b border-transparent hover:border-gray-300 focus:border-black bg-transparent focus:outline-hidden px-1 py-0.5"
             />
 
-            {/* Reservation Badge */}
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black text-white flex items-center gap-1 shrink-0">
-              <span>reservation</span>
-              <Clock className="w-3 h-3 text-white fill-white" />
-            </span>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -1640,15 +1601,6 @@ const LinksEditor = () => {
               <Trash2 className="w-4 h-4" />
             </button>
 
-            {/* Expand / Collapse Button */}
-            <button
-              type="button"
-              onClick={() => toggleBlockCollapse(link.id)}
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
-            >
-              <span>{isCollapsed ? "Expand" : "Collapse"}</span>
-              {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-            </button>
           </div>
         </div>
 
@@ -1790,6 +1742,8 @@ const LinksEditor = () => {
     return (
       <div
         key={link.id}
+        data-testid={`link-card-${link.id}`}
+        onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -1852,18 +1806,6 @@ const LinksEditor = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <input
-              type="color"
-              value={link.buttonColor || "#ffffff"}
-              onChange={(e) =>
-                updateCustomLink(link.id, {
-                  buttonColor: e.target.value,
-                  buttonTextColor: "#000000",
-                })
-              }
-              className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              title="카드 색상 지정"
-            />
             <button
               type="button"
               onClick={() =>
@@ -1945,6 +1887,8 @@ const LinksEditor = () => {
     return (
       <div
         key={link.id}
+        data-testid={`link-card-${link.id}`}
+        onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -2013,18 +1957,6 @@ const LinksEditor = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <input
-              type="color"
-              value={link.buttonColor || "#ffffff"}
-              onChange={(e) =>
-                updateCustomLink(link.id, {
-                  buttonColor: e.target.value,
-                  buttonTextColor: "#000000",
-                })
-              }
-              className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              title="카드 색상 지정"
-            />
             <button
               type="button"
               onClick={() =>
@@ -2206,6 +2138,8 @@ const LinksEditor = () => {
       return (
         <div
           key={link.id}
+          data-testid={`link-card-${link.id}`}
+          onClick={(event) => handleCardStyleClick(event, link.id)}
           draggable
           onDragStart={(e) => handleDragStart(e, link.id)}
           onDragEnd={handleDragEnd}
@@ -2342,6 +2276,8 @@ const LinksEditor = () => {
     return (
       <div
         key={link.id}
+        data-testid={`link-card-${link.id}`}
+        onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -2412,19 +2348,6 @@ const LinksEditor = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <input
-              type="color"
-              value={link.buttonColor || "#ffffff"}
-              onChange={(e) =>
-                updateCustomLink(link.id, {
-                  buttonColor: e.target.value,
-                  buttonTextColor: "#000000",
-                })
-              }
-              className="w-5 h-5 rounded-md border border-gray-300 cursor-pointer p-0 bg-transparent"
-              title="특정 카드 색상 지정"
-            />
-
             <button
               type="button"
               onClick={() =>
@@ -3015,6 +2938,14 @@ const LinksEditor = () => {
             });
             setActiveReservationScheduleLink(null);
           }}
+        />
+      )}
+
+      {activeStyleLink && (
+        <LinkStyleEditorModal
+          link={activeStyleLink}
+          onClose={() => setActiveStyleLinkId(null)}
+          onUpdate={(updates) => updateCustomLink(activeStyleLink.id, updates)}
         />
       )}
     </div>

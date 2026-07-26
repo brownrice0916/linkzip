@@ -4,9 +4,7 @@ import {
   BarChart3, 
   Eye, 
   MousePointerClick, 
-  TrendingUp, 
   Award, 
-  RotateCcw, 
   Filter, 
   ArrowUpDown, 
   Link2, 
@@ -19,31 +17,27 @@ import {
   Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
-import { getAnalytics, resetAnalyticsData } from '../../services/analyticsService';
+import { subscribeToAnalytics } from '../../services/analyticsService';
 
 export const AnalyticsEditor: React.FC = () => {
-  const { user, pageViews, customLinks, analyticsDailyHistory, resetAnalytics, loadAnalytics } = useStore();
+  const {
+    user,
+    pageViews,
+    socialLinks,
+    customLinks,
+    analyticsDailyHistory,
+    analyticsLinkClicks,
+    loadAnalytics,
+  } = useStore();
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'clicks' | 'ctr' | 'title'>('clicks');
 
   useEffect(() => {
     if (!user?.uid) return;
-    void getAnalytics(user.uid)
-      .then(loadAnalytics)
-      .catch((error) => console.error('Failed to load analytics:', error));
+    return subscribeToAnalytics(user.uid, loadAnalytics, (error) => {
+      console.error('Failed to subscribe to analytics:', error);
+    });
   }, [user?.uid, loadAnalytics]);
-
-  const handleResetAnalytics = async () => {
-    if (!user?.uid) return;
-    if (!window.confirm('모든 통계 데이터를 초기화하시겠습니까?')) return;
-    try {
-      await resetAnalyticsData(user.uid);
-      resetAnalytics();
-    } catch (error) {
-      console.error('Failed to reset analytics:', error);
-      alert('통계 초기화에 실패했습니다.');
-    }
-  };
 
   // Helper to extract flattened list of all links (including inside collections)
   const getAllLinks = (linksList: CustomLink[]): CustomLink[] => {
@@ -58,7 +52,14 @@ export const AnalyticsEditor: React.FC = () => {
     return result;
   };
 
-  const flatLinks = getAllLinks(customLinks);
+  const socialAnalyticsLinks: CustomLink[] = socialLinks.map((link) => ({
+    id: `social-${link.id || link.platform}`,
+    type: 'sns',
+    title: link.platform,
+    url: link.url,
+    clicks: analyticsLinkClicks[`social-${link.id || link.platform}`] || 0,
+  }));
+  const flatLinks = [...getAllLinks(customLinks), ...socialAnalyticsLinks];
 
   // Total Clicks calculation across all links
   const totalClicks = flatLinks.reduce((acc, link) => acc + (link.clicks || 0), 0);
@@ -67,7 +68,8 @@ export const AnalyticsEditor: React.FC = () => {
   const overallCtr = pageViews > 0 ? ((totalClicks / pageViews) * 100).toFixed(1) : '0.0';
 
   // Top Performing Link
-  const topLink = [...flatLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0];
+  const topLinkCandidate = [...flatLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0];
+  const topLink = (topLinkCandidate?.clicks || 0) > 0 ? topLinkCandidate : undefined;
 
   // Maximum daily views for bar chart scaling
   const maxDailyViews = Math.max(...analyticsDailyHistory.map((d) => d.views), 1);
@@ -132,14 +134,6 @@ export const AnalyticsEditor: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleResetAnalytics}
-          className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition cursor-pointer flex items-center gap-2 text-xs font-bold shrink-0 border border-white/10 shadow-xs"
-          title="통계 초기화"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span className="hidden sm:inline">초기화</span>
-        </button>
       </div>
 
       {/* 4 Summary Metric Cards */}
@@ -157,9 +151,8 @@ export const AnalyticsEditor: React.FC = () => {
             <div className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
               {pageViews.toLocaleString()} <span className="text-xs font-bold text-gray-400">회</span>
             </div>
-            <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-emerald-600">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>+14.2% 지난주 대비</span>
+            <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-gray-500">
+              <span>실제 누적 조회 데이터</span>
             </div>
           </div>
         </div>
@@ -176,9 +169,8 @@ export const AnalyticsEditor: React.FC = () => {
             <div className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
               {totalClicks.toLocaleString()} <span className="text-xs font-bold text-gray-400">회</span>
             </div>
-            <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-emerald-600">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>+18.5% 지난주 대비</span>
+            <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-gray-500">
+              <span>실시간 클릭 집계</span>
             </div>
           </div>
         </div>
@@ -246,13 +238,17 @@ export const AnalyticsEditor: React.FC = () => {
 
         {/* CSS Bar Chart */}
         <div className="h-48 flex items-end justify-between gap-3 pt-6 px-2 border-b border-gray-100 pb-4">
-          {analyticsDailyHistory.map((item, idx) => {
+          {analyticsDailyHistory.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400">
+              아직 집계된 트래픽이 없습니다.
+            </div>
+          ) : analyticsDailyHistory.map((item) => {
             const viewsHeightPercent = Math.round((item.views / maxDailyViews) * 100);
             const clicksHeightPercent = Math.round((item.clicks / maxDailyViews) * 100);
             const dailyCtr = item.views > 0 ? ((item.clicks / item.views) * 100).toFixed(0) : 0;
 
             return (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-2 group relative">
+              <div key={item.date} className="flex-1 flex flex-col items-center gap-2 group relative">
                 
                 {/* Tooltip on hover */}
                 <div className="absolute -top-12 bg-black text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-md whitespace-nowrap">
@@ -265,13 +261,13 @@ export const AnalyticsEditor: React.FC = () => {
                   {/* Views Bar */}
                   <div 
                     className="w-1/3 bg-gray-200 rounded-t-lg transition-all group-hover:bg-gray-300"
-                    style={{ height: `${Math.max(viewsHeightPercent, 8)}%` }}
+                    style={{ height: `${viewsHeightPercent}%` }}
                     title={`조회수: ${item.views}`}
                   />
                   {/* Clicks Bar */}
                   <div 
                     className="w-1/3 bg-gradient-to-t from-purple-700 to-indigo-500 rounded-t-lg transition-all shadow-xs group-hover:from-purple-800 group-hover:to-indigo-600"
-                    style={{ height: `${Math.max(clicksHeightPercent, 5)}%` }}
+                    style={{ height: `${clicksHeightPercent}%` }}
                     title={`클릭수: ${item.clicks}`}
                   />
                 </div>

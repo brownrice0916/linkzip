@@ -104,6 +104,32 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   };
   const isPublic = props.isPublic || false;
 
+  const getLinkDestination = (link: Pick<CustomLink, 'type' | 'iconName' | 'title' | 'url'>) => {
+    const rawUrl = link.url?.trim() || '';
+    const isGuestbook =
+      link.iconName === 'pen-tool' ||
+      link.title?.includes('방명록') ||
+      link.title?.toLowerCase().includes('guestbook') ||
+      rawUrl.includes('guestbook');
+    const isNotice =
+      link.type === 'notice' ||
+      link.iconName === 'megaphone' ||
+      link.title?.includes('공지') ||
+      link.title?.toLowerCase().includes('notice') ||
+      rawUrl.includes('notice');
+
+    if (isGuestbook) {
+      return { href: `/${profile.username || 'preview'}/guestbook`, isInternal: true };
+    }
+    if (isNotice) {
+      return { href: `/${profile.username || 'preview'}/notice`, isInternal: true };
+    }
+    if (rawUrl.match(/^https?:\/\//) || rawUrl.startsWith('/')) {
+      return { href: rawUrl, isInternal: rawUrl.startsWith('/') };
+    }
+    return { href: rawUrl ? `https://${rawUrl}` : '#', isInternal: false };
+  };
+
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
   const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
@@ -238,6 +264,32 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   let customButtonStyle: React.CSSProperties = {};
   if (buttonColor) customButtonStyle.backgroundColor = buttonColor;
   if (buttonTextColor) customButtonStyle.color = buttonTextColor;
+
+  const getCustomLinkStyle = (link: CustomLink): React.CSSProperties => {
+    const style = link.customStyle;
+    const shadowMap: Record<string, string> = {
+      none: 'none',
+      soft: '0 4px 12px rgba(15, 23, 42, 0.10)',
+      medium: '0 8px 20px rgba(15, 23, 42, 0.18)',
+      strong: '0 12px 30px rgba(15, 23, 42, 0.28)',
+    };
+
+    return {
+      ...customButtonStyle,
+      ...(link.buttonColor ? { backgroundColor: link.buttonColor } : {}),
+      ...(link.buttonTextColor ? { color: link.buttonTextColor } : {}),
+      ...(style?.fontFamily === 'sans' ? { fontFamily: 'sans-serif' } : {}),
+      ...(style?.fontFamily === 'serif' ? { fontFamily: 'serif' } : {}),
+      ...(style?.fontFamily === 'mono' ? { fontFamily: 'monospace' } : {}),
+      ...(style?.fontSize ? { fontSize: `${style.fontSize}px` } : {}),
+      ...(style?.fontWeight ? { fontWeight: style.fontWeight } : {}),
+      ...(style?.borderColor ? { borderColor: style.borderColor } : {}),
+      ...(style?.borderWidth !== undefined ? { borderWidth: `${style.borderWidth}px` } : {}),
+      ...(style?.borderRadius !== undefined ? { borderRadius: `${style.borderRadius}px` } : {}),
+      ...(style?.opacity !== undefined ? { opacity: style.opacity / 100 } : {}),
+      ...(style?.shadow && style.shadow !== 'inherit' ? { boxShadow: shadowMap[style.shadow] } : {}),
+    };
+  };
 
   if (buttonStyle === "glass") {
     buttonClass +=
@@ -494,6 +546,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     }
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => recordLinkClick(`social-${link.id || link.platform}`)}
                     className={clsx(
                       "w-9 h-9 rounded-full flex items-center justify-center transition shadow-2xs hover:scale-110",
                       templateValue.startsWith("neo-")
@@ -542,26 +595,25 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             (!link.thumbnailType && link.iconName);
                           const isNone = link.thumbnailType === "none";
                           const IconComp = getLinkIcon(link.iconName);
+                          const destination = getLinkDestination(link);
 
                           return (
                             <a
                               key={link.id}
-                              href={
-                                link.url?.match(/^https?:\/\//)
-                                  ? link.url
-                                  : `https://${link.url}`
-                              }
-                              target="_blank"
+                              href={destination.href}
+                              target={destination.isInternal ? "_self" : "_blank"}
                               rel="noopener noreferrer"
+                              onClick={() => recordLinkClick(link.id)}
                               className="aspect-square rounded-2xl flex flex-col items-center justify-center p-2 bg-white/20 backdrop-blur-md border border-white/20 hover:scale-105 transition-transform"
-                              style={
-                                isColor && templateValue !== "#0f172a"
+                              style={{
+                                ...(isColor && templateValue !== "#0f172a"
                                   ? {
                                       backgroundColor: "rgba(0,0,0,0.05)",
                                       borderColor: "rgba(0,0,0,0.1)",
                                     }
-                                  : {}
-                              }
+                                  : {}),
+                                ...getCustomLinkStyle(link),
+                              }}
                             >
                               {!isNone && (
                                 <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-2 overflow-hidden shrink-0">
@@ -616,18 +668,17 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             (!link.thumbnailType && link.iconName);
                           const isNone = link.thumbnailType === "none";
                           const IconComp = getLinkIcon(link.iconName);
+                          const destination = getLinkDestination(link);
 
                           return (
                             <a
                               key={link.id}
-                              href={
-                                link.url?.match(/^https?:\/\//)
-                                  ? link.url
-                                  : `https://${link.url}`
-                              }
-                              target="_blank"
+                              href={destination.href}
+                              target={destination.isInternal ? "_self" : "_blank"}
                               rel="noopener noreferrer"
+                              onClick={() => recordLinkClick(link.id)}
                               className={buttonClass}
+                              style={getCustomLinkStyle(link)}
                             >
                               {!isNone && (
                                 <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
@@ -682,7 +733,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       setActiveDonationBlock(block);
                     }}
                     className={buttonClass}
-                    style={customButtonStyle}
+                    style={getCustomLinkStyle(block)}
                   >
                     {!isNone && (
                       <div
@@ -724,8 +775,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     download={block.fileConfig?.fileName || 'download'}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => recordLinkClick(block.id)}
                     className={buttonClass}
-                    style={customButtonStyle}
+                    style={getCustomLinkStyle(block)}
                   >
                     {!isNone && (
                       <div
@@ -782,6 +834,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           href={targetUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={() => recordLinkClick(block.id)}
+                          style={getCustomLinkStyle(block)}
                           className="w-11 h-11 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center shadow-md hover:scale-110 transition cursor-pointer border border-gray-100"
                           title={item.platform}
                         >
@@ -809,7 +863,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 };
 
                 return (
-                  <div key={block.id} className="w-full bg-[#D1E7DD]/90 backdrop-blur-xs border border-[#B1D8C7] rounded-3xl p-5 space-y-4 font-sans text-gray-900 shadow-md">
+                  <div key={block.id} className="w-full bg-[#D1E7DD]/90 backdrop-blur-xs border border-[#B1D8C7] rounded-3xl p-5 space-y-4 font-sans text-gray-900 shadow-md" style={getCustomLinkStyle(block)}>
                     {/* Calendar Header with Navigation */}
                     <div className="flex items-center justify-center gap-4 px-2">
                       <button
@@ -897,12 +951,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 };
 
                 return (
-                  <CustomerInfoVisitorCard
-                    key={block.id}
-                    block={block}
-                    config={config}
-                    ownerUid={props.ownerUid}
-                  />
+                  <div key={block.id} style={getCustomLinkStyle(block)}>
+                    <CustomerInfoVisitorCard
+                      block={block}
+                      config={config}
+                      ownerUid={props.ownerUid}
+                    />
+                  </div>
                 );
               }
 
@@ -916,7 +971,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       setActiveSalesBlock(block);
                     }}
                     className={buttonClass}
-                    style={customButtonStyle}
+                    style={getCustomLinkStyle(block)}
                   >
                     {!isNone && (
                       <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
@@ -942,42 +997,17 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 );
               }
 
-              const isGuestbookBlock = 
-                block.iconName === 'pen-tool' || 
-                block.title?.includes('방명록') || 
-                block.title?.toLowerCase().includes('guestbook') ||
-                block.url?.includes('guestbook');
-
-              const isNoticeBlock = 
-                block.type === 'notice' ||
-                block.iconName === 'megaphone' || 
-                block.title?.includes('공지') || 
-                block.title?.toLowerCase().includes('notice') ||
-                block.url?.includes('notice');
-
-              const rawUrl = block.url || '';
-              let hrefTarget = rawUrl;
-              if (isGuestbookBlock) {
-                hrefTarget = `https://linkzip.kr/${profile.username || 'preview'}/guestbook`;
-              } else if (isNoticeBlock) {
-                hrefTarget = `https://linkzip.kr/${profile.username || 'preview'}/notice`;
-              } else if (rawUrl.match(/^https?:\/\//)) {
-                hrefTarget = rawUrl;
-              } else if (rawUrl.startsWith('/')) {
-                hrefTarget = `https://linkzip.kr${rawUrl}`;
-              } else if (rawUrl) {
-                hrefTarget = `https://${rawUrl}`;
-              }
+              const destination = getLinkDestination(block);
 
               return (
                 <a
                   key={block.id}
-                  href={hrefTarget}
-                  target={isGuestbookBlock || isNoticeBlock ? "_self" : "_blank"}
+                  href={destination.href}
+                  target={destination.isInternal ? "_self" : "_blank"}
                   rel="noopener noreferrer"
                   onClick={() => recordLinkClick(block.id)}
                   className={buttonClass}
-                  style={customButtonStyle}
+                  style={getCustomLinkStyle(block)}
                 >
                   {!isNone && (
                     <div
