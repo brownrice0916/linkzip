@@ -5,6 +5,26 @@ import LinkTreePreview from '../LinkTreePreview';
 import { useStore, type ProfileWorkspace } from '../../store/useStore';
 import { normalizeUsername } from '../../domain/profileData';
 
+const profilePreviewBackdrop = (workspace: ProfileWorkspace) => {
+  if (workspace.templateType === 'color') {
+    return `color-mix(in srgb, ${workspace.templateValue} 22%, #f5f5f4)`;
+  }
+  return ({
+    'neon-dark': '#d9dbe2',
+    'soft-gradient': '#eee7f5',
+    'neo-pop': '#f5e4e9',
+    'neo-sunshine': '#f5eed7',
+    'neo-cyber': '#dceff0',
+    'neo-mint': '#dcece5',
+    bloom: '#f1e1e7',
+    sunbloom: '#f3ead3',
+    blocks: '#e9e3f2',
+    groove: '#eee1dc',
+    lake: '#dde2e7',
+    nourish: '#dde8e2',
+  } as Record<string, string>)[workspace.templateValue] || '#e7e5e4';
+};
+
 const workspaceFromCurrentState = (state: ReturnType<typeof useStore.getState>): ProfileWorkspace => ({
   id: state.activeProfileId || 'primary',
   profile: state.profile,
@@ -96,7 +116,7 @@ const AdminProfilesHome: React.FC = () => {
           {workspaces.map((workspace) => (
             <article key={workspace.id} className="group overflow-hidden rounded-[20px] border border-gray-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(15,23,42,0.11)]">
               <div role="button" tabIndex={0} onClick={() => openWorkspace(workspace)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') openWorkspace(workspace); }} className="block w-full cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500">
-                <div className="admin-profile-card-preview relative h-36 overflow-hidden bg-gray-200 sm:h-44">
+                <div className="admin-profile-card-preview relative h-52 overflow-hidden sm:h-80" style={{ background: profilePreviewBackdrop(workspace) }}>
                   <div className="admin-profile-card-scale" aria-hidden="true">
                     <LinkTreePreview profile={workspace.profile} templateType={workspace.templateType} templateValue={workspace.templateValue} socialLinks={workspace.socialLinks} customLinks={workspace.customLinks} design={workspace.design} />
                   </div>

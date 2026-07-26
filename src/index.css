@@ -102,15 +102,34 @@
 }
 
 .admin-profile-card-preview .admin-profile-card-scale {
-  width: 400%;
-  height: 400%;
-  transform: scale(0.25);
-  transform-origin: top left;
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 390px;
+  height: 780px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 30px;
+  background: white;
+  box-shadow: 0 16px 34px rgb(15 23 42 / 0.14);
+  transform: translateX(-50%) scale(0.52);
+  transform-origin: top center;
   pointer-events: none;
 }
 
 .admin-profile-card-preview .admin-profile-card-scale > div {
-  min-height: 1024px;
+  width: 390px !important;
+  max-width: 390px !important;
+  min-height: 780px !important;
+  margin: 0 !important;
+  border-radius: 30px !important;
+}
+
+@media (max-width: 640px) {
+  .admin-profile-card-preview .admin-profile-card-scale {
+    top: 12px;
+    transform: translateX(-50%) scale(0.36);
+  }
 }
 
 /* Keep the live phone and editor as two stable columns while desktop zoom changes. */

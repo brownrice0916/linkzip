@@ -550,7 +550,7 @@ const Admin = () => {
       </div>
 
       {/* Right Live Phone Preview (Desktop only) */}
-      <div className="admin-live-preview col-start-1 row-start-1 row-span-3 flex w-full bg-[#E5E8EB] rounded-[28px] border border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
+      <div className="admin-live-preview col-start-1 row-start-1 row-span-3 flex w-full bg-transparent border-0 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
         <button
           type="button"
           onClick={() => requestNavigation('home')}
