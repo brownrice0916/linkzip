@@ -127,11 +127,26 @@ const isSchedulePast = (schedule: ReservationScheduleItem, now = new Date()) => 
   return end.getTime() < now.getTime();
 };
 
+const isScheduleInCalendarMonth = (schedule: ReservationScheduleItem, year: number, month: number) => {
+  const start = getScheduleDate(schedule.startDate, year);
+  let end = getScheduleDate(schedule.endDate, start?.getFullYear() || year) || start;
+  if (!start || !end) return false;
+  if (!/\d{4}/.test(schedule.endDate || '') && end.getTime() < start.getTime()) {
+    end = new Date(end.getFullYear() + 1, end.getMonth(), end.getDate());
+  }
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+  return start.getTime() <= monthEnd.getTime() && end.getTime() >= monthStart.getTime();
+};
+
 const formatCompactScheduleDate = (schedule: ReservationScheduleItem) => {
   const date = getScheduleDate(schedule.startDate, new Date().getFullYear());
   if (!date) return schedule.startDate;
-  const dateText = `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
-  return schedule.startHour ? `${dateText}/${String(schedule.startHour).padStart(2, '0')}:00` : dateText;
+  const hour = Number(schedule.startHour);
+  if (!schedule.startHour || !Number.isFinite(hour)) return `${date.getDate()}일 시간 미정`;
+  const period = hour < 12 ? '오전' : '오후';
+  const displayHour = hour % 12 || 12;
+  return `${date.getDate()}일 ${period} ${displayHour}시`;
 };
 
 const formatScheduleTime = (schedule: ReservationScheduleItem) =>
@@ -956,11 +971,12 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   autoNotification: false
                 };
                 const today = new Date();
-                const visibleSchedules = config.schedules.filter((schedule) => !isSchedulePast(schedule, today));
-                const initialCalendarView = getInitialCalendarView(visibleSchedules);
+                const upcomingSchedules = config.schedules.filter((schedule) => !isSchedulePast(schedule, today));
+                const initialCalendarView = getInitialCalendarView(upcomingSchedules);
                 const calendarView = calendarViews[block.id] || initialCalendarView;
                 const calendarYear = calendarView.year;
                 const calendarMonth = calendarView.month;
+                const visibleSchedules = upcomingSchedules.filter((schedule) => isScheduleInCalendarMonth(schedule, calendarYear, calendarMonth));
                 const firstWeekday = new Date(calendarYear, calendarMonth - 1, 1).getDay();
                 const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
                 const isScheduleListExpanded = expandedReservationIds[block.id] ?? false;
