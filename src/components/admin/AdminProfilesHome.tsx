@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Bell, LayoutGrid, Menu, Plus, Settings, Share2, Sparkles, Users, X } from 'lucide-react';
+import { Bell, Plus, Settings, X } from 'lucide-react';
 import LinkTreePreview from '../LinkTreePreview';
 import { useStore, type ProfileWorkspace } from '../../store/useStore';
 import { normalizeUsername } from '../../domain/profileData';
@@ -41,10 +41,10 @@ const AdminProfilesHome: React.FC = () => {
     [state.profileWorkspaces, state.activeProfileId, state.profile, state.templateType, state.templateValue, state.socialLinks, state.customLinks, state.buttonStyle, state.buttonRoundness, state.buttonShadow, state.buttonColor, state.buttonTextColor, state.buttonOpacity, state.buttonTextOpacity, state.fontFamily, state.titleFontFamily, state.pageTextColor, state.sticker],
   );
 
-  const openWorkspace = (workspace: ProfileWorkspace, tab = 'content') => {
+  const openWorkspace = (workspace: ProfileWorkspace) => {
     state.syncActiveProfileWorkspace();
     state.switchProfileWorkspace(workspace.id);
-    navigate(`/admin/${tab}`);
+    navigate('/admin/content');
   };
 
   const handleCreate = () => {
@@ -79,7 +79,7 @@ const AdminProfilesHome: React.FC = () => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-7 sm:px-8 sm:pt-10">
+      <main className="mx-auto w-full max-w-4xl px-4 pb-12 pt-7 sm:px-8 sm:pt-10">
         <div className="mb-7 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-3xl font-black tracking-[-0.04em] sm:text-5xl">{isKo ? '링크집을 관리하세요' : 'Manage your LinkZips'}</h2>
@@ -90,43 +90,30 @@ const AdminProfilesHome: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5">
           {workspaces.map((workspace) => (
-            <article key={workspace.id} className="group overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)]">
+            <article key={workspace.id} className="group overflow-hidden rounded-[20px] border border-gray-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(15,23,42,0.11)]">
               <div role="button" tabIndex={0} onClick={() => openWorkspace(workspace)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') openWorkspace(workspace); }} className="block w-full cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500">
-                <div className="admin-profile-card-preview relative h-64 overflow-hidden bg-gray-200">
+                <div className="admin-profile-card-preview relative h-36 overflow-hidden bg-gray-200 sm:h-44">
                   <div className="admin-profile-card-scale" aria-hidden="true">
                     <LinkTreePreview profile={workspace.profile} templateType={workspace.templateType} templateValue={workspace.templateValue} socialLinks={workspace.socialLinks} customLinks={workspace.customLinks} design={workspace.design} />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/16 to-transparent opacity-0 transition group-hover:opacity-100" />
                 </div>
-                <div className="flex items-center gap-3 p-5">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
-                    {workspace.profile.avatarUrl ? <img src={workspace.profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xl">👤</div>}
+                <div className="flex items-center gap-2.5 p-3 sm:p-4">
+                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 sm:h-10 sm:w-10">
+                    {workspace.profile.avatarUrl ? <img src={workspace.profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-base">👤</div>}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-lg font-black">{workspace.profile.name || workspace.profile.username}</h3>
-                    <p className="truncate text-xs font-semibold text-gray-500">linkzip.kr/{workspace.profile.username}</p>
+                    <h3 className="truncate text-sm font-black sm:text-base">{workspace.profile.name || workspace.profile.username}</h3>
+                    <p className="truncate text-[10px] font-semibold text-gray-500 sm:text-xs">linkzip.kr/{workspace.profile.username}</p>
                   </div>
-                  <span className="rounded-full bg-gray-100 px-4 py-2 text-xs font-black transition group-hover:bg-black group-hover:text-white">{isKo ? '편집' : 'Edit'}</span>
                 </div>
-              </div>
-              <div className="grid grid-cols-3 border-t border-gray-100 p-2">
-                <button type="button" onClick={() => openWorkspace(workspace, 'content')} className="admin-profile-quick"><Plus />{isKo ? '링크' : 'Links'}</button>
-                <button type="button" onClick={() => openWorkspace(workspace, 'design')} className="admin-profile-quick"><Sparkles />{isKo ? '디자인' : 'Design'}</button>
-                <button type="button" onClick={() => window.open(`/${workspace.profile.username}`, '_blank')} className="admin-profile-quick"><Share2 />{isKo ? '공개 화면' : 'View'}</button>
               </div>
             </article>
           ))}
         </div>
       </main>
-
-      <nav className="admin-home-bottom-nav">
-        <button className="is-active"><LayoutGrid /><span>{isKo ? '내 링크집' : 'Profiles'}</span></button>
-        <button onClick={() => navigate('/admin/analyze')}><BarChart3 /><span>{isKo ? '분석' : 'Insights'}</span></button>
-        <button onClick={() => navigate('/admin/growth')}><Users /><span>{isKo ? '고객' : 'Audience'}</span></button>
-        <button onClick={() => navigate('/admin/settings')}><Menu /><span>{isKo ? '더보기' : 'More'}</span></button>
-      </nav>
 
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">

@@ -528,16 +528,26 @@ const Admin = () => {
             <span className="text-[10px]">{state.language === 'ko' ? '디자인' : 'Design'}</span>
           </button>
           <button
-            onClick={() => requestNavigation("automation")}
+            onClick={() => requestNavigation("analytics")}
             className={clsx(
               "flex flex-col items-center gap-1",
-              activeTab === "automation"
+              activeTab === "analytics"
                 ? "text-purple-600 font-bold"
                 : "text-gray-400"
             )}
           >
-            <Sparkles className="w-5 h-5" />
-            <span className="text-[10px]">{state.language === 'ko' ? '도구' : 'Enhance'}</span>
+            <BarChart3 className="w-5 h-5" />
+            <span className="text-[10px]">{state.language === 'ko' ? '분석' : 'Insights'}</span>
+          </button>
+          <button
+            onClick={() => requestNavigation("automation")}
+            className={clsx(
+              "flex flex-col items-center gap-1",
+              activeTab === "automation" ? "text-purple-600 font-bold" : "text-gray-400"
+            )}
+          >
+            <UserIcon className="w-5 h-5" />
+            <span className="text-[10px]">{state.language === 'ko' ? '고객' : 'Audience'}</span>
           </button>
           </>}
         </div>
@@ -564,7 +574,8 @@ const Admin = () => {
             <button type="button" onClick={() => requestNavigation("links")}><Link2 /><span>{state.language === 'ko' ? '링크' : 'Links'}</span></button>
             <button type="button" className="text-black"><Eye /><span>{state.language === 'ko' ? '프리뷰' : 'Preview'}</span></button>
             <button type="button" onClick={() => requestNavigation("appearance")}><Palette /><span>{state.language === 'ko' ? '디자인' : 'Design'}</span></button>
-            <button type="button" onClick={() => requestNavigation("automation")}><Sparkles /><span>{state.language === 'ko' ? '도구' : 'Enhance'}</span></button>
+            <button type="button" onClick={() => requestNavigation("analytics")}><BarChart3 /><span>{state.language === 'ko' ? '분석' : 'Insights'}</span></button>
+            <button type="button" onClick={() => requestNavigation("automation")}><UserIcon /><span>{state.language === 'ko' ? '고객' : 'Audience'}</span></button>
           </>}
         </div>
       )}

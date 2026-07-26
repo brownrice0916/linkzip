@@ -113,67 +113,6 @@
   min-height: 1024px;
 }
 
-.admin-profile-quick {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  border-radius: 999px;
-  padding: 0.7rem 0.45rem;
-  color: #4b5563;
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease;
-}
-
-.admin-profile-quick:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.admin-profile-quick svg {
-  width: 15px;
-  height: 15px;
-}
-
-.admin-home-bottom-nav {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 30;
-  display: flex;
-  min-height: 74px;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(1.5rem, 8vw, 5rem);
-  border-top: 1px solid #e5e7eb;
-  background: rgb(255 255 255 / 0.96);
-  backdrop-filter: blur(16px);
-}
-
-.admin-home-bottom-nav button {
-  display: flex;
-  min-width: 58px;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  color: #6b7280;
-  font-size: 10px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.admin-home-bottom-nav button.is-active {
-  color: #7c3aed;
-}
-
-.admin-home-bottom-nav svg {
-  width: 21px;
-  height: 21px;
-}
-
 /* Keep the live phone and editor as two stable columns while desktop zoom changes. */
 .linkzip-admin.admin-shell {
   scrollbar-gutter: stable;
