@@ -69,30 +69,7 @@ export const MarketingEditor: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-20 font-sans max-w-4xl">
-      
-      {/* Marketing Header Banner */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-purple-900 via-indigo-900 to-black text-white p-6 sm:p-8 rounded-3xl shadow-lg">
-        <div className="space-y-1.5 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-pink-500/30 border border-pink-400/40 text-pink-200 uppercase tracking-widest flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-300 animate-spin" /> Marketing Hub
-            </span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">인스타그램 DM 자동 발송 & 마케팅</h2>
-          <p className="text-xs text-purple-200 font-medium">
-            인스타그램 댓글/메시지에 자동으로 DM 링크를 발송하고 알림톡 마케팅을 관리합니다.
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsDmWizardOpen(true)}
-          className="px-4 py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-2xl transition cursor-pointer font-extrabold text-xs shrink-0 flex items-center gap-2 shadow-md hover:scale-105"
-        >
-          <FaInstagram className="w-4 h-4" />
-          <span>DM 위자드 설정</span>
-        </button>
-      </div>
+    <div className="space-y-6 animate-fade-in pb-20 font-sans max-w-4xl">
 
       {/* 1. Instagram DM Auto-Sending Section */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-6">
