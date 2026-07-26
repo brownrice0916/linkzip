@@ -12,6 +12,8 @@ interface BlockListProps {
   renderNotice: (link: CustomLink) => ReactNode;
   renderCustomerInfo: (link: CustomLink) => ReactNode;
   renderSales: (link: CustomLink) => ReactNode;
+  renderAffiliateProduct: (link: CustomLink) => ReactNode;
+  renderMap: (link: CustomLink) => ReactNode;
 }
 
 export function BlockList({ links, ...renderers }: BlockListProps) {
@@ -25,6 +27,8 @@ export function BlockList({ links, ...renderers }: BlockListProps) {
       case 'notice': return renderers.renderNotice(block);
       case 'customer_info': return renderers.renderCustomerInfo(block);
       case 'sales': return renderers.renderSales(block);
+      case 'affiliate_product': return renderers.renderAffiliateProduct(block);
+      case 'map': return renderers.renderMap(block);
       default: return renderers.renderLink(block);
     }
   });

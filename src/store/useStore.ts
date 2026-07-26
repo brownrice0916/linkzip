@@ -110,9 +110,21 @@ export interface ReservationConfig {
   autoNotification?: boolean;
 }
 
+export interface AffiliateProductConfig {
+  imageUrl?: string;
+  affiliateUrl: string;
+  price?: number;
+  currency?: 'KRW' | 'USD' | 'JPY' | 'EUR';
+  displayMode?: 'compact' | 'featured';
+}
+
+export interface MapConfig {
+  query: string;
+}
+
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'anonymous_message' | 'sales' | 'reservation';
+  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'anonymous_message' | 'sales' | 'reservation' | 'affiliate_product' | 'map';
   title: string;
   publicTitle?: string;
   url?: string;
@@ -134,6 +146,8 @@ export interface CustomLink {
   customerInfoConfig?: CustomerInfoConfig;
   salesConfig?: SalesConfig;
   reservationConfig?: ReservationConfig;
+  affiliateProductConfig?: AffiliateProductConfig;
+  mapConfig?: MapConfig;
 }
 
 export interface LinkButtonStyle {

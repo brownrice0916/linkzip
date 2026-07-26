@@ -17,7 +17,7 @@ import {
   FaGlobe,
   FaFigma,
 } from "react-icons/fa";
-import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, MapPin } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import { DonationVisitorModal } from "./DonationVisitorModal";
 import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
@@ -183,8 +183,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   };
   const isPublic = props.isPublic || false;
 
-  const getLinkDestination = (link: Pick<CustomLink, 'type' | 'iconName' | 'title' | 'url'>) => {
-    const rawUrl = link.url?.trim() || '';
+  const getLinkDestination = (link: CustomLink) => {
+    const affiliateUrl = link.type === 'affiliate_product' ? link.affiliateProductConfig?.affiliateUrl : undefined;
+    const mapQuery = link.type === 'map' ? link.mapConfig?.query.trim() : undefined;
+    const rawUrl = affiliateUrl?.trim() || (mapQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}` : link.url?.trim()) || '';
     const isGuestbook =
       link.iconName === 'pen-tool' ||
       link.title?.includes('방명록') ||
@@ -1190,6 +1192,42 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     <span className="flex-1 text-center text-[15px] font-bold">{block.title || '익명 메시지 보내기'}</span>
                     <MoreHorizontal className="h-5 w-5 shrink-0 opacity-60" />
                   </a>
+                );
+              }
+
+              if (block.type === 'affiliate_product') {
+                const affiliate = block.affiliateProductConfig;
+                const productUrl = getLinkDestination(block).href;
+                const currency = affiliate?.currency || 'KRW';
+                const formattedPrice = affiliate?.price !== undefined
+                  ? new Intl.NumberFormat(store.language === 'ko' ? 'ko-KR' : 'en-US', { style: 'currency', currency, maximumFractionDigits: currency === 'KRW' || currency === 'JPY' ? 0 : 2 }).format(affiliate.price)
+                  : '';
+                if ((affiliate?.displayMode || 'compact') === 'compact') {
+                  return (
+                    <a key={block.id} href={productUrl} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordLinkClick(block.id)} className={buttonClass} style={getCustomLinkStyle(block)}>
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/5">{affiliate?.imageUrl ? <img src={affiliate.imageUrl} alt={block.title} className="h-full w-full object-cover" /> : <ShoppingBag className="h-5 w-5 opacity-50" />}</span>
+                      <span className="min-w-0 flex-1 text-center"><span className="block truncate text-[15px] font-bold">{block.title || (store.language === 'ko' ? '추천 상품' : 'Recommended product')}</span>{formattedPrice && <span className="mt-0.5 block text-xs font-semibold opacity-65">{formattedPrice}</span>}</span>
+                      <ExternalLink className="h-4 w-4 shrink-0 opacity-45" />
+                    </a>
+                  );
+                }
+                return (
+                  <a key={block.id} href={productUrl} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordLinkClick(block.id)} className="group overflow-hidden rounded-3xl border border-white/30 bg-white/25 text-left shadow-sm backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl" style={getCustomLinkStyle(block)}>
+                    <div className="aspect-[16/10] w-full overflow-hidden bg-black/5">{affiliate?.imageUrl ? <img src={affiliate.imageUrl} alt={block.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><ShoppingBag className="h-10 w-10 opacity-30" /></div>}</div>
+                    <div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className={clsx("truncate text-[15px] font-extrabold", textClass)}>{block.title || (store.language === 'ko' ? '추천 상품' : 'Recommended product')}</p>{formattedPrice && <p className={clsx("mt-1 text-sm font-bold opacity-70", textClass)}>{formattedPrice}</p>}</div><ExternalLink className="h-5 w-5 shrink-0 opacity-50 transition group-hover:opacity-100" /></div>
+                  </a>
+                );
+              }
+
+              if (block.type === 'map') {
+                const mapQuery = block.mapConfig?.query.trim() || '';
+                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+                const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;
+                return (
+                  <div key={block.id} className="overflow-hidden rounded-3xl border border-white/30 bg-white/20 shadow-sm backdrop-blur-md" style={getCustomLinkStyle(block)}>
+                    {mapQuery && <iframe title={`${block.title || '지도'} 지도`} src={mapEmbedUrl} className="h-52 w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
+                    <a href={mapQuery ? mapUrl : '#'} target="_blank" rel="noopener noreferrer" onClick={() => recordLinkClick(block.id)} className="flex items-center gap-3 p-4 transition hover:bg-white/15"><MapPin className="h-5 w-5 shrink-0" /><span className={clsx("min-w-0 flex-1 truncate text-[15px] font-bold", textClass)}>{block.title || (store.language === 'ko' ? '지도에서 보기' : 'View map')}</span><ExternalLink className="h-4 w-4 shrink-0 opacity-50" /></a>
+                  </div>
                 );
               }
 

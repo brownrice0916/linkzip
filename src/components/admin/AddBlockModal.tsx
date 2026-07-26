@@ -9,7 +9,9 @@ import {
   CalendarCheck, 
   Phone,
   Download,
-  MessageSquareText
+  MessageSquareText,
+  BadgeDollarSign,
+  MapPinned
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { useStore } from '../../store/useStore';
@@ -98,6 +100,22 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           icon: ShoppingBag, 
           bgColor: 'bg-indigo-500', 
           iconColor: 'text-white' 
+        },
+        {
+          id: 'affiliate_product',
+          label: tr('어필리에이트 상품', 'Affiliate product'),
+          desc: tr('상품 이미지, 제휴 링크와 가격을 등록합니다.', 'Add a product image, affiliate link, and price.'),
+          icon: BadgeDollarSign,
+          bgColor: 'bg-fuchsia-600',
+          iconColor: 'text-white'
+        },
+        {
+          id: 'map',
+          label: tr('지도', 'Map'),
+          desc: tr('한글 장소명이나 주소를 검색해 지도를 표시합니다.', 'Search a place or address and display a map.'),
+          icon: MapPinned,
+          bgColor: 'bg-sky-600',
+          iconColor: 'text-white'
         },
         { 
           id: 'donation', 

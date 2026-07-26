@@ -23,7 +23,10 @@ import {
   Gift,
   Lock,
   HelpCircle,
-  CalendarCheck
+  CalendarCheck,
+  BadgeDollarSign,
+  MapPinned,
+  Upload
 } from "lucide-react";
 import { getLinkIcon } from "../../lib/icons";
 import {
@@ -56,6 +59,7 @@ import type {
 } from "../../store/useStore";
 import { BlockList } from "./BlockList";
 import { LinkStyleEditorModal } from "./LinkStyleEditorModal";
+import { uploadPublicImage } from "../../services/storageService";
 
 const getSocialIconComp = (platform: string) => {
   switch (platform) {
@@ -109,6 +113,7 @@ const LinksEditor = () => {
     moveItemRelative,
     moveItemDirection,
     language,
+    user,
   } = useStore();
   const isKo = language === 'ko';
 
@@ -118,6 +123,7 @@ const LinksEditor = () => {
   const [activeThumbnailLink, setActiveThumbnailLink] =
     useState<CustomLink | null>(null);
   const [activeStyleLinkId, setActiveStyleLinkId] = useState<string | null>(null);
+  const [uploadingAffiliateId, setUploadingAffiliateId] = useState<string | null>(null);
 
   const findLinkContext = (
     links: CustomLink[],
@@ -381,6 +387,31 @@ const LinksEditor = () => {
           products: [],
           creatorMessage: "구매해주셔서 감사합니다.",
         },
+      });
+    } else if (blockType === "affiliate_product") {
+      addBlockToTarget({
+        id: `link-${Date.now()}`,
+        type: "affiliate_product",
+        title: isKo ? "추천 상품" : "Recommended product",
+        url: "https://",
+        isVisible: true,
+        iconName: "shopping-bag",
+        affiliateProductConfig: {
+          imageUrl: "",
+          affiliateUrl: "https://",
+          price: undefined,
+          currency: "KRW",
+          displayMode: "compact",
+        },
+      });
+    } else if (blockType === "map") {
+      addBlockToTarget({
+        id: `link-${Date.now()}`,
+        type: "map",
+        title: isKo ? "오시는 길" : "Location",
+        isVisible: true,
+        iconName: "map-pin",
+        mapConfig: { query: "서울특별시" },
       });
     } else if (blockType === "reservation" || blockType === "booking") {
       addBlockToTarget({
@@ -734,6 +765,8 @@ const LinksEditor = () => {
                 if (nestedLink.type === "notice") return renderNoticeCard(nestedLink);
                 if (nestedLink.type === "customer_info") return renderCustomerInfoCard(nestedLink);
                 if (nestedLink.type === "sales") return renderSalesCard(nestedLink);
+                if (nestedLink.type === "affiliate_product") return renderAffiliateProductCard(nestedLink);
+                if (nestedLink.type === "map") return renderMapCard(nestedLink);
                 return renderLinkItem(nestedLink, true, collection.id);
               })
             ) : (
@@ -2636,6 +2669,96 @@ const LinksEditor = () => {
     );
   };
 
+  const renderAffiliateProductCard = (link: CustomLink) => {
+    const config = link.affiliateProductConfig || { affiliateUrl: link.url || "https://", imageUrl: link.icon || "", currency: "KRW" as const, displayMode: "compact" as const };
+    const isCollapsed = isBlockCollapsed(link.id);
+    const updateConfig = (updates: Partial<NonNullable<CustomLink["affiliateProductConfig"]>>) => {
+      const nextConfig = { ...config, ...updates };
+      updateCustomLink(link.id, {
+        affiliateProductConfig: nextConfig,
+        ...(updates.affiliateUrl !== undefined ? { url: updates.affiliateUrl } : {}),
+        ...(updates.imageUrl !== undefined ? { icon: updates.imageUrl, thumbnailType: updates.imageUrl ? "image" : "none" } : {}),
+      });
+    };
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!user?.uid) return alert(isKo ? "로그인이 필요합니다." : "Please sign in first.");
+      try {
+        setUploadingAffiliateId(link.id);
+        const imageUrl = await uploadPublicImage(`affiliate-products/${user.uid}`, file);
+        updateConfig({ imageUrl });
+      } catch (error) {
+        console.error("Failed to upload affiliate product image", error);
+        alert(isKo ? "이미지 업로드에 실패했습니다." : "Image upload failed.");
+      } finally {
+        setUploadingAffiliateId(null);
+      }
+    };
+
+    return (
+      <div key={link.id} data-testid={`affiliate-card-${link.id}`} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className="space-y-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex min-w-0 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" /><BadgeDollarSign className="h-5 w-5 shrink-0 text-fuchsia-600" /><span className="truncate text-sm font-black">{link.title || (isKo ? "추천 상품" : "Recommended product")}</span></div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })} className={clsx("relative h-5 w-10 cursor-pointer rounded-full transition-colors", link.isVisible !== false ? "bg-black" : "bg-gray-200")} aria-label={isKo ? "공개 여부" : "Visibility"}><span className={clsx("absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-transform", link.isVisible !== false && "translate-x-5")} /></button>
+            {renderCollapseControl(link.id, isCollapsed)}
+            <button type="button" onClick={() => removeCustomLink(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" aria-label={isKo ? "상품 삭제" : "Delete product"}><Trash2 className="h-4 w-4" /></button>
+          </div>
+        </div>
+        {!isCollapsed && (
+          <div className="space-y-4">
+            <div data-no-style-editor>
+              <p className="mb-2 text-xs font-black text-gray-700">{isKo ? "링크 디스플레이" : "Link display"}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => updateConfig({ displayMode: "compact" })} className={clsx("flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border bg-white p-3 transition", (config.displayMode || "compact") === "compact" ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-400")} aria-pressed={(config.displayMode || "compact") === "compact"}><span className="flex h-10 w-full items-center gap-2 rounded-full bg-gray-100 px-2"><span className="h-7 w-7 rounded-full bg-gray-300" /><span className="h-2 flex-1 rounded-full bg-gray-300" /></span><span className="text-xs font-black">{isKo ? "가로형" : "Compact"}</span></button>
+                <button type="button" onClick={() => updateConfig({ displayMode: "featured" })} className={clsx("flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border bg-white p-3 transition", config.displayMode === "featured" ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-400")} aria-pressed={config.displayMode === "featured"}><span className="flex h-12 w-20 flex-col overflow-hidden rounded-xl bg-gray-100"><span className="h-8 bg-gray-300" /><span className="mx-auto mt-1 h-1.5 w-10 rounded-full bg-gray-300" /></span><span className="text-xs font-black">{isKo ? "대표 이미지형" : "Featured"}</span></button>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-[150px_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50">
+                {config.imageUrl ? <img src={config.imageUrl} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="h-8 w-8 text-gray-300" />}
+              </div>
+              <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-gray-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-black"><Upload className="h-3.5 w-3.5" />{uploadingAffiliateId === link.id ? (isKo ? "업로드 중..." : "Uploading...") : (isKo ? "이미지 업로드" : "Upload image")}<input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingAffiliateId === link.id} className="hidden" /></label>
+            </div>
+            <div className="space-y-3">
+              <label className="block text-xs font-black text-gray-700">{isKo ? "상품명" : "Product title"}<input value={link.title} onChange={(event) => updateCustomLink(link.id, { title: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-bold outline-none focus:border-fuchsia-400" placeholder={isKo ? "상품명을 입력하세요" : "Enter a product title"} /></label>
+              <label className="block text-xs font-black text-gray-700">{isKo ? "제휴 링크" : "Affiliate link"}<input value={config.affiliateUrl} onChange={(event) => updateConfig({ affiliateUrl: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-fuchsia-400" placeholder="https://" /></label>
+              <label className="block text-xs font-black text-gray-700">{isKo ? "이미지 주소" : "Image URL"}<input value={config.imageUrl || ""} onChange={(event) => updateConfig({ imageUrl: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-fuchsia-400" placeholder="https://..." /></label>
+              <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
+                <label className="block text-xs font-black text-gray-700">{isKo ? "가격" : "Price"}<input type="number" min="0" value={config.price ?? ""} onChange={(event) => updateConfig({ price: event.target.value === "" ? undefined : Number(event.target.value) })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-fuchsia-400" placeholder={isKo ? "선택 입력" : "Optional"} /></label>
+                <label className="block text-xs font-black text-gray-700">{isKo ? "통화" : "Currency"}<select value={config.currency || "KRW"} onChange={(event) => updateConfig({ currency: event.target.value as NonNullable<typeof config.currency> })} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-fuchsia-400"><option value="KRW">KRW</option><option value="USD">USD</option><option value="JPY">JPY</option><option value="EUR">EUR</option></select></label>
+              </div>
+            </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMapCard = (link: CustomLink) => {
+    const config = link.mapConfig || { query: "" };
+    const isCollapsed = isBlockCollapsed(link.id);
+    const mapQuery = config.query.trim();
+    const mapSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+    const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;
+    return (
+      <div key={link.id} data-testid={`map-card-${link.id}`} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className="space-y-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex min-w-0 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" /><MapPinned className="h-5 w-5 shrink-0 text-sky-600" /><span className="truncate text-sm font-black">{link.title || (isKo ? "오시는 길" : "Location")}</span></div>
+          <div className="flex shrink-0 items-center gap-2">{renderCollapseControl(link.id, isCollapsed)}<button type="button" onClick={() => removeCustomLink(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" aria-label={isKo ? "지도 삭제" : "Delete map"}><Trash2 className="h-4 w-4" /></button></div>
+        </div>
+        {!isCollapsed && <div className="space-y-3">
+          <label className="block text-xs font-black text-gray-700">{isKo ? "지도 제목" : "Map title"}<input value={link.title} onChange={(event) => updateCustomLink(link.id, { title: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-bold outline-none focus:border-sky-400" /></label>
+          <label className="block text-xs font-black text-gray-700">{isKo ? "장소명 또는 주소 검색" : "Search place or address"}<div className="mt-1.5 flex gap-2"><input value={config.query} onChange={(event) => updateCustomLink(link.id, { mapConfig: { query: event.target.value } })} className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400" placeholder={isKo ? "예: 성수동 서울숲" : "e.g. Seoul Forest"} /><a href={mapQuery ? mapSearchUrl : undefined} target="_blank" rel="noreferrer" className={clsx("flex shrink-0 items-center rounded-xl px-4 text-xs font-black", mapQuery ? "bg-sky-600 text-white hover:bg-sky-700" : "pointer-events-none bg-gray-100 text-gray-400")}>{isKo ? "검색 확인" : "Check"}</a></div></label>
+          {mapQuery && <iframe title={`${link.title} 지도 미리보기`} src={mapEmbedUrl} className="h-48 w-full rounded-2xl border border-gray-200" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
+        </div>}
+      </div>
+    );
+  };
+
   if (activeStyleLink) {
     return (
       <LinkStyleEditorModal
@@ -2750,6 +2873,8 @@ const LinksEditor = () => {
           renderNotice={renderNoticeCard}
           renderCustomerInfo={renderCustomerInfoCard}
           renderSales={renderSalesCard}
+          renderAffiliateProduct={renderAffiliateProductCard}
+          renderMap={renderMapCard}
         />
       </div>
 
