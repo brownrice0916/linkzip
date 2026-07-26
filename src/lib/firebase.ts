@@ -8,7 +8,7 @@ import { useStore } from '../store/useStore';
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDgMYuiKL_b0Z_f7APE32GArBR3PxVv8d0",
-  authDomain: "profilelinks-d81ec.firebaseapp.com",
+  authDomain: "linkzip.kr",
   projectId: "profilelinks-d81ec",
   storageBucket: "profilelinks-d81ec.firebasestorage.app",
   messagingSenderId: "648530645305",
