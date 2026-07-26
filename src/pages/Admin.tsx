@@ -41,6 +41,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const [copied, setCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync URL parameter to activeTab
   useEffect(() => {
@@ -93,6 +94,7 @@ const Admin = () => {
   const handleManualSave = async () => {
     try {
       setSaveStatus("Saving...");
+      setToastMessage("저장 중입니다...");
 
       if (state.user?.uid) {
         const { doc, setDoc } = await import("firebase/firestore");
@@ -139,11 +141,19 @@ const Admin = () => {
 
       state.markSaved();
       setSaveStatus("Saved successfully!");
-      setTimeout(() => setSaveStatus(null), 2000);
+      setToastMessage("🎉 설정이 성공적으로 저장되었습니다!");
+      setTimeout(() => {
+        setSaveStatus(null);
+        setToastMessage(null);
+      }, 3500);
     } catch (error) {
       console.error("Failed to save", error);
       setSaveStatus("Error saving!");
-      setTimeout(() => setSaveStatus(null), 3000);
+      setToastMessage("❌ 저장 중 오류가 발생했습니다.");
+      setTimeout(() => {
+        setSaveStatus(null);
+        setToastMessage(null);
+      }, 3500);
     }
   };
 
@@ -573,6 +583,28 @@ const Admin = () => {
           </div>
         </div>
       )}
+
+      {/* Toast Notification Popup Overlay */}
+      {toastMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
+          <div className="bg-black/90 text-white backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3.5">
+            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs animate-bounce">
+              <Check className="w-5 h-5 stroke-[3]" />
+            </div>
+            <div>
+              <div className="text-xs font-black tracking-tight">{toastMessage}</div>
+              <div className="text-[10px] text-gray-300 font-medium">최신 설정이 안전하게 보관되었습니다.</div>
+            </div>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="ml-3 p-1 text-gray-400 hover:text-white transition rounded-full hover:bg-white/10 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
