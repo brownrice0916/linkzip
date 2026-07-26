@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
-import { auth, db, logout } from '../../lib/firebase';
+import { auth, logout } from '../../lib/firebase';
 import { deleteUser } from 'firebase/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { deleteUserData } from '../../services/userService';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldAlert, 
@@ -37,7 +37,7 @@ const SettingsEditor = () => {
     try {
       if (user?.uid) {
         // 1. Delete user document from Firestore
-        await deleteDoc(doc(db, 'users', user.uid));
+        await deleteUserData(user.uid, state.profile.username);
       }
 
       // 2. Delete user authentication account

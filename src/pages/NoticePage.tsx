@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore, type CustomLink, type UserProfile } from '../store/useStore';
-import { db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { Megaphone, ArrowLeft, Calendar, Pin, Share2, Check, Copy } from 'lucide-react';
-import clsx from 'clsx';
+import { resolveUserByUsername } from '../services/userService';
+import { Megaphone, ArrowLeft, Calendar, Pin, Check, Copy } from 'lucide-react';
 
 export const NoticePage: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -27,11 +25,9 @@ export const NoticePage: React.FC = () => {
 
       try {
         setLoading(true);
-        const docRef = doc(db, 'users', username.toLowerCase());
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        const resolvedUser = await resolveUserByUsername(username);
+        if (resolvedUser) {
+          const data = resolvedUser.data;
           if (data.profile) setProfileData(data.profile);
           if (data.customLinks) setCustomLinks(data.customLinks);
         }

@@ -4,6 +4,7 @@ import {
   type UserProfile,
   type SocialLink,
   type CustomLink,
+  type DesignSettings,
 } from "../store/useStore";
 import {
   FaInstagram,
@@ -23,6 +24,7 @@ import { DonationVisitorModal } from "./DonationVisitorModal";
 import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
 import { SalesVisitorModal } from "./SalesVisitorModal";
 import clsx from "clsx";
+import { recordPublicLinkClick } from "../services/analyticsService";
 
 interface LinkTreePreviewProps {
   profile?: UserProfile;
@@ -31,6 +33,8 @@ interface LinkTreePreviewProps {
   socialLinks?: SocialLink[];
   customLinks?: CustomLink[];
   isPublic?: boolean;
+  ownerUid?: string;
+  design?: Partial<DesignSettings>;
 }
 
 const getSocialIcon = (platform: string) => {
@@ -89,24 +93,30 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const templateValue = props.templateValue || store.templateValue;
   const socialLinks = props.socialLinks || store.socialLinks;
   const customLinks = props.customLinks || store.customLinks;
-  const recordLinkClick = store.recordLinkClick;
+  const recordLinkClick = (linkId: string) => {
+    if (isPublic && props.ownerUid) {
+      void recordPublicLinkClick(props.ownerUid, linkId).catch((error) => {
+        console.warn('Unable to record link click:', error);
+      });
+    } else {
+      store.recordLinkClick(linkId);
+    }
+  };
   const isPublic = props.isPublic || false;
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
   const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
   const isColor = templateType === "color";
-  const {
-    buttonStyle = "solid",
-    buttonRoundness = "full",
-    buttonShadow = "soft",
-    buttonColor,
-    buttonTextColor,
-    fontFamily = "sans",
-    titleFontFamily,
-    pageTextColor,
-    sticker,
-  } = useStore();
+  const buttonStyle = props.design?.buttonStyle ?? store.buttonStyle;
+  const buttonRoundness = props.design?.buttonRoundness ?? store.buttonRoundness;
+  const buttonShadow = props.design?.buttonShadow ?? store.buttonShadow;
+  const buttonColor = props.design?.buttonColor ?? store.buttonColor;
+  const buttonTextColor = props.design?.buttonTextColor ?? store.buttonTextColor;
+  const fontFamily = props.design?.fontFamily ?? store.fontFamily;
+  const titleFontFamily = props.design?.titleFontFamily ?? store.titleFontFamily;
+  const pageTextColor = props.design?.pageTextColor ?? store.pageTextColor;
+  const sticker = props.design?.sticker ?? store.sticker;
 
   let fontClass = "font-sans";
   if (fontFamily === "mono") fontClass = "font-mono";
@@ -667,7 +677,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   <button
                     key={block.id}
                     type="button"
-                    onClick={() => setActiveDonationBlock(block)}
+                    onClick={() => {
+                      recordLinkClick(block.id);
+                      setActiveDonationBlock(block);
+                    }}
                     className={buttonClass}
                     style={customButtonStyle}
                   >
@@ -888,7 +901,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     key={block.id}
                     block={block}
                     config={config}
-                    profile={profile}
+                    ownerUid={props.ownerUid}
                   />
                 );
               }
@@ -898,7 +911,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   <button
                     key={block.id}
                     type="button"
-                    onClick={() => setActiveSalesBlock(block)}
+                    onClick={() => {
+                      recordLinkClick(block.id);
+                      setActiveSalesBlock(block);
+                    }}
                     className={buttonClass}
                     style={customButtonStyle}
                   >

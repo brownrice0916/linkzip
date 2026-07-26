@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { User, FileText, UploadCloud, Image as ImageIcon, Type, Palette, Plus, Check } from 'lucide-react';
-import { storage } from '../../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadPublicImage } from '../../services/storageService';
 import clsx from 'clsx';
 
 const layouts = [
@@ -46,9 +45,7 @@ const ProfileEditor = () => {
     setUploadingField(fieldName);
 
     try {
-      const storageRef = ref(storage, `profiles/${user.uid}/${field}_${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const downloadURL = await uploadPublicImage(`profiles/${user.uid}/${field}`, file);
       setProfile({ ...profile, [field]: downloadURL });
     } catch (error) {
       console.error("Upload failed:", error);

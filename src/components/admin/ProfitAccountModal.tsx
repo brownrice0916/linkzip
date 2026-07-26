@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { X, Search, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Search } from 'lucide-react';
 import clsx from 'clsx';
 import type { DonationConfig } from '../../store/useStore';
+import { verifyBankAccount } from '../../services/accountVerificationService';
 
 interface ProfitAccountModalProps {
   isOpen: boolean;
@@ -149,8 +150,6 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   initialData,
   onSave
 }) => {
-  if (!isOpen) return null;
-
   const [accountType, setAccountType] = useState<'personal' | 'corporate'>(
     initialData?.accountType || 'personal'
   );
@@ -161,8 +160,6 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   
   const [isCertified, setIsCertified] = useState(!!initialData?.accountConnected);
   const [certifying, setCertifying] = useState(false);
-
-  const PORTONE_API_SECRET = "7cQloKuZDGCiSFg4ccvhkGCpKpVbMR8d6dzkmzC1LrJetp6q5KzT2stIuGzKs5skOTvEJZPGWR2SULH6";
 
   const handleCertify = async () => {
     // 1. ID Number Strict Check sum
@@ -194,36 +191,17 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
     setCertifying(true);
 
     try {
-      // Call PortOne API for bank account verification using user's V2 Secret
-      const response = await fetch('https://api.portone.io/bank-accounts/verify', {
-        method: 'POST',
-        headers: {
-          'Authorization': `PortOne ${PORTONE_API_SECRET}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          bank: bankName,
-          accountNumber: cleanAccount,
-          identityNumber: idNumber
-        })
-      }).catch(() => null);
-
-      if (response && response.ok) {
-        const data = await response.json();
-        setAccountOwnerName(data.holderName || accountOwnerName || '황현미 (실명인증완료)');
-      } else {
-        // Handle browser CORS policy smoothly for client-side testing when ID & Account format pass
-        const verifiedOwner = accountOwnerName.trim() || '황현미 (실명인증완료)';
-        setAccountOwnerName(verifiedOwner);
-      }
-
+      const holderName = await verifyBankAccount({
+        bankName,
+        accountNumber: cleanAccount,
+        identityNumber: idNumber,
+      });
+      setAccountOwnerName(holderName);
       setIsCertified(true);
       alert('✅ 계좌 실명 인증이 완료되었습니다!');
-    } catch (err) {
-      setIsCertified(true);
-      const verifiedOwner = accountOwnerName.trim() || '황현미 (실명인증완료)';
-      setAccountOwnerName(verifiedOwner);
-      alert('✅ 계좌 실명 인증이 완료되었습니다!');
+    } catch (error) {
+      setIsCertified(false);
+      alert(`❌ ${(error as Error).message}`);
     } finally {
       setCertifying(false);
     }
@@ -252,6 +230,8 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
 
   const idValidation = idNumber.trim() ? validateIdentityNumber(idNumber, accountType) : { valid: true };
   const hasIdError = !idValidation.valid;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans overflow-y-auto">

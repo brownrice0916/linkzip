@@ -1,0 +1,86 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, create, update, delete: if isOwner(uid);
+
+      match /collected_customer_data/{entryId} {
+        allow create: if request.resource.data.keys().hasOnly([
+          'blockId', 'email', 'phone', 'name', 'createdAt'
+        ]) && request.resource.data.blockId is string;
+        allow read, delete: if isOwner(uid);
+        allow update: if false;
+      }
+    }
+
+    match /publicProfiles/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid);
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /analytics/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if request.resource.data.pageViews == 1;
+      allow update: if isOwner(uid) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pageViews'])
+        && request.resource.data.pageViews == resource.data.pageViews + 1
+      );
+
+      match /daily/{date} {
+        allow read, delete: if isOwner(uid);
+        allow create: if request.resource.data.date == date
+          && ((request.resource.data.views == 1 && request.resource.data.clicks == 0)
+            || (request.resource.data.views == 0 && request.resource.data.clicks == 1));
+        allow update: if isOwner(uid) || (
+          request.resource.data.date == resource.data.date
+          && ((request.resource.data.views == resource.data.views + 1
+              && request.resource.data.clicks == resource.data.clicks)
+            || (request.resource.data.clicks == resource.data.clicks + 1
+              && request.resource.data.views == resource.data.views))
+        );
+      }
+
+      match /links/{linkId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if request.resource.data.linkId == linkId
+          && request.resource.data.clicks == 1;
+        allow update: if isOwner(uid) || (
+          request.resource.data.linkId == resource.data.linkId
+          && request.resource.data.clicks == resource.data.clicks + 1
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks', 'updatedAt'])
+        );
+      }
+    }
+
+    match /guestbooks/{entryId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly([
+        'targetUsername', 'authorName', 'content', 'isSecret', 'likes', 'createdAt'
+      ])
+        && request.resource.data.targetUsername is string
+        && request.resource.data.authorName is string
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 1000
+        && request.resource.data.likes == 0;
+      allow update, delete: if false;
+    }
+  }
+}

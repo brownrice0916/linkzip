@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import type { User } from 'firebase/auth';
+import { applyLinkClicks } from '../domain/profileData';
 
 export interface SocialLink {
   id: string;
@@ -137,6 +139,18 @@ export interface AnalyticsDailyItem {
   clicks: number;
 }
 
+export interface DesignSettings {
+  buttonStyle: 'solid' | 'glass' | 'outline';
+  buttonRoundness: 'none' | 'sm' | 'md' | 'full';
+  buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
+  buttonColor?: string;
+  buttonTextColor?: string;
+  fontFamily: string;
+  titleFontFamily?: string;
+  pageTextColor?: string;
+  sticker?: string;
+}
+
 export interface VerifiedAccountInfo {
   accountType: 'personal' | 'corporate';
   idNumber: string;
@@ -214,8 +228,8 @@ export interface AppStateSnapshot {
 
 interface AppState {
   // Authentication
-  user: any | null;
-  setUser: (user: any | null) => void;
+  user: User | null;
+  setUser: (user: User | null) => void;
 
   // Onboarding & Profile Data
   templateType: 'color' | 'preset';
@@ -254,7 +268,7 @@ interface AppState {
 
   // Actions
   setTemplate: (type: 'color' | 'preset', value: string) => void;
-  setDesignSettings: (settings: Partial<AppState>) => void;
+  setDesignSettings: (settings: Partial<DesignSettings>) => void;
   setSocialLinks: (links: SocialLink[]) => void;
   addSocialLink: (link: SocialLink) => void;
   updateSocialLink: (id: string, updates: Partial<SocialLink>) => void;
@@ -290,6 +304,11 @@ interface AppState {
   incrementPageViews: () => void;
   recordLinkClick: (linkId: string) => void;
   resetAnalytics: () => void;
+  loadAnalytics: (data: {
+    pageViews: number;
+    daily: AnalyticsDailyItem[];
+    linkClicks: Record<string, number>;
+  }) => void;
 
   // Drag and Drop Actions
   moveItemToCollection: (itemId: string, targetCollectionId: string) => void;
@@ -833,16 +852,8 @@ export const useStore = create<AppState>((set) => ({
   }),
 
   // Analytics Initial State & Handlers
-  pageViews: 2840,
-  analyticsDailyHistory: [
-    { date: '월 (07/19)', views: 320, clicks: 154 },
-    { date: '화 (07/20)', views: 390, clicks: 188 },
-    { date: '수 (07/21)', views: 410, clicks: 215 },
-    { date: '목 (07/22)', views: 460, clicks: 232 },
-    { date: '금 (07/23)', views: 520, clicks: 268 },
-    { date: '토 (07/24)', views: 380, clicks: 176 },
-    { date: '일 (07/25)', views: 360, clicks: 159 },
-  ],
+  pageViews: 0,
+  analyticsDailyHistory: [],
 
   incrementPageViews: () => set((state) => ({ pageViews: state.pageViews + 1 })),
 
@@ -867,5 +878,14 @@ export const useStore = create<AppState>((set) => ({
   resetAnalytics: () => set((state) => ({
     pageViews: 0,
     customLinks: state.customLinks.map(l => ({ ...l, clicks: 0 })),
+    analyticsDailyHistory: [],
   })),
+
+  loadAnalytics: ({ pageViews, daily, linkClicks }) => set((state) => {
+    return {
+      pageViews,
+      analyticsDailyHistory: daily,
+      customLinks: applyLinkClicks(state.customLinks, linkClicks),
+    };
+  }),
 }));

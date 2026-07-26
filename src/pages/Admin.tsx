@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect } from "react";
 import { useStore } from "../store/useStore";
 import LinkTreePreview from "../components/LinkTreePreview";
 import { useNavigate, useParams } from "react-router-dom";
@@ -20,17 +20,18 @@ import {
   Megaphone,
   Globe
 } from "lucide-react";
-import { auth, logout } from "../lib/firebase";
+import { logout } from "../lib/firebase";
 import clsx from "clsx";
 import { t } from "../lib/i18n";
+import { saveUserData } from "../services/userService";
 
-import LinksEditor from "../components/admin/LinksEditor";
-import ProfileEditor from "../components/admin/ProfileEditor";
-import AppearanceEditor from "../components/admin/AppearanceEditor";
-import SettingsEditor from "../components/admin/SettingsEditor";
-import GrowthEditor from "../components/admin/GrowthEditor";
-import { AnalyticsEditor } from "../components/admin/AnalyticsEditor";
-import { MarketingEditor } from "../components/admin/MarketingEditor";
+const LinksEditor = lazy(() => import("../components/admin/LinksEditor"));
+const ProfileEditor = lazy(() => import("../components/admin/ProfileEditor"));
+const AppearanceEditor = lazy(() => import("../components/admin/AppearanceEditor"));
+const SettingsEditor = lazy(() => import("../components/admin/SettingsEditor"));
+const GrowthEditor = lazy(() => import("../components/admin/GrowthEditor"));
+const AnalyticsEditor = lazy(() => import("../components/admin/AnalyticsEditor").then((module) => ({ default: module.AnalyticsEditor })));
+const MarketingEditor = lazy(() => import("../components/admin/MarketingEditor").then((module) => ({ default: module.MarketingEditor })));
 
 type TabType = "links" | "profile" | "appearance" | "analytics" | "marketing" | "automation" | "settings";
 type TargetAction = TabType | "home" | "logout" | null;
@@ -80,7 +81,7 @@ const Admin = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/");
   };
 
   const handleCopyLink = async () => {
@@ -99,10 +100,7 @@ const Admin = () => {
       setToastMessage("저장 중입니다...");
 
       if (state.user?.uid) {
-        const { doc, setDoc } = await import("firebase/firestore");
-        const { db } = await import("../lib/firebase");
-        await setDoc(doc(db, "users", state.user.uid), {
-          username: state.profile.username || state.user.uid,
+        await saveUserData(state.user.uid, state.profile.username || state.user.uid, {
           profile: state.profile,
           template: { type: state.templateType, value: state.templateValue },
           design: {
@@ -123,7 +121,6 @@ const Admin = () => {
           alimtalkSettings: state.alimtalkSettings,
           instagramAccount: state.instagramAccount,
           pageViews: state.pageViews,
-          updatedAt: new Date().toISOString(),
         });
       }
 
@@ -134,7 +131,6 @@ const Admin = () => {
           customLinks: state.customLinks,
           socialLinks: state.socialLinks,
           dmRules: state.dmRules,
-          alimtalkSettings: state.alimtalkSettings,
           instagramAccount: state.instagramAccount,
         }));
       } catch (e) {
@@ -475,13 +471,15 @@ const Admin = () => {
             </div>
 
             {/* Tab Editor Views */}
-            {activeTab === "links" && <LinksEditor />}
-            {activeTab === "profile" && <ProfileEditor />}
-            {activeTab === "appearance" && <AppearanceEditor />}
-            {activeTab === "analytics" && <AnalyticsEditor />}
-            {activeTab === "marketing" && <MarketingEditor />}
-            {activeTab === "automation" && <GrowthEditor />}
-            {activeTab === "settings" && <SettingsEditor />}
+            <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500">Loading editor...</div>}>
+              {activeTab === "links" && <LinksEditor />}
+              {activeTab === "profile" && <ProfileEditor />}
+              {activeTab === "appearance" && <AppearanceEditor />}
+              {activeTab === "analytics" && <AnalyticsEditor />}
+              {activeTab === "marketing" && <MarketingEditor />}
+              {activeTab === "automation" && <GrowthEditor />}
+              {activeTab === "settings" && <SettingsEditor />}
+            </Suspense>
           </div>
         </div>
 

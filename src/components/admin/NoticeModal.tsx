@@ -15,8 +15,6 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({
   initialNotice,
   onSave
 }) => {
-  if (!isOpen) return null;
-
   const [title, setTitle] = useState(initialNotice?.title || '공지사항');
   const [content, setContent] = useState(
     initialNotice?.content || '팬미팅 일정 및 최신 공지사항 내용입니다.'
@@ -40,6 +38,8 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({
     });
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans overflow-y-auto">

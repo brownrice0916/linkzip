@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
-import { db } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
-import { CheckCircle2, Send } from 'lucide-react';
-import type { CustomLink, CustomerInfoConfig, UserProfile } from '../store/useStore';
+import { CheckCircle2 } from 'lucide-react';
+import type { CustomLink, CustomerInfoConfig } from '../store/useStore';
+import { submitCustomerData } from '../services/customerDataService';
 
 interface CustomerInfoVisitorCardProps {
   block: CustomLink;
   config: CustomerInfoConfig;
-  profile: UserProfile;
+  ownerUid?: string;
 }
 
 export const CustomerInfoVisitorCard: React.FC<CustomerInfoVisitorCardProps> = ({
   block,
   config,
-  profile
+  ownerUid,
 }) => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -39,13 +38,13 @@ export const CustomerInfoVisitorCard: React.FC<CustomerInfoVisitorCardProps> = (
 
     try {
       setSubmitting(true);
-      if (profile.username) {
-        await addDoc(collection(db, 'users', profile.username.toLowerCase(), 'collected_customer_data'), {
+      if (ownerUid) {
+        await submitCustomerData(ownerUid, {
           blockId: block.id,
           email,
           phone,
           name,
-          createdAt: new Date().toLocaleString('ko-KR')
+          createdAt: new Date().toISOString(),
         });
       }
       setSubmitted(true);

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
-import { User, Image as ImageIcon, FileText, CheckCircle2, UploadCloud } from 'lucide-react';
-import { db, auth, storage } from '../../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { User, FileText, CheckCircle2, UploadCloud } from 'lucide-react';
+import { saveUserData } from '../../services/userService';
+import { uploadPublicImage } from '../../services/storageService';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
@@ -27,9 +26,7 @@ const ProfileSetup = () => {
     
     setIsUploading(true);
     try {
-      const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const downloadURL = await uploadPublicImage(`avatars/${user.uid}`, file);
       setProfile({ ...profile, avatarUrl: downloadURL });
     } catch (error) {
       console.error("Upload failed:", error);
@@ -44,13 +41,11 @@ const ProfileSetup = () => {
     try {
       // Save to Firebase if user is logged in
       if (user?.uid) {
-        await setDoc(doc(db, 'users', user.uid), {
-          username: profile.username || user.uid, // Root level username for easy querying
+        await saveUserData(user.uid, profile.username || user.uid, {
           profile,
           template: { type: templateType, value: templateValue },
           socialLinks,
           customLinks,
-          updatedAt: new Date()
         });
       }
       navigate('/admin');

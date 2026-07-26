@@ -55,6 +55,7 @@ import type {
   ReservationConfig,
   ReservationScheduleItem,
 } from "../../store/useStore";
+import { BlockList } from "./BlockList";
 
 const getSocialIconComp = (platform: string) => {
   switch (platform) {
@@ -86,7 +87,7 @@ const getSocialIconComp = (platform: string) => {
 const LinksEditor = () => {
   const {
     profile,
-    setDesignSettings,
+    setProfile,
     socialLinks,
     addSocialLink,
     updateSocialLink,
@@ -421,25 +422,6 @@ const LinksEditor = () => {
 
     const activeId = e.dataTransfer.getData("text/plain");
     if (!activeId) return;
-
-    // Check block type of activeId - prevent special blocks like reservation, donation, notice, sales, etc.
-    const findBlock = (links: CustomLink[]): CustomLink | null => {
-      for (const l of links) {
-        if (l.id === activeId) return l;
-        if (l.links) {
-          const found = findBlock(l.links);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    const targetBlock = findBlock(customLinks);
-    if (targetBlock && targetBlock.type && targetBlock.type !== 'link') {
-      alert(`[${targetBlock.title || '해당'}] 블록은 독립적인 특수 블록이므로 그룹(컬렉션) 안으로 이동할 수 없습니다.`);
-      setDraggedId(null);
-      return;
-    }
 
     moveItemToCollection(activeId, collectionId);
     setDraggedId(null);
@@ -2782,33 +2764,18 @@ const LinksEditor = () => {
 
       {/* Custom Links & Collections List */}
       <div className="space-y-4">
-        {customLinks.map((block) => {
-          if (block.type === "collection") {
-            return renderCollection(block);
-          }
-          if (block.type === "donation") {
-            return renderDonationCard(block);
-          }
-          if (block.type === "file") {
-            return renderFileSharingCard(block);
-          }
-          if (block.type === "sns") {
-            return renderSNSCard(block);
-          }
-          if (block.type === "reservation") {
-            return renderReservationCard(block);
-          }
-          if (block.type === "notice") {
-            return renderNoticeCard(block);
-          }
-          if (block.type === "customer_info") {
-            return renderCustomerInfoCard(block);
-          }
-          if (block.type === "sales") {
-            return renderSalesCard(block);
-          }
-          return renderLinkItem(block);
-        })}
+        <BlockList
+          links={customLinks}
+          renderLink={renderLinkItem}
+          renderCollection={renderCollection}
+          renderDonation={renderDonationCard}
+          renderFile={renderFileSharingCard}
+          renderSocial={renderSNSCard}
+          renderReservation={renderReservationCard}
+          renderNotice={renderNoticeCard}
+          renderCustomerInfo={renderCustomerInfoCard}
+          renderSales={renderSalesCard}
+        />
       </div>
 
       {/* Root Drop Zone */}
@@ -2875,9 +2842,7 @@ const LinksEditor = () => {
           }
           onSave={(accountData) => {
             // 1. Save globally to User Profile so it can be recalled anytime!
-            setDesignSettings({
-              profile: { ...profile, verifiedAccount: accountData },
-            });
+            setProfile({ ...profile, verifiedAccount: accountData });
 
             // 2. Update current active link config (Donation / Sales)
             if (

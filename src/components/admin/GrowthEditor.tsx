@@ -17,8 +17,7 @@ import {
   Trash2,
   ExternalLink
 } from "lucide-react";
-import { db } from "../../lib/firebase";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { listCustomerData, removeCustomerData } from "../../services/customerDataService";
 import clsx from "clsx";
 
 export const GrowthEditor: React.FC = () => {
@@ -38,15 +37,7 @@ export const GrowthEditor: React.FC = () => {
       }
       try {
         setLoading(true);
-        const querySnapshot = await getDocs(collection(db, 'users', user.uid, 'collected_customer_data'));
-        const list: CollectedCustomerData[] = [];
-        querySnapshot.forEach((docSnap) => {
-          list.push({
-            id: docSnap.id,
-            ...docSnap.data()
-          } as CollectedCustomerData);
-        });
-        setCollectedData(list);
+        setCollectedData(await listCustomerData(user.uid));
       } catch (err) {
         console.error('Error fetching collected customer data:', err);
       } finally {
@@ -66,7 +57,7 @@ export const GrowthEditor: React.FC = () => {
     if (!window.confirm('이 수집 항목을 삭제하시겠습니까?')) return;
     try {
       if (user?.uid) {
-        await deleteDoc(doc(db, 'users', user.uid, 'collected_customer_data', id));
+        await removeCustomerData(user.uid, id);
       }
       setCollectedData(prev => prev.filter(item => item.id !== id));
     } catch (err) {

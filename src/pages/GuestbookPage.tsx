@@ -1,19 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { ArrowLeft, MessageSquare, Send, Heart, Lock, User, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Send, Lock, User, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { UserProfile } from '../store/useStore';
 import clsx from 'clsx';
-
-interface GuestbookEntry {
-  id: string;
-  authorName: string;
-  content: string;
-  isSecret: boolean;
-  likes: number;
-  createdAt: any;
-}
+import { resolveUserByUsername } from '../services/userService';
+import { addGuestbookEntry, subscribeToGuestbook, type GuestbookEntry } from '../services/guestbookService';
+import { normalizeUsername } from '../domain/profileData';
 
 const GuestbookPage = () => {
   const { username } = useParams<{ username: string }>();
@@ -30,18 +22,17 @@ const GuestbookPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
 
-  const cleanUsername = username?.replace('@', '') || '';
+  const cleanUsername = normalizeUsername(username || '');
 
   // 1. Fetch Profile Data
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         if (!cleanUsername) return;
-        const q = query(collection(db, 'users'), where('username', '==', cleanUsername));
-        const querySnapshot = await getDocs(q);
+        const resolvedUser = await resolveUserByUsername(cleanUsername);
 
-        if (!querySnapshot.empty) {
-          const docData = querySnapshot.docs[0].data();
+        if (resolvedUser) {
+          const docData = resolvedUser.data;
           setProfile(docData.profile || { name: cleanUsername, username: cleanUsername, bio: '', avatarUrl: '' });
         } else {
           setProfile({ name: cleanUsername, username: cleanUsername, bio: '', avatarUrl: '' });
@@ -62,26 +53,7 @@ const GuestbookPage = () => {
     if (!cleanUsername) return;
 
     try {
-      const q = query(
-        collection(db, 'guestbooks'),
-        where('targetUsername', '==', cleanUsername)
-      );
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const list: GuestbookEntry[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data()
-        })) as GuestbookEntry[];
-
-        // Sort by createdAt descending locally
-        list.sort((a, b) => {
-          const tA = a.createdAt?.seconds || 0;
-          const tB = b.createdAt?.seconds || 0;
-          return tB - tA;
-        });
-
-        setEntries(list);
-      }, (err) => {
+      const unsubscribe = subscribeToGuestbook(cleanUsername, setEntries, (err) => {
         console.warn('Realtime guestbook listener error, using local fallback:', err);
       });
 
@@ -102,17 +74,16 @@ const GuestbookPage = () => {
     const nameToUse = authorName.trim() || '익명 팬';
     setSubmitting(true);
 
-    const newDoc = {
+    const newEntry = {
       targetUsername: cleanUsername,
       authorName: nameToUse,
       content: content.trim(),
       isSecret,
       likes: 0,
-      createdAt: serverTimestamp()
     };
 
     try {
-      await addDoc(collection(db, 'guestbooks'), newDoc);
+      await addGuestbookEntry(newEntry);
       
       // Optimistic update
       setEntries((prev) => [

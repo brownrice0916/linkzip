@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStore, type SocialLink } from '../../store/useStore';
+import { useStore } from '../../store/useStore';
 import { Plus, Trash2, Link as LinkIcon, AtSign } from 'lucide-react';
 
 // Using simple id generation since we don't have uuid installed yet

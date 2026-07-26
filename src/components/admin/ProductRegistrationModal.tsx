@@ -15,8 +15,6 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
   onRegister,
   initialProduct
 }) => {
-  if (!isOpen) return null;
-
   const [name, setName] = useState(initialProduct?.name || '전자책');
   const [price, setPrice] = useState<number>(initialProduct?.price || 50000);
   const [fileName, setFileName] = useState(initialProduct?.fileName || 'ebook_digital_file.pdf');
@@ -62,6 +60,8 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
     });
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans overflow-y-auto">

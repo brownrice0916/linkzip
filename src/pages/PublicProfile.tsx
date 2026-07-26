@@ -2,42 +2,41 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import LinkTreePreview from '../components/LinkTreePreview';
 import { QrCode } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { useStore, type UserProfile, type SocialLink, type CustomLink } from '../store/useStore';
+import type { UserProfile, SocialLink, CustomLink, DesignSettings } from '../store/useStore';
+import { resolveUserByUsername } from '../services/userService';
+import { recordPageView } from '../services/analyticsService';
 
 const PublicProfile = () => {
   const { username } = useParams<{ username: string }>();
   const [loading, setLoading] = useState(true);
-  const incrementPageViews = useStore((state) => state.incrementPageViews);
-  
   const [userData, setUserData] = useState<{
+    uid: string;
     profile: UserProfile;
     templateType: 'color' | 'preset';
     templateValue: string;
     socialLinks: SocialLink[];
     customLinks: CustomLink[];
+    design: Partial<DesignSettings>;
   } | null>(null);
 
   useEffect(() => {
-    incrementPageViews();
     const fetchProfile = async () => {
       try {
         if (!username) return;
-        const cleanUsername = username.replace('@', ''); // Support both /username and /@username
-        
-        // Query users collection where username == cleanUsername
-        const q = query(collection(db, 'users'), where('username', '==', cleanUsername));
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          const docData = querySnapshot.docs[0].data();
+        const resolvedUser = await resolveUserByUsername(username);
+        if (resolvedUser) {
+          const docData = resolvedUser.data;
           setUserData({
+            uid: resolvedUser.uid,
             profile: docData.profile || { name: '', username: '', bio: '', avatarUrl: '' },
             templateType: docData.template?.type || 'preset',
             templateValue: docData.template?.value || 'minimalist',
             socialLinks: docData.socialLinks || [],
             customLinks: docData.customLinks || [],
+            design: docData.design || {},
+          });
+          void recordPageView(resolvedUser.uid).catch((error) => {
+            console.warn('Unable to record page view:', error);
           });
         }
       } catch (error) {
@@ -63,7 +62,7 @@ const PublicProfile = () => {
     );
   }
 
-  const { profile, templateType, templateValue, socialLinks, customLinks } = userData;
+  const { uid, profile, templateType, templateValue, socialLinks, customLinks, design } = userData;
   const outerBg = templateValue === 'minimalist' ? '#b6aba0' : '#0f172a';
 
   return (
@@ -77,6 +76,8 @@ const PublicProfile = () => {
         templateValue={templateValue}
         socialLinks={socialLinks}
         customLinks={customLinks}
+        ownerUid={uid}
+        design={design}
         isPublic={true}
       />
       

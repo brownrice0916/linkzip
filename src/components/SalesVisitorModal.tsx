@@ -15,8 +15,6 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({
   block,
   profile
 }) => {
-  if (!isOpen) return null;
-
   const config = block.salesConfig || {
     mainText: block.title || '디지털 상품 판매',
     description: '상품 설명을 확인해주세요.',
@@ -50,6 +48,8 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({
     setCopiedAccount(true);
     setTimeout(() => setCopiedAccount(false), 2000);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans overflow-y-auto">

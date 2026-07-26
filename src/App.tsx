@@ -1,20 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import { useStore } from "./store/useStore";
+import { getUserByUid, saveUserData } from "./services/userService";
 
-// Pages
-import Landing from "./pages/Landing";
-
-import TemplateSelection from "./pages/onboarding/TemplateSelection";
-import SNSSelection from "./pages/onboarding/SNSSelection";
-import LinkSetup from "./pages/onboarding/LinkSetup";
-import ProfileSetup from "./pages/onboarding/ProfileSetup";
-import Admin from "./pages/Admin";
-import PublicProfile from "./pages/PublicProfile";
-import GuestbookPage from "./pages/GuestbookPage";
-import NoticePage from "./pages/NoticePage";
+const Landing = lazy(() => import("./pages/Landing"));
+const TemplateSelection = lazy(() => import("./pages/onboarding/TemplateSelection"));
+const SNSSelection = lazy(() => import("./pages/onboarding/SNSSelection"));
+const LinkSetup = lazy(() => import("./pages/onboarding/LinkSetup"));
+const ProfileSetup = lazy(() => import("./pages/onboarding/ProfileSetup"));
+const Admin = lazy(() => import("./pages/Admin"));
+const PublicProfile = lazy(() => import("./pages/PublicProfile"));
+const GuestbookPage = lazy(() => import("./pages/GuestbookPage"));
+const NoticePage = lazy(() => import("./pages/NoticePage").then((module) => ({ default: module.NoticePage })));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -46,13 +45,15 @@ function App() {
 
       if (user) {
         try {
-          const { doc, getDoc } = await import('firebase/firestore');
-          const { db } = await import('./lib/firebase');
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
+          const resolvedUser = await getUserByUid(user.uid);
           
-          if (docSnap.exists()) {
-            const data = docSnap.data();
+          if (resolvedUser) {
+            const data = resolvedUser.data;
+            if (data.username) {
+              void saveUserData(user.uid, data.username, data).catch((error) => {
+                console.warn('Unable to refresh public profile index:', error);
+              });
+            }
             loadData({
               profile: data.profile || localBackup?.profile || { name: '', username: '', bio: '', avatarUrl: '' },
               templateType: data.template?.type || 'preset',
@@ -70,7 +71,7 @@ function App() {
               sticker: data.design?.sticker || '',
               teamMembers: data.teamMembers || [],
               dmRules: data.dmRules || localBackup?.dmRules || [],
-              alimtalkSettings: data.alimtalkSettings || localBackup?.alimtalkSettings,
+              alimtalkSettings: data.alimtalkSettings,
               instagramAccount: data.instagramAccount || localBackup?.instagramAccount || '',
               pageViews: data.pageViews || 0,
             });
@@ -100,7 +101,8 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
+      <Suspense fallback={<div className="flex h-screen items-center justify-center bg-gray-50">Loading...</div>}>
+        <Routes>
         <Route path="/" element={<Landing />} />
 
         {/* Onboarding Flow */}
@@ -163,7 +165,8 @@ function App() {
 
         {/* Public Profile - Matches anything not defined above */}
         <Route path="/:username" element={<PublicProfile />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

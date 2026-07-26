@@ -15,8 +15,6 @@ export const AddReservationScheduleModal: React.FC<AddReservationScheduleModalPr
   onSave,
   initialData
 }) => {
-  if (!isOpen) return null;
-
   const [title, setTitle] = useState(initialData?.title || '');
   const [startDate, setStartDate] = useState(initialData?.startDate || '2026-07-26');
   const [startHour, setStartHour] = useState(initialData?.startHour || '12');
@@ -34,7 +32,7 @@ export const AddReservationScheduleModal: React.FC<AddReservationScheduleModalPr
       const day = String(dateObj.getDate()).padStart(2, '0');
       const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
       return `${year}.${month}.${day} ${dayOfWeek}`;
-    } catch (e) {
+    } catch {
       return dateStr;
     }
   };
@@ -58,6 +56,8 @@ export const AddReservationScheduleModal: React.FC<AddReservationScheduleModalPr
   };
 
   const hoursList = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans overflow-y-auto">

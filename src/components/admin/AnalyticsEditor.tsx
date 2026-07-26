@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore, type CustomLink } from '../../store/useStore';
 import { 
   BarChart3, 
@@ -19,11 +19,31 @@ import {
   Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
+import { getAnalytics, resetAnalyticsData } from '../../services/analyticsService';
 
 export const AnalyticsEditor: React.FC = () => {
-  const { pageViews, customLinks, analyticsDailyHistory, resetAnalytics } = useStore();
+  const { user, pageViews, customLinks, analyticsDailyHistory, resetAnalytics, loadAnalytics } = useStore();
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'clicks' | 'ctr' | 'title'>('clicks');
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    void getAnalytics(user.uid)
+      .then(loadAnalytics)
+      .catch((error) => console.error('Failed to load analytics:', error));
+  }, [user?.uid, loadAnalytics]);
+
+  const handleResetAnalytics = async () => {
+    if (!user?.uid) return;
+    if (!window.confirm('모든 통계 데이터를 초기화하시겠습니까?')) return;
+    try {
+      await resetAnalyticsData(user.uid);
+      resetAnalytics();
+    } catch (error) {
+      console.error('Failed to reset analytics:', error);
+      alert('통계 초기화에 실패했습니다.');
+    }
+  };
 
   // Helper to extract flattened list of all links (including inside collections)
   const getAllLinks = (linksList: CustomLink[]): CustomLink[] => {
@@ -113,11 +133,7 @@ export const AnalyticsEditor: React.FC = () => {
         </div>
 
         <button
-          onClick={() => {
-            if (confirm('통계 데이터를 초기화하시겠습니까?')) {
-              resetAnalytics();
-            }
-          }}
+          onClick={handleResetAnalytics}
           className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition cursor-pointer flex items-center gap-2 text-xs font-bold shrink-0 border border-white/10 shadow-xs"
           title="통계 초기화"
         >

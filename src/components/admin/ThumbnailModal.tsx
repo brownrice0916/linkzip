@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { X, ChevronLeft, Search, Image as ImageIcon, Trash2, Edit2, UploadCloud } from 'lucide-react';
-import { availableIcons, getLinkIcon, iconRegistry } from '../../lib/icons';
-import { storage } from '../../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { availableIcons, getLinkIcon } from '../../lib/icons';
+import { uploadPublicImage } from '../../services/storageService';
 import clsx from 'clsx';
+import { useStore } from '../../store/useStore';
 
 interface ThumbnailModalProps {
   isOpen: boolean;
@@ -26,18 +26,21 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
   const [viewMode, setViewMode] = useState<'main' | 'iconGrid'>('main');
   const [searchQuery, setSearchQuery] = useState('');
   const [uploading, setUploading] = useState(false);
+  const user = useStore((state) => state.user);
 
   if (!isOpen) return null;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!user?.uid) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
 
     try {
       setUploading(true);
-      const storageRef = ref(storage, `thumbnails/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const url = await uploadPublicImage(`thumbnails/${user.uid}`, file);
       
       onSave({
         thumbnailType: 'image',

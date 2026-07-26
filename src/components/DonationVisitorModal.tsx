@@ -16,8 +16,6 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
   donationConfig,
   creatorName
 }) => {
-  if (!isOpen) return null;
-
   const minAmount = donationConfig?.minAmount || 1000;
   const [step, setStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState<number>(minAmount);
@@ -72,6 +70,8 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
       alert('⚠️ KG 이니시스 결제 모듈(SDK)을 로드하지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.');
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans overflow-y-auto select-none">

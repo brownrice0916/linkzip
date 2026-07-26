@@ -4,6 +4,7 @@ import { signInWithGoogle } from "../lib/firebase";
 import { useStore } from "../store/useStore";
 import { Link2, Sparkles, ArrowRight, LayoutDashboard } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
+import { getUserByUid } from "../services/userService";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -12,12 +13,7 @@ const Landing = () => {
   const handleGoogleLogin = async () => {
     try {
       const user = await signInWithGoogle();
-      const { doc, getDoc } = await import("firebase/firestore");
-      const { db } = await import("../lib/firebase");
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
+      if (await getUserByUid(user.uid)) {
         navigate("/admin");
       } else {
         navigate("/onboarding/template");
