@@ -91,36 +91,54 @@ const Admin = () => {
   };
 
   const handleManualSave = async () => {
-    if (!state.user?.uid) return;
     try {
       setSaveStatus("Saving...");
-      const { doc, setDoc } = await import("firebase/firestore");
-      const { db } = await import("../lib/firebase");
-      await setDoc(doc(db, "users", state.user.uid), {
-        username: state.profile.username || state.user.uid,
-        profile: state.profile,
-        template: { type: state.templateType, value: state.templateValue },
-        design: {
-          buttonStyle: state.buttonStyle,
-          buttonRoundness: state.buttonRoundness,
-          buttonShadow: state.buttonShadow,
-          buttonColor: state.buttonColor,
-          buttonTextColor: state.buttonTextColor,
-          fontFamily: state.fontFamily,
-          titleFontFamily: state.titleFontFamily,
-          pageTextColor: state.pageTextColor,
-          sticker: state.sticker,
-        },
-        socialLinks: state.socialLinks,
-        customLinks: state.customLinks,
-        teamMembers: state.teamMembers,
-        dmRules: state.dmRules,
-        alimtalkSettings: state.alimtalkSettings,
-        updatedAt: new Date().toISOString(),
-      });
+
+      if (state.user?.uid) {
+        const { doc, setDoc } = await import("firebase/firestore");
+        const { db } = await import("../lib/firebase");
+        await setDoc(doc(db, "users", state.user.uid), {
+          username: state.profile.username || state.user.uid,
+          profile: state.profile,
+          template: { type: state.templateType, value: state.templateValue },
+          design: {
+            buttonStyle: state.buttonStyle,
+            buttonRoundness: state.buttonRoundness,
+            buttonShadow: state.buttonShadow,
+            buttonColor: state.buttonColor,
+            buttonTextColor: state.buttonTextColor,
+            fontFamily: state.fontFamily,
+            titleFontFamily: state.titleFontFamily,
+            pageTextColor: state.pageTextColor,
+            sticker: state.sticker,
+          },
+          socialLinks: state.socialLinks,
+          customLinks: state.customLinks,
+          teamMembers: state.teamMembers,
+          dmRules: state.dmRules,
+          alimtalkSettings: state.alimtalkSettings,
+          instagramAccount: state.instagramAccount,
+          pageViews: state.pageViews,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      // Backup save to localStorage
+      try {
+        localStorage.setItem("linkzip_saved_state", JSON.stringify({
+          profile: state.profile,
+          customLinks: state.customLinks,
+          socialLinks: state.socialLinks,
+          dmRules: state.dmRules,
+          alimtalkSettings: state.alimtalkSettings,
+          instagramAccount: state.instagramAccount,
+        }));
+      } catch (e) {
+        console.warn("LocalStorage save warning:", e);
+      }
 
       state.markSaved();
-      setSaveStatus("Saved!");
+      setSaveStatus("Saved successfully!");
       setTimeout(() => setSaveStatus(null), 2000);
     } catch (error) {
       console.error("Failed to save", error);
