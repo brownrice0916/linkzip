@@ -939,14 +939,19 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 block.title?.toLowerCase().includes('notice') ||
                 block.url?.includes('notice');
 
-              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linkzip.kr';
-              const hrefTarget = isGuestbookBlock
-                ? `${origin}/${profile.username || 'preview'}/guestbook`
-                : isNoticeBlock
-                ? `${origin}/${profile.username || 'preview'}/notice`
-                : block.url?.match(/^https?:\/\//)
-                ? block.url
-                : `https://${block.url}`;
+              const rawUrl = block.url || '';
+              let hrefTarget = rawUrl;
+              if (isGuestbookBlock) {
+                hrefTarget = `https://linkzip.kr/${profile.username || 'preview'}/guestbook`;
+              } else if (isNoticeBlock) {
+                hrefTarget = `https://linkzip.kr/${profile.username || 'preview'}/notice`;
+              } else if (rawUrl.match(/^https?:\/\//)) {
+                hrefTarget = rawUrl;
+              } else if (rawUrl.startsWith('/')) {
+                hrefTarget = `https://linkzip.kr${rawUrl}`;
+              } else if (rawUrl) {
+                hrefTarget = `https://${rawUrl}`;
+              }
 
               return (
                 <a
