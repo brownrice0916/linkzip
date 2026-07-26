@@ -50,9 +50,11 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const [copied, setCopied] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(true);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const sheetPointerStartY = useRef<number | null>(null);
   const sheetDragOffsetRef = useRef(0);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Sync URL parameter to activeTab
   useEffect(() => {
@@ -89,6 +91,14 @@ const Admin = () => {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [state.isDirty]);
+
+  useEffect(() => {
+    const closeAccountMenu = (event: PointerEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) setIsAccountMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeAccountMenu);
+    return () => document.removeEventListener('pointerdown', closeAccountMenu);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -313,29 +323,7 @@ const Admin = () => {
             <span className="text-[10px] font-bold">{t("navGrowth", state.language)}</span>
           </button>
 
-          <button
-            onClick={() => requestNavigation("settings")}
-            className={clsx(
-              "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
-              activeTab === "settings"
-                ? "bg-gray-950 text-white"
-                : "text-gray-500 hover:bg-gray-100 hover:text-black"
-            )}
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-[10px] font-bold">{t("navSettings", state.language)}</span>
-          </button>
         </nav>
-
-        <div className="mt-auto flex flex-col gap-3">
-          <button
-            onClick={() => requestNavigation("logout")}
-            className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition cursor-pointer"
-            title={t("navLogout", state.language)}
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
       {/* Independent top utility bar */}
@@ -551,15 +539,27 @@ const Admin = () => {
 
       {/* Right Live Phone Preview (Desktop only) */}
       <div className="admin-live-preview col-start-1 row-start-1 row-span-3 flex w-full bg-transparent border-0 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
-        <button
-          type="button"
-          onClick={() => requestNavigation('home')}
-          className="admin-desktop-home-button absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-4 py-2.5 text-xs font-black text-gray-800 shadow-[0_8px_22px_rgba(15,23,42,0.10)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-gray-950 hover:text-white cursor-pointer"
-          aria-label={state.language === 'ko' ? '홈으로 이동' : 'Go home'}
-        >
-          <House className="h-4 w-4" />
-          <span>{state.language === 'ko' ? '홈' : 'Home'}</span>
-        </button>
+        <div className="admin-desktop-action-rail absolute left-3 top-4 z-20 flex flex-col gap-2">
+          <button type="button" onClick={() => requestNavigation('home')} className="admin-desktop-rail-button" aria-label={state.language === 'ko' ? '홈으로 이동' : 'Go home'} title={state.language === 'ko' ? '홈' : 'Home'}><House /></button>
+          <button type="button" onClick={() => requestNavigation('settings')} className={clsx('admin-desktop-rail-button', activeTab === 'settings' && 'is-active')} aria-label={state.language === 'ko' ? '설정 열기' : 'Open settings'} title={t('navSettings', state.language)}><Settings /></button>
+        </div>
+
+        <div ref={accountMenuRef} className="admin-desktop-account absolute bottom-4 left-3 z-30">
+          <button type="button" onClick={() => setIsAccountMenuOpen((open) => !open)} className="admin-desktop-avatar-button" aria-label={state.language === 'ko' ? '계정 메뉴 열기' : 'Open account menu'} aria-expanded={isAccountMenuOpen}>
+            {state.profile.avatarUrl ? <img src={state.profile.avatarUrl} alt="" /> : <UserIcon />}
+          </button>
+          {isAccountMenuOpen && (
+            <div className="admin-desktop-account-menu">
+              <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
+                <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-gray-100">{state.profile.avatarUrl ? <img src={state.profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : <UserIcon className="h-full w-full p-2 text-gray-400" />}</div>
+                <div className="min-w-0"><p className="truncate text-sm font-black">{state.profile.name || state.profile.username}</p><p className="truncate text-[11px] font-semibold text-gray-400">linkzip.kr/{state.profile.username}</p></div>
+              </div>
+              <button type="button" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('home'); }}><LayoutGrid /><span>{state.language === 'ko' ? '프로필 목록' : 'All profiles'}</span></button>
+              <button type="button" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('settings'); }}><Settings /><span>{t('navSettings', state.language)}</span></button>
+              <button type="button" className="logout" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('logout'); }}><LogOut /><span>{t('navLogout', state.language)}</span></button>
+            </div>
+          )}
+        </div>
         {/* Sleek Borderless Mobile Device Container */}
         <div className="w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-[0_18px_48px_rgba(15,23,42,0.14)] relative flex flex-col overflow-hidden border border-gray-200">
           <div className="w-full h-full overflow-y-auto scrollbar-none">

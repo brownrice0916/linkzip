@@ -2798,25 +2798,25 @@ const LinksEditor = () => {
         />
       </div>
 
-      {/* Root Drop Zone */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsOverRootArea(true);
-        }}
-        onDragLeave={() => setIsOverRootArea(false)}
-        onDrop={handleDropOnRoot}
-        className={clsx(
-          "p-6 rounded-2xl border-2 border-dashed text-center transition-all mt-8",
-          isOverRootArea
-            ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-            : "border-gray-200 text-gray-400 bg-transparent"
-        )}
-      >
-        <p className="text-xs font-semibold">
-          {isKo ? '여기에 놓으면 컬렉션에서 기본 목록으로 이동합니다' : 'Drop here to move out of collection to main list'}
-        </p>
-      </div>
+      {/* Only reveal the root drop target while an item is actively being dragged. */}
+      {draggedId && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsOverRootArea(true);
+          }}
+          onDragLeave={() => setIsOverRootArea(false)}
+          onDrop={handleDropOnRoot}
+          className={clsx(
+            "p-5 rounded-2xl border-2 border-dashed text-center transition-all mt-6",
+            isOverRootArea
+              ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+              : "border-gray-300 text-gray-400 bg-white/70"
+          )}
+        >
+          <p className="text-xs font-semibold">{isKo ? '기본 목록으로 이동' : 'Move to main list'}</p>
+        </div>
+      )}
 
       {/* Product Registration Modal */}
       {activeProductRegisterLink && (
