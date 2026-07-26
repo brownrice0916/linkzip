@@ -362,6 +362,33 @@
     transition: transform 180ms ease, opacity 180ms ease;
   }
 
+  /* Links use the entire editor viewport. Preview is available only from the Preview action. */
+  .linkzip-admin.admin-tab-links.mobile-editor-open .admin-live-preview {
+    display: none;
+  }
+
+  .linkzip-admin.admin-tab-links.mobile-editor-open .admin-main-panel {
+    top: 72px;
+    height: calc(100dvh - 72px);
+    max-height: none;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .linkzip-admin.admin-tab-links.mobile-editor-open .mobile-sheet-header {
+    display: none;
+  }
+
+  .linkzip-admin.admin-tab-links.mobile-editor-open .admin-editor-body {
+    padding: 12px 12px 20px;
+    background: #fff;
+  }
+
+  .linkzip-admin.admin-tab-links.mobile-editor-open .admin-editor-canvas {
+    padding-top: 12px;
+  }
+
   .linkzip-admin .mobile-sheet-closed {
     display: none;
   }

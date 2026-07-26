@@ -197,6 +197,11 @@ const Admin = () => {
     setSheetDragOffset(0);
   };
 
+  const openAppearanceView = (view: 'theme' | 'colors' | 'buttons' | 'stickers') => {
+    setIsMobileEditorOpen(true);
+    window.dispatchEvent(new CustomEvent('linkzip:appearance-view', { detail: view }));
+  };
+
   const handleSaveAndContinue = async () => {
     await handleManualSave();
     setIsUnsavedModalOpen(false);
@@ -220,7 +225,8 @@ const Admin = () => {
   return (
     <div className={clsx(
       "linkzip-admin admin-shell grid h-screen min-w-[1240px] grid-cols-[400px_minmax(700px,1fr)] grid-rows-[48px_64px_minmax(0,1fr)] gap-4 bg-[#ECEFF1] p-5 overflow-x-auto overflow-y-hidden select-none font-sans text-gray-900",
-      isMobileEditorOpen ? "mobile-editor-open" : "mobile-editor-closed"
+      isMobileEditorOpen ? "mobile-editor-open" : "mobile-editor-closed",
+      `admin-tab-${activeTab}`
     )}>
       {/* Sidebar Navigation */}
       <div className="admin-top-nav col-start-2 row-start-2 w-full bg-white border border-gray-200 rounded-[24px] flex flex-row items-center px-3 py-2 gap-2 z-20 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
@@ -489,7 +495,12 @@ const Admin = () => {
 
         {/* Mobile Bottom Navigation */}
         <div className="admin-mobile-bottom-nav sm:hidden border-t border-gray-200 bg-white flex justify-around p-3 pb-safe">
-          <button
+          {activeTab === 'appearance' ? <>
+            <button onClick={() => openAppearanceView('theme')} className="flex flex-col items-center gap-1 text-gray-500"><LayoutGrid className="w-5 h-5" /><span className="text-[10px]">{state.language === 'ko' ? '테마' : 'Theme'}</span></button>
+            <button onClick={() => openAppearanceView('colors')} className="flex flex-col items-center gap-1 text-gray-500"><Palette className="w-5 h-5" /><span className="text-[10px]">{state.language === 'ko' ? '색상' : 'Colors'}</span></button>
+            <button onClick={() => openAppearanceView('buttons')} className="flex flex-col items-center gap-1 text-gray-500"><Link2 className="w-5 h-5" /><span className="text-[10px]">{state.language === 'ko' ? '버튼' : 'Buttons'}</span></button>
+            <button onClick={() => openAppearanceView('stickers')} className="flex flex-col items-center gap-1 text-gray-500"><Sparkles className="w-5 h-5" /><span className="text-[10px]">{state.language === 'ko' ? '스티커' : 'Stickers'}</span></button>
+          </> : <><button
             onClick={() => requestNavigation("links")}
             className={clsx(
               "flex flex-col items-center gap-1",
@@ -511,12 +522,7 @@ const Admin = () => {
           </button>
           <button
             onClick={() => requestNavigation("appearance")}
-            className={clsx(
-              "flex flex-col items-center gap-1",
-              activeTab === "appearance"
-                ? "text-black font-bold"
-                : "text-gray-400"
-            )}
+            className="flex flex-col items-center gap-1 text-gray-400"
           >
             <Palette className="w-5 h-5" />
             <span className="text-[10px]">{state.language === 'ko' ? '디자인' : 'Design'}</span>
@@ -533,6 +539,7 @@ const Admin = () => {
             <Sparkles className="w-5 h-5" />
             <span className="text-[10px]">{state.language === 'ko' ? '도구' : 'Enhance'}</span>
           </button>
+          </>}
         </div>
       </div>
 
@@ -548,10 +555,17 @@ const Admin = () => {
 
       {!isMobileEditorOpen && (
         <div className="mobile-tab-dock hidden" aria-label="모바일 관리자 메뉴">
-          <button type="button" onClick={() => requestNavigation("links")}><Link2 /><span>{state.language === 'ko' ? '링크' : 'Links'}</span></button>
-          <button type="button" className="text-black"><Eye /><span>{state.language === 'ko' ? '프리뷰' : 'Preview'}</span></button>
-          <button type="button" onClick={() => requestNavigation("appearance")}><Palette /><span>{state.language === 'ko' ? '디자인' : 'Design'}</span></button>
-          <button type="button" onClick={() => requestNavigation("automation")}><Sparkles /><span>{state.language === 'ko' ? '도구' : 'Enhance'}</span></button>
+          {activeTab === 'appearance' ? <>
+            <button type="button" onClick={() => openAppearanceView('theme')}><LayoutGrid /><span>{state.language === 'ko' ? '테마' : 'Theme'}</span></button>
+            <button type="button" onClick={() => openAppearanceView('colors')}><Palette /><span>{state.language === 'ko' ? '색상' : 'Colors'}</span></button>
+            <button type="button" onClick={() => openAppearanceView('buttons')}><Link2 /><span>{state.language === 'ko' ? '버튼' : 'Buttons'}</span></button>
+            <button type="button" onClick={() => openAppearanceView('stickers')}><Sparkles /><span>{state.language === 'ko' ? '스티커' : 'Stickers'}</span></button>
+          </> : <>
+            <button type="button" onClick={() => requestNavigation("links")}><Link2 /><span>{state.language === 'ko' ? '링크' : 'Links'}</span></button>
+            <button type="button" className="text-black"><Eye /><span>{state.language === 'ko' ? '프리뷰' : 'Preview'}</span></button>
+            <button type="button" onClick={() => requestNavigation("appearance")}><Palette /><span>{state.language === 'ko' ? '디자인' : 'Design'}</span></button>
+            <button type="button" onClick={() => requestNavigation("automation")}><Sparkles /><span>{state.language === 'ko' ? '도구' : 'Enhance'}</span></button>
+          </>}
         </div>
       )}
 

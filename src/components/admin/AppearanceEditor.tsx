@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { 
   ArrowLeft, 
@@ -121,6 +121,15 @@ const AppearanceEditor = () => {
 
   const [currentView, setCurrentView] = useState<'main' | 'theme' | 'buttons' | 'colors' | 'stickers'>('main');
   const [activeFontModal, setActiveFontModal] = useState<'page' | 'title' | null>(null);
+
+  useEffect(() => {
+    const handleExternalView = (event: Event) => {
+      const view = (event as CustomEvent<'theme' | 'buttons' | 'colors' | 'stickers'>).detail;
+      if (view) setCurrentView(view);
+    };
+    window.addEventListener('linkzip:appearance-view', handleExternalView);
+    return () => window.removeEventListener('linkzip:appearance-view', handleExternalView);
+  }, []);
 
   const handleShuffleTheme = () => {
     const randomIndex = Math.floor(Math.random() * themes.length);
