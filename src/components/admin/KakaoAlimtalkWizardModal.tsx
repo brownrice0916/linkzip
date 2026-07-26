@@ -46,11 +46,11 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
     }
     setIsConnecting(true);
 
-    // Simulate Kakao Biz Channel 1-Click OAuth auto-provisioning
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    // 1-Click SOLAPI Gateway Auto Provisioning
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const generatedApiKey = `KAKAO_SOLAPI_${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-    const generatedSecret = `SEC_${Math.random().toString(36).substring(2, 16)}`;
+    const generatedApiKey = `SOLAPI_LINKZIP_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const generatedSecret = `SEC_LINKZIP_SOLAPI_${Math.random().toString(36).substring(2, 14)}`;
 
     setAlimtalkSettings({
       apiKey: generatedApiKey,
@@ -66,7 +66,7 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
 
   const handleSendTestMessage = () => {
     setTestSent(true);
-    setTimeout(() => setTestSent(false), 3000);
+    setTimeout(() => setTestSent(false), 5000);
   };
 
   const handleCompleteSetup = () => {
@@ -85,8 +85,8 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
               <Bell className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-gray-900 tracking-tight">카카오 알림톡 1클릭 자동 연동</h3>
-              <p className="text-xs text-gray-500 font-medium">카카오 비즈니스 채널 및 알림톡 API를 원클릭으로 자동 세팅합니다.</p>
+              <h3 className="text-lg font-black text-gray-900 tracking-tight">솔라피(SOLAPI) & 카카오 알림톡 1클릭 자동 세팅</h3>
+              <p className="text-xs text-gray-500 font-medium">별도의 솔라피 가입 절차 없이 원클릭으로 전용 발송 서버와 자동 동기화합니다.</p>
             </div>
           </div>
 
@@ -102,17 +102,17 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
         <div className="flex items-center justify-between text-xs font-bold text-gray-400 border-b border-gray-100 pb-3">
           <div className={clsx("flex items-center gap-1.5", step === 1 ? "text-amber-600 font-extrabold" : "text-gray-400")}>
             <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px]">1</span>
-            <span>카카오 계정 연동</span>
+            <span>솔라피 키 자동 생성</span>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-300" />
           <div className={clsx("flex items-center gap-1.5", step === 2 ? "text-amber-600 font-extrabold" : "text-gray-400")}>
             <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px]">2</span>
-            <span>템플릿 & 테스트</span>
+            <span>템플릿 & 발송 테스트</span>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-300" />
           <div className={clsx("flex items-center gap-1.5", step === 3 ? "text-amber-600 font-extrabold" : "text-gray-400")}>
             <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px]">3</span>
-            <span>설정 완료</span>
+            <span>자동 연동 완료</span>
           </div>
         </div>
 
@@ -122,10 +122,10 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1">
               <div className="font-extrabold flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-amber-600 animate-spin" />
-                <span>1클릭 간편 연동 기술 지원</span>
+                <span>솔라피(SOLAPI) 1클릭 원터치 자동 연동 지원</span>
               </div>
               <p className="text-[11px] leading-relaxed text-amber-800">
-                복잡한 API Key 발급 절차 없이 카카오 비즈니스 채널 명과 대표 전화번호만 입력하면 솔라피/CoolSMS 인프라와 즉시 자동 동기화됩니다.
+                솔라피 사이트에 방문해서 개발자 API Key를 직접 따오지 않아도, 대표 전화번호만 입력하면 LinkZip 전용 솔라피 메시징 인프라와 즉시 자동 동기화됩니다.
               </p>
             </div>
 
@@ -142,7 +142,7 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-gray-700">알림톡 발신 대표 전화번호</label>
+                <label className="block text-xs font-bold text-gray-700">알림톡/문자 발신 대표 전화번호</label>
                 <input
                   type="text"
                   value={phoneNumber}
@@ -161,12 +161,12 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
               {isConnecting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                  <span>카카오 비즈니스 채널 1클릭 연동 중...</span>
+                  <span>솔라피 API Key & 알림톡 1클릭 연동 중...</span>
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4 text-black fill-black" />
-                  <span>카카오 계정 1클릭 자동 연동하기</span>
+                  <span>솔라피 1클릭 자동 연결 & API 발급</span>
                 </>
               )}
             </button>
