@@ -738,7 +738,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
-                                    <IconComp className="w-5 h-5 opacity-85" />
+                                    <IconComp className="w-5 h-5" />
                                   )}
                                 </div>
                               )}
@@ -797,7 +797,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         {isImage && block.icon ? (
                           <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
                         ) : (
-                          <IconComp className="w-5 h-5 opacity-90" />
+                          <IconComp className="w-5 h-5" />
                         )}
                       </div>
                     )}
@@ -842,7 +842,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         {isImage && block.icon ? (
                           <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
                         ) : (
-                          <IconComp className="w-5 h-5 opacity-90" />
+                          <IconComp className="w-5 h-5" />
                         )}
                       </div>
                     )}
@@ -1049,7 +1049,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         {isImage && block.icon ? (
                           <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
                         ) : (
-                          <IconComp className="w-5 h-5 opacity-90" />
+                          <IconComp className="w-5 h-5" />
                         )}
                       </div>
                     )}
@@ -1101,8 +1101,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           className={clsx(
                             "w-5 h-5",
                             templateValue.startsWith("neo-") && !block.customStyle?.iconColor
-                              ? "text-black opacity-90"
-                              : "opacity-85"
+                              ? "text-black"
+                              : undefined
                           )}
                         />
                       )}
