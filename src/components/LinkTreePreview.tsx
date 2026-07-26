@@ -779,6 +779,98 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 );
               }
 
+              if (block.type === 'reservation') {
+                const config = block.reservationConfig || {
+                  headerText: "",
+                  schedules: [
+                    {
+                      id: "sched-1",
+                      startDate: "07.26 (PM 12)",
+                      endDate: "07.26 (PM 01)",
+                      title: "공부하기",
+                      status: "OPEN"
+                    }
+                  ],
+                  autoNotification: false
+                };
+
+                return (
+                  <div key={block.id} className="w-full bg-[#D1E7DD]/90 backdrop-blur-xs border border-[#B1D8C7] rounded-3xl p-5 space-y-4 font-sans text-gray-900 shadow-md">
+                    {/* Calendar Header with Navigation */}
+                    <div className="flex items-center justify-center gap-4 px-2">
+                      <button
+                        type="button"
+                        className="p-1 text-gray-700 hover:text-black hover:bg-black/10 rounded-full font-bold cursor-pointer text-xs"
+                      >
+                        &lt;
+                      </button>
+                      <span className="font-extrabold text-base tracking-tight text-gray-900">2026.07</span>
+                      <button
+                        type="button"
+                        className="p-1 text-gray-700 hover:text-black hover:bg-black/10 rounded-full font-bold cursor-pointer text-xs"
+                      >
+                        &gt;
+                      </button>
+                    </div>
+
+                    {/* Weekdays Row */}
+                    <div className="grid grid-cols-7 text-center text-xs font-extrabold text-gray-700">
+                      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>
+
+                    {/* Days Grid (31 Days matching screenshot) */}
+                    <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-semibold">
+                      <span /><span /><span />
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
+                        const isSelected = d === 26;
+                        return (
+                          <div
+                            key={d}
+                            className={clsx(
+                              "w-7 h-7 mx-auto rounded-full flex items-center justify-center font-bold transition text-xs",
+                              isSelected
+                                ? "bg-black text-white shadow-md scale-105"
+                                : "text-gray-800"
+                            )}
+                          >
+                            {d}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Header Text if specified */}
+                    {config.headerText && (
+                      <div className="p-2 bg-white/60 rounded-xl text-center text-xs font-semibold text-gray-700 border border-black/5">
+                        {config.headerText}
+                      </div>
+                    )}
+
+                    {/* Scheduled Events Below Calendar */}
+                    <div className="space-y-2 pt-1">
+                      {config.schedules.map((sched) => (
+                        <div
+                          key={sched.id}
+                          className="p-3 bg-[#B1D8C7]/80 rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-2xs"
+                        >
+                          <span className="w-8 h-8 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0">
+                            {sched.status || "OPEN"}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] text-gray-700 font-bold">
+                              {sched.startDate} ~ {sched.endDate}
+                            </div>
+                            <div className="text-xs font-extrabold text-gray-900 truncate">
+                              {sched.title}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
               if (block.type === 'customer_info') {
                 const config = block.customerInfoConfig || {
                   mainText: 'subscribe to our letter',

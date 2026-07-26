@@ -91,9 +91,23 @@ export interface SalesConfig {
   };
 }
 
+export interface ReservationScheduleItem {
+  id: string;
+  startDate: string;
+  endDate: string;
+  title: string;
+  status?: 'OPEN' | 'CLOSED' | 'FULL';
+}
+
+export interface ReservationConfig {
+  headerText?: string;
+  schedules: ReservationScheduleItem[];
+  autoNotification?: boolean;
+}
+
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'sales';
+  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'sales' | 'reservation';
   title: string;
   url?: string;
   clicks?: number; // Total clicks counter for analytics
@@ -111,6 +125,7 @@ export interface CustomLink {
   noticeConfig?: NoticeConfig;
   customerInfoConfig?: CustomerInfoConfig;
   salesConfig?: SalesConfig;
+  reservationConfig?: ReservationConfig;
 }
 
 export interface AnalyticsDailyItem {

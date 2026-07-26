@@ -104,9 +104,9 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           iconColor: 'text-white' 
         },
         { 
-          id: 'booking', 
-          label: 'booking (예약)', 
-          desc: '1:1 상담, 피드백, 멘토링, 팬사인회/팬미팅 시간을 예약받을 때 사용합니다.', 
+          id: 'reservation', 
+          label: 'Appointments (일정 달력 / 예약)', 
+          desc: '월별 달력과 날짜별 상세 일정 목록을 등록하고 예약 수신 및 자동 알림을 받는 블록입니다.', 
           icon: CalendarCheck, 
           bgColor: 'bg-emerald-600', 
           iconColor: 'text-white' 

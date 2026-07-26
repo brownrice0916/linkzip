@@ -21,6 +21,10 @@ import {
   Phone,
   Smartphone,
   Gift,
+  Clock,
+  Lock,
+  HelpCircle,
+  CalendarCheck
 } from "lucide-react";
 import { getLinkIcon } from "../../lib/icons";
 import {
@@ -47,6 +51,8 @@ import type {
   NoticeConfig,
   SalesConfig,
   ProductItem,
+  ReservationConfig,
+  ReservationScheduleItem,
 } from "../../store/useStore";
 
 const getSocialIconComp = (platform: string) => {
@@ -323,13 +329,26 @@ const LinksEditor = () => {
           creatorMessage: "구매해주셔서 감사합니다.",
         },
       });
-    } else if (blockType === "booking") {
+    } else if (blockType === "reservation" || blockType === "booking") {
       addCustomLink({
         id: `link-${Date.now()}`,
-        title: "📅 1:1 컨설팅 & 일정 예약하기",
-        url: "https://booking.naver.com",
+        type: "reservation",
+        title: "Appointments",
         isVisible: true,
         iconName: "calendar-check",
+        reservationConfig: {
+          headerText: "",
+          schedules: [
+            {
+              id: `sched-${Date.now()}`,
+              startDate: "07.26 (PM 12)",
+              endDate: "07.26 (PM 01)",
+              title: "공부하기",
+              status: "OPEN"
+            }
+          ],
+          autoNotification: false
+        }
       });
     } else if (blockType === "customer_inquiry" || blockType === "contact") {
       addCustomLink({
@@ -1489,6 +1508,247 @@ const LinksEditor = () => {
     );
   };
 
+  const renderReservationCard = (link: CustomLink) => {
+    const isBeingDragged = draggedId === link.id;
+    const isDragOver = dragOverTargetId === link.id;
+    const isCollapsed = isBlockCollapsed(link.id);
+
+    const resConfig = link.reservationConfig || {
+      headerText: "",
+      schedules: [
+        {
+          id: `sched-${Date.now()}`,
+          startDate: "07.26 (PM 12)",
+          endDate: "07.26 (PM 01)",
+          title: "공부하기",
+          status: "OPEN"
+        }
+      ],
+      autoNotification: false
+    };
+
+    const handleUpdateConfig = (updates: Partial<ReservationConfig>) => {
+      updateCustomLink(link.id, {
+        reservationConfig: { ...resConfig, ...updates }
+      });
+    };
+
+    const handleAddSchedule = () => {
+      const newSchedule: ReservationScheduleItem = {
+        id: `sched-${Date.now()}`,
+        startDate: "07.26 (PM 12)",
+        endDate: "07.26 (PM 01)",
+        title: "새 일정",
+        status: "OPEN"
+      };
+      handleUpdateConfig({
+        schedules: [...resConfig.schedules, newSchedule]
+      });
+    };
+
+    const handleRemoveSchedule = (schedId: string) => {
+      handleUpdateConfig({
+        schedules: resConfig.schedules.filter(s => s.id !== schedId)
+      });
+    };
+
+    const handleUpdateSchedule = (schedId: string, updates: Partial<ReservationScheduleItem>) => {
+      handleUpdateConfig({
+        schedules: resConfig.schedules.map(s => s.id === schedId ? { ...s, ...updates } : s)
+      });
+    };
+
+    return (
+      <div
+        key={link.id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, link.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={(e) => handleDragOver(e, link.id)}
+        onDrop={(e) => handleDropOnItem(e, link.id)}
+        className={clsx(
+          "bg-white p-6 rounded-3xl border transition-all space-y-4 font-sans relative shadow-2xs",
+          isBeingDragged && "opacity-40 border-dashed border-gray-400",
+          isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+        )}
+      >
+        {/* Card Header (Matching User Screenshot) */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div
+              className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0"
+              title="드래그하여 순서 변경"
+            >
+              <GripVertical className="w-4 h-4" />
+            </div>
+
+            {/* ON / OFF Switch */}
+            <button
+              type="button"
+              onClick={() => updateCustomLink(link.id, { isVisible: link.isVisible === false })}
+              className={clsx(
+                "w-12 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px] shrink-0",
+                link.isVisible !== false ? "bg-[#00E676] text-white" : "bg-gray-200 text-gray-500"
+              )}
+            >
+              <span className={clsx("transition-transform duration-200 font-extrabold", link.isVisible !== false ? "translate-x-0 ml-0.5" : "translate-x-5")}>
+                {link.isVisible !== false ? "ON" : "OFF"}
+              </span>
+              <div className={clsx("w-4 h-4 rounded-full bg-white transition-transform absolute top-1 shadow-xs", link.isVisible !== false ? "translate-x-6" : "translate-x-0")} />
+            </button>
+
+            {/* Title Input */}
+            <input
+              type="text"
+              value={link.title || "Appointments"}
+              onChange={(e) => updateCustomLink(link.id, { title: e.target.value })}
+              className="text-base font-black text-gray-900 border-b border-transparent hover:border-gray-300 focus:border-black bg-transparent focus:outline-hidden px-1 py-0.5"
+            />
+
+            {/* Reservation Badge */}
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black text-white flex items-center gap-1 shrink-0">
+              <span>reservation</span>
+              <Clock className="w-3 h-3 text-white fill-white" />
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => removeCustomLink(link.id)}
+              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
+              title="삭제"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+
+            {/* Expand / Collapse Button */}
+            <button
+              type="button"
+              onClick={() => toggleBlockCollapse(link.id)}
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
+            >
+              <span>{isCollapsed ? "Expand" : "Collapse"}</span>
+              {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Card Body (When Expanded) */}
+        {!isCollapsed && (
+          <div className="space-y-5 pt-1 animate-in fade-in duration-200">
+            {/* 대표문구 */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-700">대표문구</label>
+              <input
+                type="text"
+                value={resConfig.headerText || ""}
+                onChange={(e) => handleUpdateConfig({ headerText: e.target.value })}
+                placeholder="달력 상단에 문구가 노출됩니다."
+                className="w-full p-3 border border-gray-300 rounded-2xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-black bg-white"
+              />
+            </div>
+
+            {/* 일정 목록 Header & + 일정 추가 Button */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-gray-700">
+                일정 목록<span className="text-red-500">*</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={handleAddSchedule}
+                className="w-full py-3 bg-black hover:bg-gray-800 text-white font-extrabold text-xs rounded-2xl transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ 일정 추가</span>
+              </button>
+
+              {/* Schedule Items List */}
+              <div className="space-y-2.5">
+                {resConfig.schedules.map((sched) => (
+                  <div
+                    key={sched.id}
+                    className="p-3.5 bg-white border border-gray-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* Status Badge Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextStatus = sched.status === 'OPEN' ? 'CLOSED' : sched.status === 'CLOSED' ? 'FULL' : 'OPEN';
+                          handleUpdateSchedule(sched.id, { status: nextStatus });
+                        }}
+                        className="w-9 h-9 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                        title="상태 변경 (OPEN / CLOSED / FULL)"
+                      >
+                        {sched.status || "OPEN"}
+                      </button>
+
+                      {/* Time Range & Title Inputs */}
+                      <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={`${sched.startDate} ~ ${sched.endDate}`}
+                          onChange={(e) => {
+                            const parts = e.target.value.split('~');
+                            handleUpdateSchedule(sched.id, {
+                              startDate: parts[0]?.trim() || sched.startDate,
+                              endDate: parts[1]?.trim() || sched.endDate
+                            });
+                          }}
+                          className="text-xs font-bold text-gray-500 bg-gray-50 border border-gray-200 rounded-xl p-2"
+                        />
+                        <input
+                          type="text"
+                          value={sched.title}
+                          onChange={(e) => handleUpdateSchedule(sched.id, { title: e.target.value })}
+                          className="text-xs font-extrabold text-gray-900 bg-gray-50 border border-gray-200 rounded-xl p-2"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSchedule(sched.id)}
+                      className="p-2 text-gray-400 hover:text-red-600 rounded-xl hover:bg-gray-100 transition cursor-pointer shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 자동 알림 기능 */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-1 text-xs font-bold text-gray-700">
+                <span>자동 알림 기능</span>
+                <HelpCircle className="w-3.5 h-3.5 text-gray-400" />
+                <Lock className="w-3.5 h-3.5 text-gray-400 ml-0.5" />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleUpdateConfig({ autoNotification: !resConfig.autoNotification })}
+                className={clsx(
+                  "w-11 h-6 rounded-full transition-colors relative cursor-pointer flex items-center px-1 font-black text-[9px]",
+                  resConfig.autoNotification ? "bg-[#00E676]" : "bg-gray-200"
+                )}
+              >
+                <div
+                  className={clsx(
+                    "w-4 h-4 rounded-full bg-white transition-transform shadow-xs",
+                    resConfig.autoNotification ? "translate-x-5" : "translate-x-0"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const [activeNoticeModalLink, setActiveNoticeModalLink] =
     useState<CustomLink | null>(null);
 
@@ -2492,6 +2752,9 @@ const LinksEditor = () => {
           }
           if (block.type === "sns") {
             return renderSNSCard(block);
+          }
+          if (block.type === "reservation") {
+            return renderReservationCard(block);
           }
           if (block.type === "notice") {
             return renderNoticeCard(block);
