@@ -216,6 +216,10 @@
     display: none;
   }
 
+  .linkzip-admin .admin-desktop-home-button {
+    display: none;
+  }
+
   .linkzip-admin .mobile-admin-toolbar {
     display: flex;
     position: sticky;

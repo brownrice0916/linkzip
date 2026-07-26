@@ -22,7 +22,8 @@ import {
   X,
   Eye,
   Sparkles,
-  LayoutGrid
+  LayoutGrid,
+  House
 } from "lucide-react";
 import { logout } from "../lib/firebase";
 import clsx from "clsx";
@@ -234,14 +235,6 @@ const Admin = () => {
       {/* Sidebar Navigation */}
       <div className="admin-top-nav col-start-2 row-start-2 w-full bg-white border border-gray-200 rounded-[24px] flex flex-row items-center px-3 py-2 gap-2 z-20 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
         <nav className="admin-nav-items flex flex-row items-center gap-1.5 min-w-0">
-          <button
-            onClick={() => requestNavigation("home")}
-            className="flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer text-gray-500 hover:bg-gray-100 hover:text-black"
-            title={state.language === 'ko' ? '프로필 목록' : 'Profiles'}
-          >
-            <LayoutGrid className="w-5 h-5" />
-            <span className="text-[10px] font-bold">{state.language === 'ko' ? '프로필' : 'Profiles'}</span>
-          </button>
           <button
             onClick={() => requestNavigation("links")}
             className={clsx(
@@ -558,6 +551,15 @@ const Admin = () => {
 
       {/* Right Live Phone Preview (Desktop only) */}
       <div className="admin-live-preview col-start-1 row-start-1 row-span-3 flex w-full bg-[#E5E8EB] rounded-[28px] border border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
+        <button
+          type="button"
+          onClick={() => requestNavigation('home')}
+          className="admin-desktop-home-button absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-4 py-2.5 text-xs font-black text-gray-800 shadow-[0_8px_22px_rgba(15,23,42,0.10)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-gray-950 hover:text-white cursor-pointer"
+          aria-label={state.language === 'ko' ? '홈으로 이동' : 'Go home'}
+        >
+          <House className="h-4 w-4" />
+          <span>{state.language === 'ko' ? '홈' : 'Home'}</span>
+        </button>
         {/* Sleek Borderless Mobile Device Container */}
         <div className="w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-[0_18px_48px_rgba(15,23,42,0.14)] relative flex flex-col overflow-hidden border border-gray-200">
           <div className="w-full h-full overflow-y-auto scrollbar-none">
