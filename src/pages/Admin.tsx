@@ -547,36 +547,11 @@ const Admin = () => {
       </div>
 
       {/* Right Live Phone Preview (Desktop only) */}
-      <div className="hidden lg:flex w-[460px] bg-gray-50 border-l border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
-        <div className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span>📱 Real-time Mobile Preview</span>
-        </div>
-
-        {/* iPhone Outer Frame Device Mockup */}
-        <div className="w-[340px] h-[680px] bg-black rounded-[52px] p-3 shadow-2xl border-4 border-gray-800 relative flex flex-col items-center overflow-hidden ring-1 ring-black/10">
-          
-          {/* Top Speaker / Dynamic Island Notch */}
-          <div className="w-28 h-5 bg-black rounded-full absolute top-5 z-40 flex items-center justify-center gap-2 px-2 border border-white/10 shadow-xs">
-            <div className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-white/20" />
-            <div className="w-2.5 h-2.5 rounded-full bg-indigo-950/80" />
-          </div>
-
-          {/* Side Power & Volume Buttons */}
-          <div className="absolute -left-1.5 top-24 w-1.5 h-10 bg-gray-800 rounded-l-md" />
-          <div className="absolute -left-1.5 top-38 w-1.5 h-14 bg-gray-800 rounded-l-md" />
-          <div className="absolute -left-1.5 top-56 w-1.5 h-14 bg-gray-800 rounded-l-md" />
-          <div className="absolute -right-1.5 top-32 w-1.5 h-16 bg-gray-800 rounded-r-md" />
-
-          {/* Inner Phone Screen with Scrollable Area */}
-          <div className="w-full h-full bg-white rounded-[40px] overflow-hidden flex flex-col relative z-20">
-            {/* Scrollable Container inside Phone Screen */}
-            <div className="w-full h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              <LinkTreePreview />
-            </div>
-
-            {/* Bottom Home Indicator Bar */}
-            <div className="w-32 h-1 bg-black/40 rounded-full absolute bottom-2 left-1/2 -translate-x-1/2 z-40 pointer-events-none" />
+      <div className="hidden lg:flex w-[440px] bg-[#F8F9FA] border-l border-gray-200 flex-col items-center justify-center p-6 shrink-0 relative overflow-hidden select-none">
+        {/* Sleek Borderless Mobile Device Container */}
+        <div className="w-[340px] h-[680px] bg-white rounded-[3rem] shadow-2xl relative flex flex-col overflow-hidden border border-gray-100">
+          <div className="w-full h-full overflow-y-auto scrollbar-none">
+            <LinkTreePreview />
           </div>
         </div>
       </div>
