@@ -20,6 +20,7 @@ import {
   Phone,
   Smartphone,
   Gift,
+  Paintbrush,
   Lock,
   HelpCircle,
   CalendarCheck
@@ -136,6 +137,7 @@ const LinksEditor = () => {
   const handleCardStyleClick = (event: React.MouseEvent, linkId: string) => {
     const target = event.target as HTMLElement;
     if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
+    event.stopPropagation();
     setActiveStyleLinkId(linkId);
   };
 
@@ -161,6 +163,18 @@ const LinksEditor = () => {
       [id]: !(prev[id] ?? defaultVal),
     }));
   };
+
+  const renderCollapseControl = (id: string, collapsed: boolean, defaultVal = false, label = "") => (
+    <button
+      type="button"
+      onClick={() => toggleBlockCollapse(id, defaultVal)}
+      className="p-1.5 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
+      title={collapsed ? `${label}펼치기` : `${label}접기`}
+      aria-label={collapsed ? `${label}펼치기` : `${label}접기`}
+    >
+      <ChevronDown className={clsx("w-4 h-4 transition-transform duration-200", collapsed ? "-rotate-90 text-gray-400" : "rotate-0 text-black")} />
+    </button>
+  );
 
   const collapseAllBlocks = () => {
     const newMap: Record<string, boolean> = {};
@@ -577,6 +591,15 @@ const LinksEditor = () => {
           {/* Actions: Visibility Toggle & Delete */}
           <div className="flex items-center gap-2 shrink-0">
             <button
+              type="button"
+              onClick={() => setActiveStyleLinkId(link.id)}
+              className="p-1.5 text-purple-600 hover:text-purple-800 rounded-lg hover:bg-purple-50 transition cursor-pointer opacity-60 group-hover:opacity-100"
+              title="링크 상세 편집"
+              aria-label="링크 상세 편집"
+            >
+              <Paintbrush className="w-4 h-4" />
+            </button>
+            <button
               onClick={() =>
                 updateCustomLink(link.id, { isVisible: !link.isVisible })
               }
@@ -614,6 +637,8 @@ const LinksEditor = () => {
     return (
       <div
         key={collection.id}
+        data-testid={`collection-card-${collection.id}`}
+        onClick={(event) => handleCardStyleClick(event, collection.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, collection.id)}
         onDragEnd={handleDragEnd}
@@ -686,6 +711,15 @@ const LinksEditor = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveStyleLinkId(collection.id)}
+              className="p-1.5 text-indigo-600 hover:text-indigo-800 rounded-lg hover:bg-indigo-50 transition cursor-pointer"
+              title="컬렉션 전체 스타일"
+              aria-label="컬렉션 전체 스타일"
+            >
+              <Paintbrush className="w-4 h-4" />
+            </button>
             {/* Layout Toggle (List vs Grid) */}
             <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
               <button
@@ -720,6 +754,7 @@ const LinksEditor = () => {
               </button>
             </div>
 
+            {renderCollapseControl(collection.id, isCollapsed, true, "컬렉션 ")}
             <button
               onClick={() => removeCustomLink(collection.id)}
               className="p-1.5 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 cursor-pointer"
@@ -890,6 +925,7 @@ const LinksEditor = () => {
               />
             </button>
 
+            {renderCollapseControl(link.id, isCollapsed)}
             <button
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
@@ -1161,6 +1197,7 @@ const LinksEditor = () => {
                 )}
               />
             </button>
+            {renderCollapseControl(link.id, isCollapsed)}
             <button
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
@@ -1373,6 +1410,7 @@ const LinksEditor = () => {
                 )}
               />
             </button>
+            {renderCollapseControl(link.id, isCollapsed)}
             <button
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
@@ -1605,6 +1643,7 @@ const LinksEditor = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {renderCollapseControl(link.id, isCollapsed)}
             <button
               onClick={() => removeCustomLink(link.id)}
               className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
@@ -1744,6 +1783,8 @@ const LinksEditor = () => {
     const isBeingDragged = draggedId === link.id;
     const isDragOver = dragOverTargetId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
+    const isNoticeImage = link.thumbnailType === "image" || (!link.thumbnailType && link.icon);
+    const NoticeIcon = getLinkIcon(link.iconName);
 
     const notice = link.noticeConfig || {
       title: "📢 8월 주요 공지사항",
@@ -1778,6 +1819,15 @@ const LinksEditor = () => {
             >
               <GripVertical className="w-4 h-4" />
             </div>
+            <button
+              type="button"
+              onClick={() => setActiveThumbnailLink(link)}
+              className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center overflow-hidden shrink-0 hover:border-amber-500 transition cursor-pointer"
+              title="공지사항 아이콘 설정"
+              aria-label="공지사항 아이콘 설정"
+            >
+              {isNoticeImage && link.icon ? <img src={link.icon} alt="" className="w-full h-full object-cover" /> : <NoticeIcon className="w-4 h-4 text-amber-700" />}
+            </button>
             {/* <div className="flex flex-col gap-0.5 shrink-0">
               <button
                 type="button"
@@ -1811,7 +1861,6 @@ const LinksEditor = () => {
                 )}
               />
             </button>
-            <span className="text-base shrink-0">📢</span>
             <span className="font-extrabold text-base text-gray-900 truncate">
               {notice.title || link.title || "Notice (공지사항)"}
             </span>
@@ -1835,6 +1884,7 @@ const LinksEditor = () => {
                 )}
               />
             </button>
+            {renderCollapseControl(link.id, isCollapsed)}
             <button
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
@@ -1986,6 +2036,7 @@ const LinksEditor = () => {
                 )}
               />
             </button>
+            {renderCollapseControl(link.id, isCollapsed)}
             <button
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
@@ -2231,6 +2282,7 @@ const LinksEditor = () => {
                   )}
                 />
               </button>
+              {renderCollapseControl(link.id, isCollapsed)}
               <button
                 onClick={() => removeCustomLink(link.id)}
                 className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
@@ -2378,6 +2430,7 @@ const LinksEditor = () => {
               />
             </button>
 
+            {renderCollapseControl(link.id, isCollapsed)}
             <button
               onClick={() => removeCustomLink(link.id)}
               className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
@@ -2651,12 +2704,20 @@ const LinksEditor = () => {
         }}
         onClose={() => setActiveStyleLinkId(null)}
         onUpdate={(updates) => updateCustomLink(activeStyleLink.id, updates)}
+        onUpdateChildren={activeStyleLink.type === "collection" ? (updates) => {
+          const updatedChildren = (activeStyleLink.links || []).map((child) => ({
+            ...child,
+            ...updates,
+            ...(updates.customStyle !== undefined ? { customStyle: updates.customStyle } : {}),
+          }));
+          updateCustomLink(activeStyleLink.id, { ...updates, links: updatedChildren });
+        } : undefined}
       />
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20 font-sans">
+    <div className="admin-link-editor space-y-6 animate-fade-in pb-20 font-sans">
       {/* Top User Profile Header with Social Icons (Matching User Screenshot) */}
       <div className="flex items-center gap-4 py-1">
         {/* Avatar */}

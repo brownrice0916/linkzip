@@ -5,3 +5,44 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 }
+
+/* Block headers keep their collapse action with the destructive action on the right. */
+.admin-link-editor [class*="justify-between"][class*="border-b"] > [class*="flex-1"] > button[title="접기"],
+.admin-link-editor [class*="justify-between"][class*="border-b"] > [class*="flex-1"] > button[title="펼치기"],
+.admin-link-editor [class*="justify-between"][class*="border-b"] > [class*="flex-1"] > button[title="컬렉션 접기"],
+.admin-link-editor [class*="justify-between"][class*="border-b"] > [class*="flex-1"] > button[title="컬렉션 펼치기"] {
+  display: none;
+}
+
+.admin-link-editor [data-testid^="link-card-"],
+.admin-link-editor [data-testid^="collection-card-"] {
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+
+.admin-link-editor [data-testid^="link-card-"]:hover,
+.admin-link-editor [data-testid^="collection-card-"]:hover {
+  transform: translateY(-2px);
+  border-color: rgb(196 181 253);
+  background-color: rgb(250 245 255 / 0.45);
+  box-shadow: 0 14px 32px rgb(76 29 149 / 0.11), 0 0 0 3px rgb(237 233 254 / 0.7);
+}
+
+.admin-link-editor [data-testid^="link-card-"]:active,
+.admin-link-editor [data-testid^="collection-card-"]:active {
+  transform: translateY(0) scale(0.995);
+}
+
+.color-hue-slider {
+  background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+
+.color-hue-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 3px solid white;
+  background: transparent;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 0.35);
+}

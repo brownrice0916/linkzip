@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { 
   ArrowLeft, 
@@ -15,6 +15,7 @@ import {
   Layers 
 } from 'lucide-react';
 import clsx from 'clsx';
+import { ColorPickerPopover } from './ColorPickerPopover';
 
 const themes = [
   { id: 'minimalist', name: 'Minimalist', classes: 'bg-[#FAF9F6] border-gray-200 text-gray-900' },
@@ -91,13 +92,6 @@ const stickers = [
   { id: 'avocado', label: 'Avocado', emoji: '🥑' },
 ];
 
-const presetColors = [
-  '#111827', '#FFFFFF', '#F8FAFC', '#CBD5E1',
-  '#EF4444', '#F97316', '#F59E0B', '#84CC16',
-  '#10B981', '#14B8A6', '#06B6D4', '#3B82F6',
-  '#6366F1', '#8B5CF6', '#A855F7', '#EC4899',
-];
-
 const AppearanceEditor = () => {
   const { 
     profile,
@@ -119,12 +113,6 @@ const AppearanceEditor = () => {
 
   const [currentView, setCurrentView] = useState<'main' | 'theme' | 'buttons' | 'colors' | 'stickers'>('main');
   const [activeFontModal, setActiveFontModal] = useState<'page' | 'title' | null>(null);
-  const [isButtonColorPanelOpen, setIsButtonColorPanelOpen] = useState(false);
-  const [buttonHexDraft, setButtonHexDraft] = useState((buttonColor || '#FFFFFF').replace('#', ''));
-
-  useEffect(() => {
-    setButtonHexDraft((buttonColor || '#FFFFFF').replace('#', '').toUpperCase());
-  }, [buttonColor]);
 
   const handleShuffleTheme = () => {
     const randomIndex = Math.floor(Math.random() * themes.length);
@@ -308,78 +296,9 @@ const AppearanceEditor = () => {
 
           {/* Button Color & Opacity */}
           <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-bold text-gray-900 block">Button color</span>
-                <span className="text-[11px] text-gray-400">색상과 투명도를 함께 조절합니다</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsButtonColorPanelOpen((open) => !open)}
-                className="flex items-center gap-2.5 px-3 py-2 border border-gray-200 rounded-2xl bg-white shadow-xs hover:border-purple-300 transition cursor-pointer"
-              >
-                <span
-                  className="w-7 h-7 rounded-lg border border-black/10 shadow-inner"
-                  style={{ backgroundColor: buttonColor || '#FFFFFF', opacity: (buttonOpacity ?? 100) / 100 }}
-                />
-                <span className="text-xs font-mono font-bold text-gray-800 uppercase">{buttonColor || '#FFFFFF'}</span>
-                <Palette className="w-4 h-4 text-purple-600" />
-              </button>
-            </div>
-
-            {isButtonColorPanelOpen && (
-              <div className="rounded-3xl border border-purple-100 bg-gradient-to-br from-white to-purple-50/50 p-5 space-y-5 shadow-lg animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-black text-gray-900"><Sparkles className="w-4 h-4 text-purple-600" /> 추천 컬러</div>
-                  <button type="button" onClick={() => setIsButtonColorPanelOpen(false)} className="p-1.5 rounded-full hover:bg-white text-gray-400 cursor-pointer" title="닫기"><X className="w-4 h-4" /></button>
-                </div>
-
-                <div className="grid grid-cols-8 gap-2">
-                  {presetColors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setDesignSettings({ buttonColor: color })}
-                      className={clsx(
-                        "aspect-square rounded-xl border-2 transition hover:scale-110 cursor-pointer relative",
-                        (buttonColor || '#FFFFFF').toUpperCase() === color ? "border-purple-600 ring-2 ring-purple-200" : "border-white shadow-sm"
-                      )}
-                      style={{ backgroundColor: color }}
-                      title={color}
-                    >
-                      {(buttonColor || '#FFFFFF').toUpperCase() === color && <Check className={clsx("w-3.5 h-3.5 absolute inset-0 m-auto", ['#FFFFFF', '#F8FAFC', '#CBD5E1'].includes(color) ? 'text-black' : 'text-white')} />}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-[52px_1fr] gap-3 items-center">
-                  <label className="w-13 h-11 rounded-xl border border-gray-200 bg-white overflow-hidden cursor-pointer p-1">
-                    <input type="color" value={buttonColor || '#FFFFFF'} onChange={(e) => setDesignSettings({ buttonColor: e.target.value.toUpperCase() })} className="w-full h-full border-0 p-0 cursor-pointer bg-transparent" title="직접 색상 선택" />
-                  </label>
-                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5">
-                    <span className="text-gray-400 font-black">#</span>
-                    <input
-                      type="text"
-                      value={buttonHexDraft}
-                      maxLength={6}
-                      onChange={(e) => {
-                        const hex = e.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 6);
-                        setButtonHexDraft(hex.toUpperCase());
-                        if (hex.length === 6) setDesignSettings({ buttonColor: `#${hex.toUpperCase()}` });
-                      }}
-                      className="flex-1 text-xs font-mono font-black text-gray-800 uppercase focus:outline-none"
-                      aria-label="버튼 색상 HEX"
-                    />
-                  </div>
-                </div>
-
-                <label className="block space-y-2 text-xs font-bold text-gray-600">
-                  <span className="flex justify-between"><span>투명도</span><span className="text-purple-700 font-black">{buttonOpacity ?? 100}%</span></span>
-                  <input type="range" min="10" max="100" value={buttonOpacity ?? 100} onChange={(e) => setDesignSettings({ buttonOpacity: Number(e.target.value) })} className="w-full accent-purple-600" />
-                  <div className="h-10 rounded-xl border border-black/10 flex items-center justify-center text-xs font-black" style={{ backgroundColor: buttonColor || '#FFFFFF', opacity: (buttonOpacity ?? 100) / 100, color: buttonTextColor || '#111827' }}>버튼 미리보기</div>
-                </label>
-              </div>
-            )}
+            <div><span className="text-sm font-bold text-gray-900 block">Button color</span><span className="text-[11px] text-gray-400">색상과 투명도를 함께 조절합니다</span></div>
+            <ColorPickerPopover label="버튼 색상" value={buttonColor || '#FFFFFF'} opacity={buttonOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonOpacity: nextOpacity })} suggested={['#022B49', '#FFFFFF', '#FDEBDB', '#000000', '#7C3AED', '#EC4899', '#10B981', '#F59E0B']} />
+            <div className="h-10 rounded-xl border border-black/10 flex items-center justify-center text-xs font-black" style={{ backgroundColor: buttonColor || '#FFFFFF', opacity: (buttonOpacity ?? 100) / 100, color: buttonTextColor || '#111827' }}>버튼 미리보기</div>
           </div>
 
           {/* Button Text Color */}

@@ -5,6 +5,7 @@ import {
   type SocialLink,
   type CustomLink,
   type DesignSettings,
+  type ReservationScheduleItem,
 } from "../store/useStore";
 import {
   FaInstagram,
@@ -18,7 +19,7 @@ import {
   FaFacebook,
   FaWhatsapp,
 } from "react-icons/fa";
-import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink } from "lucide-react";
+import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import { DonationVisitorModal } from "./DonationVisitorModal";
 import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
@@ -86,6 +87,18 @@ const getSocialUrl = (platform: string, id: string) => {
   }
 };
 
+const getScheduleMonthDay = (value?: string) => {
+  const match = value?.match(/(?:(\d{4})[-./])?(\d{1,2})[-./](\d{1,2})/);
+  return match ? { month: Number(match[2]), day: Number(match[3]) } : null;
+};
+
+const isScheduleOnCalendarDay = (schedule: ReservationScheduleItem, month: number, day: number) => {
+  const start = getScheduleMonthDay(schedule.startDate);
+  const end = getScheduleMonthDay(schedule.endDate) || start;
+  if (!start || !end || start.month !== month || end.month !== month) return false;
+  return day >= Math.min(start.day, end.day) && day <= Math.max(start.day, end.day);
+};
+
 const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const store = useStore();
   const profile = props.profile || store.profile;
@@ -133,6 +146,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
   const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
+  const [expandedReservationIds, setExpandedReservationIds] = useState<Record<string, boolean>>({});
+  const [activeCalendarDay, setActiveCalendarDay] = useState<{ blockId: string; day: number } | null>(null);
   const isColor = templateType === "color";
   const buttonStyle = props.design?.buttonStyle ?? store.buttonStyle;
   const buttonRoundness = props.design?.buttonRoundness ?? store.buttonRoundness;
@@ -863,6 +878,12 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   ],
                   autoNotification: false
                 };
+                const calendarMonth = 7;
+                const isScheduleListExpanded = expandedReservationIds[block.id] ?? false;
+                const schedulesForDay = (day: number) => config.schedules.filter((schedule) => isScheduleOnCalendarDay(schedule, calendarMonth, day));
+                const formatScheduleRange = (schedule: ReservationScheduleItem) => schedule.endDate
+                  ? `${schedule.startDate}${schedule.startHour ? ` (${schedule.startHour}시)` : ''} ~ ${schedule.endDate}${schedule.endHour ? ` (${schedule.endHour}시)` : ''}`
+                  : `${schedule.startDate}${schedule.startHour ? ` (${schedule.startHour}시)` : ''}`;
 
                 return (
                   <div key={block.id} className="w-full bg-[#D1E7DD]/90 backdrop-blur-xs border border-[#B1D8C7] rounded-3xl p-5 space-y-4 font-sans text-gray-900 shadow-md" style={getCustomLinkStyle(block)}>
@@ -888,23 +909,38 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                     </div>
 
-                    {/* Days Grid (31 Days matching screenshot) */}
+                    {/* Days Grid */}
                     <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-semibold">
                       <span /><span /><span />
                       {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
-                        const isSelected = d === 26;
+                        const daySchedules = schedulesForDay(d);
+                        const hasSchedule = daySchedules.length > 0;
+                        const isSelected = activeCalendarDay?.blockId === block.id && activeCalendarDay.day === d;
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={d}
+                            disabled={!hasSchedule}
+                            onClick={() => hasSchedule && setActiveCalendarDay(isSelected ? null : { blockId: block.id, day: d })}
                             className={clsx(
-                              "w-7 h-7 mx-auto rounded-full flex items-center justify-center font-bold transition text-xs",
+                              "group relative w-8 h-8 mx-auto rounded-full flex items-center justify-center font-bold transition-all text-xs",
                               isSelected
                                 ? "bg-black text-white shadow-md scale-105"
-                                : "text-gray-800"
+                                : hasSchedule
+                                  ? "text-gray-900 bg-white/55 hover:bg-black hover:text-white hover:scale-110 hover:shadow-md cursor-pointer"
+                                  : "text-gray-700 cursor-default"
                             )}
+                            aria-label={hasSchedule ? `7월 ${d}일 일정 ${daySchedules.length}개` : `7월 ${d}일`}
                           >
                             {d}
-                          </div>
+                            {hasSchedule && <span className={clsx("absolute bottom-0.5 w-1.5 h-1.5 rounded-full transition-colors", isSelected ? "bg-emerald-300" : "bg-emerald-600 group-hover:bg-emerald-300")} />}
+                            {isSelected && (
+                              <span className="absolute z-30 top-10 left-1/2 -translate-x-1/2 w-56 rounded-2xl bg-gray-950 text-white p-3.5 text-left shadow-2xl border border-white/10 cursor-default" onClick={(event) => event.stopPropagation()}>
+                                <span className="flex items-center gap-1.5 text-[11px] font-black mb-2"><CalendarDays className="w-3.5 h-3.5" /> 7월 {d}일 일정</span>
+                                <span className="block space-y-2">{daySchedules.map((schedule) => <span key={schedule.id} className="block border-t border-white/15 pt-2 first:border-0 first:pt-0"><span className="block text-[11px] font-black">{schedule.title}</span><span className="block text-[9px] text-white/65 mt-0.5">{schedule.status || 'OPEN'} · {formatScheduleRange(schedule)}</span></span>)}</span>
+                              </span>
+                            )}
+                          </button>
                         );
                       })}
                     </div>
@@ -916,28 +952,27 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       </div>
                     )}
 
-                    {/* Scheduled Events Below Calendar */}
-                    <div className="space-y-2 pt-1">
-                      {config.schedules.map((sched) => (
-                        <div
-                          key={sched.id}
-                          className="p-3 bg-[#B1D8C7]/80 rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-2xs"
-                        >
-                          <span className="w-8 h-8 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0">
-                            {sched.status || "OPEN"}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[11px] text-gray-700 font-bold">
-                              {sched.endDate 
-                                ? `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시)' : ''} ~ ${sched.endDate}${sched.endHour ? ' (' + sched.endHour + '시)' : ''}`
-                                : `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시 업로드)' : ''}`}
-                            </div>
-                            <div className="text-xs font-extrabold text-gray-900 truncate">
-                              {sched.title}
-                            </div>
+                    {/* Scheduled Events: stacked when collapsed */}
+                    <div className="pt-1">
+                      <button type="button" onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: !isScheduleListExpanded }))} className="w-full flex items-center justify-between px-1 pb-2 text-xs font-black text-gray-800 cursor-pointer group">
+                        <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> 일정 {config.schedules.length}개</span>
+                        <span className="flex items-center gap-1 text-[10px] text-gray-600 group-hover:text-black">{isScheduleListExpanded ? '접기' : '펼치기'}<ChevronDown className={clsx("w-3.5 h-3.5 transition-transform", isScheduleListExpanded && "rotate-180")} /></span>
+                      </button>
+                      {isScheduleListExpanded ? (
+                        <div className="space-y-2">{config.schedules.map((sched) => (
+                          <div key={sched.id} className="p-3 bg-[#B1D8C7]/80 rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-2xs animate-in fade-in slide-in-from-top-1">
+                            <span className="w-8 h-8 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0">{sched.status || "OPEN"}</span>
+                            <div className="min-w-0 flex-1"><div className="text-[11px] text-gray-700 font-bold">{formatScheduleRange(sched)}</div><div className="text-xs font-extrabold text-gray-900 truncate">{sched.title}</div></div>
                           </div>
-                        </div>
-                      ))}
+                        ))}</div>
+                      ) : config.schedules.length > 0 ? (
+                        <button type="button" onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: true }))} className="relative block w-full h-[78px] cursor-pointer group" aria-label={`일정 ${config.schedules.length}개 펼치기`}>
+                          {config.schedules.slice(0, 3).reverse().map((sched, reverseIndex, visible) => {
+                            const depth = visible.length - reverseIndex - 1;
+                            return <span key={sched.id} className="absolute inset-x-0 top-0 p-3 bg-[#B1D8C7] rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-sm text-left transition-transform group-hover:-translate-y-1" style={{ transform: `translateY(${depth * 7}px) scale(${1 - depth * 0.025})`, zIndex: 10 - depth }}><span className="w-8 h-8 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0">{sched.status || 'OPEN'}</span><span className="min-w-0 flex-1"><span className="block text-[10px] text-gray-700 font-bold truncate">{formatScheduleRange(sched)}</span><span className="block text-xs font-extrabold text-gray-900 truncate">{sched.title}</span></span><ChevronDown className="w-4 h-4 text-gray-600 shrink-0" /></span>;
+                          })}
+                        </button>
+                      ) : <div className="py-3 text-center text-xs text-gray-600">등록된 일정이 없습니다.</div>}
                     </div>
                   </div>
                 );

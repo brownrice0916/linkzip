@@ -14,7 +14,6 @@ import {
   Undo2,
   Redo2,
   AlertTriangle,
-  X,
   Zap,
   BarChart3,
   Megaphone,
@@ -43,8 +42,6 @@ const Admin = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const [copied, setCopied] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync URL parameter to activeTab
   useEffect(() => {
@@ -95,10 +92,8 @@ const Admin = () => {
   };
 
   const handleManualSave = async () => {
+    if (!state.isDirty) return;
     try {
-      setSaveStatus("Saving...");
-      setToastMessage("저장 중입니다...");
-
       if (state.user?.uid) {
         await saveUserData(state.user.uid, state.profile.username || state.user.uid, {
           profile: state.profile,
@@ -139,20 +134,8 @@ const Admin = () => {
       }
 
       state.markSaved();
-      setSaveStatus("Saved successfully!");
-      setToastMessage("🎉 설정이 성공적으로 저장되었습니다!");
-      setTimeout(() => {
-        setSaveStatus(null);
-        setToastMessage(null);
-      }, 3500);
     } catch (error) {
       console.error("Failed to save", error);
-      setSaveStatus("Error saving!");
-      setToastMessage("❌ 저장 중 오류가 발생했습니다.");
-      setTimeout(() => {
-        setSaveStatus(null);
-        setToastMessage(null);
-      }, 3500);
     }
   };
 
@@ -346,18 +329,6 @@ const Admin = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {saveStatus && (
-              <span className="text-xs font-bold text-indigo-600 animate-pulse bg-indigo-50 px-3 py-1 rounded-full">
-                {saveStatus}
-              </span>
-            )}
-
-            {state.isDirty && (
-              <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                {t("unsavedChanges", state.language)}
-              </span>
-            )}
-
             {/* Language Selector Dropdown */}
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-full border border-gray-200/80 shadow-2xs">
               <Globe className="w-3.5 h-3.5 text-gray-600 ml-2" />
@@ -464,7 +435,13 @@ const Admin = () => {
                 {/* Save Button */}
                 <button
                   onClick={handleManualSave}
-                  className="px-6 py-2 rounded-full font-extrabold text-xs transition cursor-pointer shadow-md flex items-center gap-1.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white ring-2 ring-purple-300 shadow-lg hover:scale-105 active:scale-95"
+                  disabled={!state.isDirty}
+                  className={clsx(
+                    "px-6 py-2 rounded-full font-extrabold text-xs transition flex items-center gap-1.5",
+                    state.isDirty
+                      ? "cursor-pointer bg-[#7C3AED] hover:bg-[#6D28D9] text-white ring-2 ring-purple-300 shadow-lg hover:scale-105 active:scale-95"
+                      : "cursor-not-allowed bg-gray-100 text-gray-300 border border-gray-200 shadow-none"
+                  )}
                 >
                   <span>{t("save", state.language)}</span>
                 </button>
@@ -596,27 +573,6 @@ const Admin = () => {
                 {state.language === 'ko' ? '계속 편집' : 'Keep editing'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification Popup Overlay */}
-      {toastMessage && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
-          <div className="bg-black/90 text-white backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3.5">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs animate-bounce">
-              <Check className="w-5 h-5 stroke-[3]" />
-            </div>
-            <div>
-              <div className="text-xs font-black tracking-tight">{toastMessage}</div>
-              <div className="text-[10px] text-gray-300 font-medium">최신 설정이 안전하게 보관되었습니다.</div>
-            </div>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="ml-3 p-1 text-gray-400 hover:text-white transition rounded-full hover:bg-white/10 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
       )}
