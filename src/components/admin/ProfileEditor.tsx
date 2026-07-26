@@ -22,7 +22,8 @@ const titleColors = [
 ];
 
 const ProfileEditor = () => {
-  const { profile, setProfile, user } = useStore();
+  const { profile, setProfile, user, language } = useStore();
+  const isKo = language === 'ko';
   const [uploadingField, setUploadingField] = useState<'avatar' | 'banner' | 'logo' | null>(null);
 
   const activeLayout = profile.profileLayout || 'classic';
@@ -60,15 +61,15 @@ const ProfileEditor = () => {
       
       {/* Header Title */}
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Header</h2>
-        <p className="text-sm text-gray-500">Customize your bio, title, and profile layout.</p>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">{isKo ? '프로필 헤더' : 'Header'}</h2>
+        <p className="text-sm text-gray-500">{isKo ? '소개, 제목, 프로필 레이아웃을 설정합니다.' : 'Customize your bio, title, and profile layout.'}</p>
       </div>
 
       <div className="space-y-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
 
         {/* 1. Layout Picker */}
         <div className="space-y-4">
-          <h3 className="text-base font-bold text-gray-900">Layout</h3>
+          <h3 className="text-base font-bold text-gray-900">{isKo ? '레이아웃' : 'Layout'}</h3>
           <div className="grid grid-cols-3 gap-3">
             {layouts.map((l) => {
               const isSelected = activeLayout === l.id;
@@ -122,7 +123,7 @@ const ProfileEditor = () => {
                     )}
                   </div>
 
-                  <span className="text-xs font-bold text-gray-900 mt-2">{l.label}</span>
+                  <span className="text-xs font-bold text-gray-900 mt-2">{isKo ? ({ classic: '기본', hero: '히어로', banner: '배너' } as const)[l.id] : l.label}</span>
                 </button>
               );
             })}
@@ -135,8 +136,8 @@ const ProfileEditor = () => {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-gray-900">Profile image</h3>
-              <p className="text-xs text-gray-400">Click to upload your avatar</p>
+              <h3 className="text-sm font-bold text-gray-900">{isKo ? '프로필 이미지' : 'Profile image'}</h3>
+              <p className="text-xs text-gray-400">{isKo ? '눌러서 프로필 이미지를 업로드하세요' : 'Click to upload your avatar'}</p>
             </div>
 
             <div className="relative w-16 h-16 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
@@ -157,14 +158,14 @@ const ProfileEditor = () => {
               />
             </div>
           </div>
-          {uploadingField === 'avatar' && <p className="text-xs text-indigo-600 font-medium">Avatar Uploading...</p>}
+          {uploadingField === 'avatar' && <p className="text-xs text-indigo-600 font-medium">{isKo ? '프로필 이미지 업로드 중...' : 'Avatar Uploading...'}</p>}
 
           {/* Banner Upload Option if layout === 'banner' */}
           {activeLayout === 'banner' && (
             <div className="flex items-center justify-between pt-2">
               <div>
-                <h3 className="text-sm font-bold text-gray-900">Banner cover image</h3>
-                <p className="text-xs text-gray-400">Background photo behind profile</p>
+                <h3 className="text-sm font-bold text-gray-900">{isKo ? '배너 커버 이미지' : 'Banner cover image'}</h3>
+                <p className="text-xs text-gray-400">{isKo ? '프로필 뒤에 표시할 배경 이미지입니다' : 'Background photo behind profile'}</p>
               </div>
 
               <div className="relative w-24 h-14 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
@@ -190,7 +191,7 @@ const ProfileEditor = () => {
         {/* 3. Title & Username & Bio */}
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-700">Username (URL)</label>
+            <label className="block text-xs font-bold text-gray-700">{isKo ? '사용자 이름(URL)' : 'Username (URL)'}</label>
             <div className="flex rounded-xl shadow-sm border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-black">
               <span className="inline-flex items-center px-3 bg-gray-50 text-gray-500 text-xs font-medium border-r border-gray-200">
                 {window.location.host}/
@@ -207,7 +208,7 @@ const ProfileEditor = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-700">Title</label>
+            <label className="block text-xs font-bold text-gray-700">{isKo ? '프로필 제목' : 'Title'}</label>
             <input
               type="text"
               name="name"
@@ -220,7 +221,7 @@ const ProfileEditor = () => {
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="block text-xs font-bold text-gray-700">Bio (자기소개)</label>
+              <label className="block text-xs font-bold text-gray-700">{isKo ? '자기소개' : 'Bio'}</label>
               <div className="flex items-center gap-3">
                 <span className="text-[11px] text-gray-400">{profile.bio.length}/160</span>
                 <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
@@ -241,13 +242,13 @@ const ProfileEditor = () => {
               maxLength={160}
               rows={3}
               className="block w-full text-xs p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-black resize-none"
-              placeholder="Digital creator sharing unique insights through art..."
+              placeholder={isKo ? '프로필에 표시할 자기소개를 입력하세요.' : 'Digital creator sharing unique insights through art...'}
             />
           </div>
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="block text-xs font-bold text-gray-700">Contact Email (이메일 주소)</label>
+              <label className="block text-xs font-bold text-gray-700">{isKo ? '연락처 이메일' : 'Contact Email'}</label>
               <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
                 <input
                   type="checkbox"
@@ -273,7 +274,7 @@ const ProfileEditor = () => {
 
         {/* 4. Title Style (Text vs Logo) */}
         <div className="space-y-4">
-          <h3 className="text-sm font-bold text-gray-900">Title style</h3>
+          <h3 className="text-sm font-bold text-gray-900">{isKo ? '제목 스타일' : 'Title style'}</h3>
           
           <div className="flex gap-4">
             <button
@@ -284,7 +285,7 @@ const ProfileEditor = () => {
               )}
             >
               <span className="text-2xl font-serif font-bold text-gray-900">Aa</span>
-              <span className="text-xs font-semibold text-gray-700">Text</span>
+              <span className="text-xs font-semibold text-gray-700">{isKo ? '텍스트' : 'Text'}</span>
             </button>
 
             <button
@@ -295,7 +296,7 @@ const ProfileEditor = () => {
               )}
             >
               <ImageIcon className="w-6 h-6 text-gray-800" />
-              <span className="text-xs font-semibold text-gray-700">Logo</span>
+              <span className="text-xs font-semibold text-gray-700">{isKo ? '로고' : 'Logo'}</span>
             </button>
           </div>
 
@@ -303,8 +304,8 @@ const ProfileEditor = () => {
           {activeTitleStyle === 'logo' && (
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-bold text-gray-900">Brand Logo Image</h4>
-                <p className="text-[11px] text-gray-500">Replaces text title with your logo</p>
+                <h4 className="text-xs font-bold text-gray-900">{isKo ? '브랜드 로고 이미지' : 'Brand Logo Image'}</h4>
+                <p className="text-[11px] text-gray-500">{isKo ? '텍스트 제목 대신 로고를 표시합니다' : 'Replaces text title with your logo'}</p>
               </div>
 
               <div className="relative w-20 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center overflow-hidden group cursor-pointer">
@@ -327,7 +328,7 @@ const ProfileEditor = () => {
           {/* If Text selected -> Show Title Color Picker */}
           {activeTitleStyle === 'text' && (
             <div className="pt-2 space-y-2">
-              <label className="block text-xs font-bold text-gray-700">Title color</label>
+              <label className="block text-xs font-bold text-gray-700">{isKo ? '제목 색상' : 'Title color'}</label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"

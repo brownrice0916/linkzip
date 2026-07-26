@@ -109,8 +109,15 @@ const AppearanceEditor = () => {
     titleFontFamily,
     pageTextColor,
     sticker,
+    language,
     setDesignSettings 
   } = useStore();
+  const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
+  const stickerLabel = (id: string, fallback: string) => language === 'ko' ? ({
+    '': '없음', cat: '고양이', flower: '꽃', bolt: '번개', heart: '반짝이는 하트',
+    sparkles: '반짝임', crown: '왕관', fire: '불꽃', rocket: '로켓', avocado: '아보카도'
+  }[id] || fallback) : fallback;
+  const buttonStyleLabel = buttonStyle === 'glass' ? tr('글래스', 'Glass') : buttonStyle === 'outline' ? tr('테두리', 'Outline') : tr('단색', 'Solid');
 
   const [currentView, setCurrentView] = useState<'main' | 'theme' | 'buttons' | 'colors' | 'stickers'>('main');
   const [activeFontModal, setActiveFontModal] = useState<'page' | 'title' | null>(null);
@@ -131,14 +138,14 @@ const AppearanceEditor = () => {
             onClick={() => setCurrentView('main')}
             className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-indigo-600 transition"
           >
-            <ArrowLeft className="w-5 h-5" /> Theme
+            <ArrowLeft className="w-5 h-5" /> {tr('테마', 'Theme')}
           </button>
           
           <button 
             onClick={handleShuffleTheme}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full text-xs font-bold bg-white hover:bg-gray-50 shadow-xs transition"
           >
-            <Shuffle className="w-4 h-4 text-gray-600" /> Shuffle
+            <Shuffle className="w-4 h-4 text-gray-600" /> {tr('무작위 선택', 'Shuffle')}
           </button>
         </div>
 
@@ -182,14 +189,14 @@ const AppearanceEditor = () => {
           onClick={() => setCurrentView('main')}
           className="flex items-center gap-3 text-xl font-bold text-gray-900 hover:text-indigo-600 transition"
         >
-          <ArrowLeft className="w-6 h-6" /> Buttons
+          <ArrowLeft className="w-6 h-6" /> {tr('버튼', 'Buttons')}
         </button>
 
         <div className="bg-white p-6 rounded-3xl shadow-xs border border-gray-100 space-y-8">
           
           {/* Button Style */}
           <div className="space-y-3">
-            <h3 className="text-base font-bold text-gray-900">Button style</h3>
+            <h3 className="text-base font-bold text-gray-900">{tr('버튼 스타일', 'Button style')}</h3>
             <div className="grid grid-cols-3 gap-3">
               
               {/* Solid */}
@@ -203,7 +210,7 @@ const AppearanceEditor = () => {
                 <div className="w-full h-16 bg-gray-300 rounded-xl flex items-center justify-center relative">
                   <div className="w-14 h-6 bg-white rounded-full shadow-xs" />
                 </div>
-                <span className="text-xs font-bold text-gray-900 mt-1">Solid</span>
+                <span className="text-xs font-bold text-gray-900 mt-1">{tr('단색', 'Solid')}</span>
               </button>
 
               {/* Glass */}
@@ -220,7 +227,7 @@ const AppearanceEditor = () => {
                     ⚡
                   </div>
                 </div>
-                <span className="text-xs font-bold text-gray-900 mt-1">Glass</span>
+                <span className="text-xs font-bold text-gray-900 mt-1">{tr('유리', 'Glass')}</span>
               </button>
 
               {/* Outline */}
@@ -234,14 +241,14 @@ const AppearanceEditor = () => {
                 <div className="w-full h-16 bg-gray-300 rounded-xl flex items-center justify-center">
                   <div className="w-14 h-6 border-2 border-white rounded-full" />
                 </div>
-                <span className="text-xs font-bold text-gray-900 mt-1">Outline</span>
+                <span className="text-xs font-bold text-gray-900 mt-1">{tr('테두리', 'Outline')}</span>
               </button>
             </div>
           </div>
 
           {/* Corner Roundness */}
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-900">Corner roundness</h3>
+            <h3 className="text-sm font-bold text-gray-900">{tr('모서리 둥글기', 'Corner roundness')}</h3>
             <div className="grid grid-cols-4 gap-3">
               {[
                 { id: 'none', svgPath: "M5 19V5h14" },
@@ -270,13 +277,13 @@ const AppearanceEditor = () => {
 
           {/* Button Shadow */}
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-900">Button shadow</h3>
+            <h3 className="text-sm font-bold text-gray-900">{tr('버튼 그림자', 'Button shadow')}</h3>
             <div className="grid grid-cols-4 gap-3">
               {[
-                { id: 'none', label: 'None' },
-                { id: 'soft', label: 'Soft' },
-                { id: 'strong', label: 'Strong' },
-                { id: 'hard', label: 'Hard' },
+                { id: 'none', label: tr('없음', 'None') },
+                { id: 'soft', label: tr('부드럽게', 'Soft') },
+                { id: 'strong', label: tr('강하게', 'Strong') },
+                { id: 'hard', label: tr('또렷하게', 'Hard') },
               ].map((s) => {
                 const isSelected = (useStore.getState().buttonShadow || 'soft') === s.id;
                 return (
@@ -297,14 +304,14 @@ const AppearanceEditor = () => {
 
           {/* Button Color & Opacity */}
           <div className="space-y-3 pt-2">
-            <div><span className="text-sm font-bold text-gray-900 block">Button color</span><span className="text-[11px] text-gray-400">색상과 투명도를 함께 조절합니다</span></div>
-            <ColorPickerPopover label="버튼 색상" value={buttonColor || '#FFFFFF'} opacity={buttonOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonColor: buttonColor || '#FFFFFF', buttonOpacity: nextOpacity })} suggested={['#022B49', '#FFFFFF', '#FDEBDB', '#000000', '#7C3AED', '#EC4899', '#10B981', '#F59E0B']} />
+            <div><span className="text-sm font-bold text-gray-900 block">{tr('버튼 색상', 'Button color')}</span><span className="text-[11px] text-gray-400">{tr('색상과 투명도를 함께 조절합니다', 'Adjust color and opacity together')}</span></div>
+            <ColorPickerPopover label={tr('버튼 색상', 'Button color')} value={buttonColor || '#FFFFFF'} opacity={buttonOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonColor: buttonColor || '#FFFFFF', buttonOpacity: nextOpacity })} suggested={['#022B49', '#FFFFFF', '#FDEBDB', '#000000', '#7C3AED', '#EC4899', '#10B981', '#F59E0B']} />
           </div>
 
           {/* Button Text Color */}
           <div className="space-y-3">
-            <div><span className="text-sm font-bold text-gray-900 block">Button text color</span><span className="text-[11px] text-gray-400">글자색과 투명도를 별도로 조절합니다</span></div>
-            <ColorPickerPopover label="버튼 글자색" value={buttonTextColor || '#000000'} opacity={buttonTextOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonTextColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonTextColor: buttonTextColor || '#000000', buttonTextOpacity: nextOpacity })} suggested={['#000000', '#FFFFFF', '#111827', '#4B5563', '#7C3AED', '#DC2626']} />
+            <div><span className="text-sm font-bold text-gray-900 block">{tr('버튼 글자색', 'Button text color')}</span><span className="text-[11px] text-gray-400">{tr('글자색과 투명도를 별도로 조절합니다', 'Adjust text color and opacity separately')}</span></div>
+            <ColorPickerPopover label={tr('버튼 글자색', 'Button text color')} value={buttonTextColor || '#000000'} opacity={buttonTextOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonTextColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonTextColor: buttonTextColor || '#000000', buttonTextOpacity: nextOpacity })} suggested={['#000000', '#FFFFFF', '#111827', '#4B5563', '#7C3AED', '#DC2626']} />
           </div>
 
         </div>
@@ -319,13 +326,13 @@ const AppearanceEditor = () => {
           onClick={() => setCurrentView('main')}
           className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-indigo-600 transition"
         >
-          <ArrowLeft className="w-5 h-5" /> Colors & Text
+          <ArrowLeft className="w-5 h-5" /> {tr('색상 및 글자', 'Colors & Text')}
         </button>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           {/* Page font Modal Trigger */}
           <div className="flex items-center justify-between py-1">
-            <span className="text-sm font-bold text-gray-900">Page font</span>
+            <span className="text-sm font-bold text-gray-900">{tr('페이지 글꼴', 'Page font')}</span>
             <button
               onClick={() => setActiveFontModal('page')}
               className="px-5 py-2.5 rounded-2xl bg-[#F7F7F5] border border-gray-200 text-sm font-bold text-gray-900 hover:bg-gray-200 hover:border-gray-300 transition-all shadow-xs cursor-pointer flex items-center gap-2"
@@ -339,8 +346,8 @@ const AppearanceEditor = () => {
           {/* Title font Modal Trigger */}
           <div className="flex items-center justify-between py-1">
             <div>
-              <span className="text-sm font-bold text-gray-900 block">Alternative title font</span>
-              <span className="text-xs text-gray-400">Matches page font by default</span>
+              <span className="text-sm font-bold text-gray-900 block">{tr('제목 글꼴', 'Alternative title font')}</span>
+              <span className="text-xs text-gray-400">{tr('기본적으로 페이지 글꼴을 따릅니다', 'Matches page font by default')}</span>
             </div>
             <button
               onClick={() => setActiveFontModal('title')}
@@ -360,7 +367,7 @@ const AppearanceEditor = () => {
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4 shrink-0 relative">
                   <h3 className="text-base font-bold text-gray-900 mx-auto">
-                    {activeFontModal === 'page' ? 'Page font' : 'Title font'}
+                    {activeFontModal === 'page' ? tr('페이지 글꼴', 'Page font') : tr('제목 글꼴', 'Title font')}
                   </h3>
                   <button
                     onClick={() => setActiveFontModal(null)}
@@ -384,7 +391,7 @@ const AppearanceEditor = () => {
                         !titleFontFamily ? "border-2 border-black bg-[#F5F5F0]" : "bg-[#F7F7F5] hover:bg-gray-200 border border-transparent"
                       )}
                     >
-                      Auto (Page font와 동일하게 적용)
+                      {tr('자동 (페이지 글꼴과 동일)', 'Auto (same as page font)')}
                     </button>
                   )}
 
@@ -481,7 +488,7 @@ const AppearanceEditor = () => {
 
           {/* Page Text Color */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-700">Page text color</span>
+            <span className="text-xs font-bold text-gray-700">{tr('페이지 글자색', 'Page text color')}</span>
             <div className="flex items-center gap-3">
               <input
                 type="color"
@@ -495,7 +502,7 @@ const AppearanceEditor = () => {
 
           {/* Background Color */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-700">Wallpaper background color</span>
+            <span className="text-xs font-bold text-gray-700">{tr('배경 색상', 'Wallpaper background color')}</span>
             <div className="flex items-center gap-3">
               <input
                 type="color"
@@ -518,13 +525,13 @@ const AppearanceEditor = () => {
           onClick={() => setCurrentView('main')}
           className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-indigo-600 transition"
         >
-          <ArrowLeft className="w-5 h-5" /> Stickers
+          <ArrowLeft className="w-5 h-5" /> {tr('스티커', 'Stickers')}
         </button>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-1">Decorate your page</h3>
-            <p className="text-xs text-gray-400">Choose a sticker badge for your profile avatar.</p>
+            <h3 className="text-sm font-bold text-gray-900 mb-1">{tr('페이지 꾸미기', 'Decorate your page')}</h3>
+            <p className="text-xs text-gray-400">{tr('프로필 이미지에 표시할 스티커를 선택하세요.', 'Choose a sticker badge for your profile avatar.')}</p>
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-4">
@@ -540,7 +547,7 @@ const AppearanceEditor = () => {
                   )}
                 >
                   <span className="text-3xl">{s.emoji}</span>
-                  <span className="text-[10px] font-bold text-gray-600">{s.label}</span>
+                  <span className="text-[10px] font-bold text-gray-600">{stickerLabel(s.id, s.label)}</span>
                 </button>
               );
             })}
@@ -556,8 +563,8 @@ const AppearanceEditor = () => {
       
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Design</h2>
-        <p className="text-sm text-gray-500">Customize themes, buttons, fonts, and decorations.</p>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">{tr('디자인', 'Design')}</h2>
+        <p className="text-sm text-gray-500">{tr('테마, 버튼, 글꼴과 장식을 설정합니다.', 'Customize themes, buttons, fonts, and decorations.')}</p>
       </div>
 
       {/* Top Theme Banner Card */}
@@ -570,19 +577,19 @@ const AppearanceEditor = () => {
             Aa
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 text-sm">Theme</h3>
-            <p className="text-xs text-gray-400 capitalize">{templateType === 'preset' ? templateValue : 'Custom Color'}</p>
+            <h3 className="font-bold text-gray-900 text-sm">{tr('테마', 'Theme')}</h3>
+            <p className="text-xs text-gray-400 capitalize">{templateType === 'preset' ? templateValue : tr('사용자 지정 색상', 'Custom Color')}</p>
           </div>
         </div>
         
         <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 group-hover:text-black">
-          Custom <ChevronRight className="w-4 h-4" />
+          {tr('설정', 'Custom')} <ChevronRight className="w-4 h-4" />
         </div>
       </div>
 
       {/* Customize Section List */}
       <div className="space-y-3">
-        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Customize</h3>
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">{tr('세부 설정', 'Customize')}</h3>
 
         <div className="space-y-3">
           
@@ -595,7 +602,7 @@ const AppearanceEditor = () => {
               <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center">
                 <Palette className="w-5 h-5 text-amber-700" />
               </div>
-              <span className="font-bold text-sm text-gray-900">Colors & Font</span>
+              <span className="font-bold text-sm text-gray-900">{tr('색상 및 글꼴', 'Colors & Font')}</span>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 group-hover:text-black">
               {fontFamily.toUpperCase()} <ChevronRight className="w-4 h-4" />
@@ -611,10 +618,10 @@ const AppearanceEditor = () => {
               <div className="w-10 h-10 rounded-xl bg-indigo-100 border border-indigo-200 flex items-center justify-center">
                 <Square className="w-5 h-5 text-indigo-700" />
               </div>
-              <span className="font-bold text-sm text-gray-900">Buttons</span>
+              <span className="font-bold text-sm text-gray-900">{tr('버튼', 'Buttons')}</span>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 group-hover:text-black capitalize">
-              {buttonStyle} <ChevronRight className="w-4 h-4" />
+              {buttonStyleLabel} <ChevronRight className="w-4 h-4" />
             </div>
           </div>
 
@@ -627,10 +634,10 @@ const AppearanceEditor = () => {
               <div className="w-10 h-10 rounded-xl bg-pink-100 border border-pink-200 flex items-center justify-center">
                 <Smile className="w-5 h-5 text-pink-600" />
               </div>
-              <span className="font-bold text-sm text-gray-900">Stickers</span>
+              <span className="font-bold text-sm text-gray-900">{tr('스티커', 'Stickers')}</span>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 group-hover:text-black">
-              {sticker ? sticker : 'Decorate page'} <ChevronRight className="w-4 h-4" />
+              {sticker ? sticker : tr('페이지 꾸미기', 'Decorate page')} <ChevronRight className="w-4 h-4" />
             </div>
           </div>
 
@@ -641,8 +648,8 @@ const AppearanceEditor = () => {
                 <Sparkles className="w-5 h-5 text-purple-700" />
               </div>
               <div>
-                <span className="font-bold text-sm text-gray-900 block">Hide LinkZip Branding</span>
-                <span className="text-xs text-gray-400">Remove "Powered by LinkZip" watermark on your page</span>
+                <span className="font-bold text-sm text-gray-900 block">{tr('LinkZip 브랜딩 숨기기', 'Hide LinkZip Branding')}</span>
+                <span className="text-xs text-gray-400">{tr('페이지에서 LinkZip 워터마크를 숨깁니다', 'Remove "Powered by LinkZip" watermark on your page')}</span>
               </div>
             </div>
             <button

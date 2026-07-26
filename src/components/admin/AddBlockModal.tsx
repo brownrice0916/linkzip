@@ -12,6 +12,7 @@ import {
   Download
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
+import { useStore } from '../../store/useStore';
 
 interface AddBlockModalProps {
   isOpen: boolean;
@@ -24,60 +25,63 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
   onClose,
   onSelectBlock
 }) => {
+  const language = useStore((state) => state.language);
+  const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
+
   if (!isOpen) return null;
 
   const categories = [
     {
-      title: '1. 기본 브랜딩 & 링크 연결 (가장 기본!)',
+      title: tr('1. 기본 브랜딩 및 링크', '1. Branding & links'),
       blocks: [
         { 
           id: 'link', 
-          label: 'Link (단일 링크)', 
-          desc: '단일 URL 링크 추가하기', 
+          label: tr('단일 링크', 'Link'),
+          desc: tr('URL 링크를 하나 추가합니다.', 'Add a single URL link.'),
           icon: Link2, 
           bgColor: 'bg-emerald-500', 
           iconColor: 'text-white' 
         },
         { 
           id: 'group_link', 
-          label: 'Group link (그룹 링크 / 컬렉션)', 
-          desc: '여러 링크를 묶어주는 그룹 컬렉션 추가하기 (add collection)', 
+          label: tr('그룹 링크', 'Group link'),
+          desc: tr('여러 링크를 하나의 컬렉션으로 묶습니다.', 'Group multiple links into a collection.'),
           icon: Folder, 
           bgColor: 'bg-[#7C3AED]', 
           iconColor: 'text-white' 
         },
         { 
           id: 'sns', 
-          label: 'SNS (소셜 미디어)', 
-          desc: 'YouTube, 인스타그램, 틱톡, X(트위터), 치지직/아프리카TV 등 보유한 채널들을 아이콘으로 예쁘게 묶어 노출시킵니다.', 
+          label: tr('소셜 미디어', 'Social media'),
+          desc: tr('보유한 소셜 채널을 아이콘으로 묶어 표시합니다.', 'Display your social channels as icons.'),
           customIcon: <FaInstagram className="w-6 h-6 text-white" />, 
           bgColor: 'bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600' 
         },
       ]
     },
     {
-      title: '2. 팬 소통 & 반응 유도',
+      title: tr('2. 팬 소통 및 참여', '2. Fan engagement'),
       blocks: [
         { 
           id: 'notice', 
-          label: 'notice (공지사항)', 
-          desc: '팬미팅 일정, 공구 오픈 일정, 휴방 공지, 이벤트를 눈에 띄게 게시할 때 유용합니다.', 
+          label: tr('공지사항', 'Notice'),
+          desc: tr('일정, 이벤트 등의 소식을 눈에 띄게 게시합니다.', 'Highlight schedules, events, and other updates.'),
           icon: Megaphone, 
           bgColor: 'bg-amber-500', 
           iconColor: 'text-white' 
         },
         { 
           id: 'guestbook', 
-          label: 'Guestbook (방명록)', 
-          desc: '팬들이 자유롭게 응원 메시지나 댓글을 남길 수 있는 소통 공간입니다.', 
+          label: tr('방명록', 'Guestbook'),
+          desc: tr('방문자가 응원 메시지나 댓글을 남길 수 있습니다.', 'Let visitors leave messages and comments.'),
           icon: PenTool, 
           bgColor: 'bg-rose-500', 
           iconColor: 'text-white' 
         },
         { 
           id: 'customer_info', 
-          label: 'Customer info (고객 정보 수집)', 
-          desc: '공구 알림 신청, 팬레터/이벤트 신청, 뉴스레터 구독 등 방문자의 이메일이나 연락처를 수집합니다.', 
+          label: tr('고객 정보 수집', 'Customer information'),
+          desc: tr('방문자의 이메일이나 연락처를 수집합니다.', 'Collect visitor email addresses or contact details.'),
           icon: CreditCard, 
           bgColor: 'bg-blue-500', 
           iconColor: 'text-white' 
@@ -85,36 +89,36 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
       ]
     },
     {
-      title: '3. 수익화 & 비즈니스 (공구, 협찬, 자체제작)',
+      title: tr('3. 수익화 및 비즈니스', '3. Monetization & business'),
       blocks: [
         { 
           id: 'sales', 
-          label: 'Sales (판매)', 
-          desc: '디지털 파일, 자체제작 굿즈, 실물 상품을 직접 등록하고 판매합니다.', 
+          label: tr('판매', 'Sales'),
+          desc: tr('디지털 파일이나 상품을 등록하고 판매합니다.', 'List and sell digital files or products.'),
           icon: ShoppingBag, 
           bgColor: 'bg-indigo-500', 
           iconColor: 'text-white' 
         },
         { 
           id: 'donation', 
-          label: 'Donation (후원)', 
-          desc: '팬들로부터 자율적인 후원금(도네이션)을 받고 응원 메시지를 전달받습니다.', 
+          label: tr('후원', 'Donation'),
+          desc: tr('후원금과 응원 메시지를 받습니다.', 'Receive donations and messages of support.'),
           icon: Heart, 
           bgColor: 'bg-red-500', 
           iconColor: 'text-white' 
         },
         { 
           id: 'reservation', 
-          label: 'Appointments (일정 달력 / 예약)', 
-          desc: '월별 달력과 날짜별 상세 일정 목록을 등록하고 예약 수신 및 자동 알림을 받는 블록입니다.', 
+          label: tr('일정 달력 및 예약', 'Appointments'),
+          desc: tr('달력에 일정을 등록하고 예약을 받습니다.', 'Publish a calendar and accept appointments.'),
           icon: CalendarCheck, 
           bgColor: 'bg-emerald-600', 
           iconColor: 'text-white' 
         },
         { 
           id: 'contact', 
-          label: 'Contact (연락처)', 
-          desc: '브랜드/광고주가 섭외 및 비즈니스 문의를 손쉽게 할 수 있도록 비즈니스 이메일이나 담당자 연락처를 남겨둡니다.', 
+          label: tr('비즈니스 연락처', 'Contact'),
+          desc: tr('비즈니스 이메일이나 담당자 연락처를 표시합니다.', 'Display a business email or contact person.'),
           icon: Phone, 
           bgColor: 'bg-stone-500', 
           iconColor: 'text-white' 
@@ -130,8 +134,8 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
         {/* Modal Header */}
         <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
           <div>
-            <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Add a block</h2>
-            <p className="text-xs text-gray-500 font-medium">원하는 블록 유형을 선택하여 링크지프에 추가해보세요.</p>
+            <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">{tr('블록 추가', 'Add a block')}</h2>
+            <p className="text-xs text-gray-500 font-medium">{tr('추가할 블록 유형을 선택하세요.', 'Choose a block type to add.')}</p>
           </div>
           <button
             onClick={onClose}

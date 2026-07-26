@@ -3,6 +3,7 @@ import { X, Trash2, Search, Link2 } from 'lucide-react';
 import { availableIcons, getLinkIcon } from '../../lib/icons';
 import type { SocialLink } from '../../store/useStore';
 import clsx from 'clsx';
+import { useStore } from '../../store/useStore';
 
 interface SocialModalProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ export const SocialModal: React.FC<SocialModalProps> = ({
   onSave,
   onDelete,
 }) => {
+  const language = useStore((state) => state.language);
+  const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
   const [selectedPlatform, setSelectedPlatform] = useState<string>('instagram');
   const [url, setUrl] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -72,9 +75,9 @@ export const SocialModal: React.FC<SocialModalProps> = ({
         <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4 shrink-0 relative">
           <div className="mx-auto text-center">
             <h3 className="text-base font-bold text-gray-900">
-              {editingLink ? 'Edit Social Icon' : 'Add Social Icon'}
+              {editingLink ? tr('소셜 아이콘 수정', 'Edit social icon') : tr('소셜 아이콘 추가', 'Add social icon')}
             </h3>
-            <p className="text-xs text-gray-400 font-medium">Display SNS icons under your profile title</p>
+            <p className="text-xs text-gray-400 font-medium">{tr('프로필 제목 아래에 소셜 아이콘을 표시합니다.', 'Display social icons below your profile title.')}</p>
           </div>
 
           <button
@@ -90,7 +93,7 @@ export const SocialModal: React.FC<SocialModalProps> = ({
           
           {/* 1. Platform Selector Grid */}
           <div className="space-y-2 flex-1 flex flex-col min-h-0">
-            <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Select Platform</label>
+            <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{tr('플랫폼 선택', 'Select platform')}</label>
             
             {/* Search Bar */}
             <div className="relative mb-2">
@@ -99,7 +102,7 @@ export const SocialModal: React.FC<SocialModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search SNS (Instagram, Naver Blog, YouTube...)"
+                placeholder={tr('SNS 검색 (인스타그램, 네이버 블로그, 유튜브...)', 'Search social platforms...')}
                 className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-gray-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-black"
               />
             </div>
@@ -139,8 +142,8 @@ export const SocialModal: React.FC<SocialModalProps> = ({
           {/* 2. URL Input */}
           <div className="space-y-2 shrink-0">
             <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
-              <span>URL / Link</span>
-              <span className="text-[10px] font-normal text-gray-400">e.g. https://...</span>
+              <span>{tr('URL / 링크', 'URL / Link')}</span>
+              <span className="text-[10px] font-normal text-gray-400">{tr('예: https://...', 'e.g. https://...')}</span>
             </label>
             <div className="relative">
               <div className="w-8 h-8 rounded-lg bg-gray-100 absolute left-2 top-1.5 flex items-center justify-center">
@@ -150,7 +153,7 @@ export const SocialModal: React.FC<SocialModalProps> = ({
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder={`Enter your ${selectedPlatform} URL`}
+                placeholder={tr(`${selectedPlatform} 주소를 입력하세요`, `Enter your ${selectedPlatform} URL`)}
                 className="w-full pl-12 pr-4 py-2.5 rounded-2xl border border-gray-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-gray-50 focus:bg-white transition"
                 required
               />
@@ -165,7 +168,7 @@ export const SocialModal: React.FC<SocialModalProps> = ({
                 onClick={handleDelete}
                 className="px-4 py-2.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 text-sm font-bold transition flex items-center gap-1.5 cursor-pointer"
               >
-                <Trash2 className="w-4 h-4" /> Delete
+                <Trash2 className="w-4 h-4" /> {tr('삭제', 'Delete')}
               </button>
             ) : <div />}
 
@@ -175,13 +178,13 @@ export const SocialModal: React.FC<SocialModalProps> = ({
                 onClick={onClose}
                 className="px-5 py-2.5 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-sm font-bold text-gray-800 transition cursor-pointer"
               >
-                Cancel
+                {tr('취소', 'Cancel')}
               </button>
               <button
                 type="submit"
                 className="px-6 py-2.5 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-bold shadow-md shadow-purple-500/20 transition cursor-pointer"
               >
-                {editingLink ? 'Update' : 'Add Icon'}
+                {editingLink ? tr('수정', 'Update') : tr('아이콘 추가', 'Add icon')}
               </button>
             </div>
           </div>

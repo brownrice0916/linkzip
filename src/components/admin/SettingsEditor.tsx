@@ -17,6 +17,7 @@ import {
 
 const SettingsEditor = () => {
   const state = useStore();
+  const tr = (ko: string, en: string) => state.language === 'ko' ? ko : en;
   const navigate = useNavigate();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [confirmInput, setConfirmInput] = useState('');
@@ -66,8 +67,8 @@ const SettingsEditor = () => {
       
       {/* Page Title */}
       <div>
-        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Settings (계정 설정)</h2>
-        <p className="text-xs text-gray-500 font-medium mt-1">계정 정보 관리 및 시스템 설정을 진행합니다.</p>
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight">{tr('계정 설정', 'Settings')}</h2>
+        <p className="text-xs text-gray-500 font-medium mt-1">{tr('계정 정보와 시스템 설정을 관리합니다.', 'Manage your account and system settings.')}</p>
       </div>
 
       {/* 1. Profile Account Info Card */}
@@ -128,7 +129,7 @@ const SettingsEditor = () => {
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-red-900">Danger Zone (위험 구역)</h3>
+            <h3 className="text-sm font-bold text-red-900">{tr('위험 구역', 'Danger zone')}</h3>
             <p className="text-xs text-red-600 font-medium">계정 삭제 및 데이터 영구 제거</p>
           </div>
         </div>
@@ -147,7 +148,7 @@ const SettingsEditor = () => {
             className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-bold shadow-md shadow-red-600/20 transition flex items-center gap-2 cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
-            회원 탈퇴 (Account Deletion)
+            {tr('회원 탈퇴', 'Delete account')}
           </button>
         </div>
       </div>

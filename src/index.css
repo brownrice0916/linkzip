@@ -110,14 +110,14 @@
   .linkzip-admin.admin-shell {
     min-width: 0;
     width: 100%;
-    height: auto;
+    height: 100dvh;
     min-height: 100dvh;
     gap: 0;
     padding: 0;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 72px auto auto;
+    grid-template-rows: 72px minmax(0, 1fr);
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow-y: hidden;
     background: #fff;
   }
 
@@ -126,7 +126,7 @@
     grid-column: 1;
     grid-row: 2;
     width: 100%;
-    height: min(660px, 68dvh);
+    height: 100%;
     padding: 20px 0 28px;
     border: 0;
     border-radius: 0;
@@ -139,6 +139,18 @@
     height: 100%;
     border-radius: 28px;
     box-shadow: 0 14px 36px rgb(15 23 42 / 0.14);
+    transition: width 220ms ease, height 220ms ease, border-radius 220ms ease, box-shadow 220ms ease;
+  }
+
+  .linkzip-admin.mobile-editor-open .admin-live-preview {
+    padding-bottom: 92px;
+  }
+
+  .linkzip-admin.mobile-editor-open .admin-live-preview > div {
+    width: min(270px, calc(100vw - 72px));
+    height: min(540px, calc(100dvh - 190px));
+    border-radius: 24px;
+    box-shadow: 0 12px 30px rgb(15 23 42 / 0.12);
   }
 
   .linkzip-admin .admin-top-nav,
@@ -210,16 +222,21 @@
   }
 
   .linkzip-admin .admin-main-panel {
-    grid-column: 1;
-    grid-row: 3;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: 100%;
+    height: min(52dvh, 720px);
+    max-height: calc(100dvh - 72px);
     min-width: 0;
-    min-height: 55dvh;
-    overflow: visible;
+    min-height: 360px;
+    overflow: hidden;
     border: 0;
     border-radius: 30px 30px 0 0;
     background: #fff;
     box-shadow: 0 -14px 36px rgb(15 23 42 / 0.12);
-    position: relative;
     transition: transform 180ms ease, opacity 180ms ease;
   }
 
@@ -236,6 +253,11 @@
     z-index: 10;
     height: 44px;
     align-items: center;
+    overflow: hidden;
+    border-bottom: 1px solid #f0f1f2;
+    border-radius: 30px 30px 0 0;
+    background: #fff;
+    box-shadow: 0 4px 12px rgb(15 23 42 / 0.04);
   }
 
   .linkzip-admin .mobile-sheet-swipe-zone {
@@ -323,9 +345,15 @@
   }
 
   .linkzip-admin .admin-editor-body {
+    flex: 1;
+    min-height: 0;
     padding: 52px 14px 28px;
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     background: #fff;
+    scrollbar-gutter: stable;
   }
 
   .linkzip-admin .admin-editor-canvas {
@@ -342,7 +370,8 @@
   }
 
   .linkzip-admin .admin-section-header h2 {
-    font-size: 1.7rem;
+    font-size: 1.25rem;
+    line-height: 1.35;
   }
 
   .linkzip-admin .admin-section-controls {
@@ -378,6 +407,11 @@
   }
 
   .linkzip-admin .admin-live-preview {
-    height: min(600px, 66dvh);
+    height: 100%;
+  }
+
+  .linkzip-admin .admin-main-panel {
+    height: min(56dvh, 680px);
+    min-height: 340px;
   }
 }

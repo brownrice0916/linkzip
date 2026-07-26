@@ -21,7 +21,8 @@ import { listCustomerData, removeCustomerData } from "../../services/customerDat
 import clsx from "clsx";
 
 export const GrowthEditor: React.FC = () => {
-  const { user, profile, customLinks } = useStore();
+  const { user, profile, customLinks, language } = useStore();
+  const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
 
   const [collectedData, setCollectedData] = useState<CollectedCustomerData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,16 +104,16 @@ export const GrowthEditor: React.FC = () => {
         {/* Card Header Bar */}
         <div className="bg-black text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">Customer Information</h2>
+            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">{tr('고객 정보', 'Customer information')}</h2>
             <span className="text-gray-400 font-bold">|</span>
-            <span className="text-xs font-bold text-gray-300">Total {collectedData.length} items</span>
+            <span className="text-xs font-bold text-gray-300">{tr(`총 ${collectedData.length}개`, `${collectedData.length} items`)}</span>
           </div>
 
           <button
             onClick={() => setIsDetailsModalOpen(true)}
             className="text-xs font-bold text-gray-200 hover:text-white underline underline-offset-4 cursor-pointer transition"
           >
-            View Details
+            {tr('자세히 보기', 'View details')}
           </button>
         </div>
 
@@ -124,9 +125,9 @@ export const GrowthEditor: React.FC = () => {
               <div className="w-8 h-8 rounded-xl bg-cyan-500 text-white flex items-center justify-center">
                 <Download className="w-4 h-4" />
               </div>
-              <span className="text-gray-900">File sharing</span>
+              <span className="text-gray-900">{tr('파일 공유', 'File sharing')}</span>
             </div>
-            <span className="text-gray-400 font-extrabold">{fileBlocksCount} items</span>
+            <span className="text-gray-400 font-extrabold">{tr(`${fileBlocksCount}개`, `${fileBlocksCount} items`)}</span>
           </div>
 
           <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
@@ -134,10 +135,10 @@ export const GrowthEditor: React.FC = () => {
               <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center">
                 <Contact className="w-4 h-4" />
               </div>
-              <span className="text-gray-900">Customer info</span>
+              <span className="text-gray-900">{tr('고객 정보 수집', 'Customer information')}</span>
             </div>
             <span className={clsx("font-extrabold", collectedData.length > 0 ? "text-purple-600" : "text-gray-400")}>
-              {collectedData.length} items
+              {tr(`${collectedData.length}개`, `${collectedData.length} items`)}
             </span>
           </div>
 
@@ -150,16 +151,16 @@ export const GrowthEditor: React.FC = () => {
         {/* Card Header Bar */}
         <div className="bg-black text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">Sales Performance</h2>
+            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">{tr('판매 실적', 'Sales performance')}</h2>
             <span className="text-gray-400 font-bold">|</span>
-            <span className="text-xs font-bold text-gray-300">Expected amount: 0KRW</span>
+            <span className="text-xs font-bold text-gray-300">{tr('예상 금액: 0원', 'Expected amount: KRW 0')}</span>
           </div>
 
           <button
             onClick={() => alert('수익 및 매출 내역 상세 페이지 준비 중입니다.')}
             className="text-xs font-bold text-gray-200 hover:text-white underline underline-offset-4 cursor-pointer transition"
           >
-            View Details
+            {tr('자세히 보기', 'View details')}
           </button>
         </div>
 
@@ -171,7 +172,7 @@ export const GrowthEditor: React.FC = () => {
               <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center">
                 <ShoppingBag className="w-4 h-4" />
               </div>
-              <span className="text-gray-900">sell</span>
+              <span className="text-gray-900">{tr('판매', 'Sales')}</span>
             </div>
             <span className="text-gray-400 font-extrabold">0KRW</span>
           </div>
@@ -181,7 +182,7 @@ export const GrowthEditor: React.FC = () => {
               <div className="w-8 h-8 rounded-xl bg-pink-500 text-white flex items-center justify-center">
                 <Heart className="w-4 h-4" />
               </div>
-              <span className="text-gray-900">Donation</span>
+              <span className="text-gray-900">{tr('후원', 'Donation')}</span>
             </div>
             <span className="text-gray-400 font-extrabold">0KRW</span>
           </div>
@@ -195,16 +196,16 @@ export const GrowthEditor: React.FC = () => {
         {/* Card Header Bar */}
         <div className="bg-black text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">Ad Revenue</h2>
+            <h2 className="text-sm sm:text-base font-extrabold tracking-tight">{tr('광고 수익', 'Ad revenue')}</h2>
             <span className="text-gray-400 font-bold">|</span>
-            <span className="text-xs font-bold text-gray-300">Expected amount: 0KRW</span>
+            <span className="text-xs font-bold text-gray-300">{tr('예상 금액: 0원', 'Expected amount: KRW 0')}</span>
           </div>
 
           <button
             onClick={() => alert('광고 수익 내역 페이지 준비 중입니다.')}
             className="text-xs font-bold text-gray-200 hover:text-white underline underline-offset-4 cursor-pointer transition"
           >
-            View Details
+            {tr('자세히 보기', 'View details')}
           </button>
         </div>
 
@@ -216,7 +217,7 @@ export const GrowthEditor: React.FC = () => {
               <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center">
                 <Tv className="w-4 h-4" />
               </div>
-              <span className="text-gray-900">Advertisement</span>
+              <span className="text-gray-900">{tr('광고', 'Advertisement')}</span>
             </div>
             <span className="text-gray-400 font-extrabold">0KRW</span>
           </div>

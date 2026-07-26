@@ -108,7 +108,9 @@ const LinksEditor = () => {
     moveItemToRoot,
     moveItemRelative,
     moveItemDirection,
+    language,
   } = useStore();
+  const isKo = language === 'ko';
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
@@ -385,7 +387,7 @@ const LinksEditor = () => {
       addCustomLink({
         id: `link-${Date.now()}`,
         type: "reservation",
-        title: "Appointments",
+        title: isKo ? "예약 일정" : "Appointments",
         isVisible: true,
         iconName: "calendar-check",
         reservationConfig: {
@@ -707,7 +709,7 @@ const LinksEditor = () => {
                 updateCustomLink(collection.id, { title: e.target.value })
               }
               className="font-black text-sm text-gray-900 border-none p-0 focus:ring-0 bg-transparent placeholder-gray-400 flex-1 truncate"
-              placeholder="Collection Title"
+              placeholder={isKo ? "컬렉션 제목" : "Collection Title"}
             />
           </div>
 
@@ -793,7 +795,7 @@ const LinksEditor = () => {
                 className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add link inside</span>
+                <span>{isKo ? '내부 링크 추가' : 'Add link inside'}</span>
               </button>
             </div>
           </div>
@@ -1230,7 +1232,7 @@ const LinksEditor = () => {
                   className="w-16 bg-[#8C9AA8] hover:bg-gray-600 text-white rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer shrink-0"
                 >
                   <ImageIcon className="w-4 h-4" />
-                  <span className="text-[9px] font-bold">image</span>
+                  <span className="text-[9px] font-bold">{isKo ? '이미지' : 'image'}</span>
                 </button>
               </div>
             </div>
@@ -1636,7 +1638,7 @@ const LinksEditor = () => {
             {/* Title Input */}
             <input
               type="text"
-              value={link.title || "Appointments"}
+              value={isKo && (link.title === "Appointments" || !link.title) ? "예약 일정" : (link.title || "Appointments")}
               onChange={(e) => updateCustomLink(link.id, { title: e.target.value })}
               className="text-base font-black text-gray-900 border-b border-transparent hover:border-gray-300 focus:border-black bg-transparent focus:outline-hidden px-1 py-0.5"
             />
@@ -2100,7 +2102,7 @@ const LinksEditor = () => {
                     }
                     className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                   />
-                  <span>Email</span>
+                  <span>{isKo ? '이메일' : 'Email'}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-800">
@@ -2112,7 +2114,7 @@ const LinksEditor = () => {
                     }
                     className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                   />
-                  <span>Phone number</span>
+                  <span>{isKo ? '전화번호' : 'Phone number'}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-800">
@@ -2124,7 +2126,7 @@ const LinksEditor = () => {
                     }
                     className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                   />
-                  <span>Name</span>
+                  <span>{isKo ? '이름' : 'Name'}</span>
                 </label>
               </div>
             </div>
@@ -2519,7 +2521,7 @@ const LinksEditor = () => {
                       }
                       className="cursor-pointer"
                     />
-                    <span>Simple view</span>
+                    <span>{isKo ? '간단히 보기' : 'Simple view'}</span>
                   </label>
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input
@@ -2531,7 +2533,7 @@ const LinksEditor = () => {
                       }
                       className="cursor-pointer"
                     />
-                    <span>detail view</span>
+                    <span>{isKo ? '자세히 보기' : 'Detail view'}</span>
                   </label>
                 </div>
               </div>
@@ -2594,7 +2596,7 @@ const LinksEditor = () => {
                 onClick={() => setActiveProductRegisterLink(link)}
                 className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
               >
-                <span>Register product</span>
+                <span>{isKo ? '상품 등록' : 'Register product'}</span>
               </button>
             </div>
 
@@ -2761,7 +2763,7 @@ const LinksEditor = () => {
             <button
               onClick={handleAddSocial}
               className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center cursor-pointer transition shadow-2xs hover:scale-105"
-              title="Add social icon"
+              title={isKo ? "소셜 아이콘 추가" : "Add social icon"}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -2776,7 +2778,7 @@ const LinksEditor = () => {
           className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-black hover:bg-gray-800 text-white rounded-full font-bold text-sm transition cursor-pointer shadow-md"
         >
           <Plus className="w-4 h-4" />
-          <span>Add</span>
+          <span>{isKo ? '추가' : 'Add'}</span>
         </button>
       </div>
 
@@ -2812,7 +2814,7 @@ const LinksEditor = () => {
         )}
       >
         <p className="text-xs font-semibold">
-          Drop here to move out of collection to main list
+          {isKo ? '여기에 놓으면 컬렉션에서 기본 목록으로 이동합니다' : 'Drop here to move out of collection to main list'}
         </p>
       </div>
 

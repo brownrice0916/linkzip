@@ -26,7 +26,8 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
   const [viewMode, setViewMode] = useState<'main' | 'iconGrid'>('main');
   const [searchQuery, setSearchQuery] = useState('');
   const [uploading, setUploading] = useState(false);
-  const user = useStore((state) => state.user);
+  const { user, language } = useStore();
+  const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
 
   if (!isOpen) return null;
 
@@ -94,10 +95,10 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
 
           <div className="mx-auto text-center">
             <h3 className="text-base font-bold text-gray-900">
-              {viewMode === 'iconGrid' ? 'Add Thumbnail' : 'Thumbnail'}
+              {viewMode === 'iconGrid' ? tr('썸네일 추가', 'Add thumbnail') : tr('썸네일', 'Thumbnail')}
             </h3>
             {viewMode === 'iconGrid' && (
-              <p className="text-xs text-purple-600 font-medium">Icons by Tabler Icons</p>
+              <p className="text-xs text-purple-600 font-medium">{tr('Tabler Icons 제공', 'Icons by Tabler Icons')}</p>
             )}
           </div>
 
@@ -124,7 +125,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                   activeTab === 'image' ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-900"
                 )}
               >
-                Image
+                {tr('이미지', 'Image')}
               </button>
               <button
                 type="button"
@@ -139,7 +140,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                   activeTab === 'icon' ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-900"
                 )}
               >
-                Icon
+                {tr('아이콘', 'Icon')}
               </button>
               <button
                 type="button"
@@ -153,7 +154,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                   activeTab === 'none' ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-900"
                 )}
               >
-                None
+                {tr('없음', 'None')}
               </button>
             </div>
 
@@ -193,7 +194,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                   <label className="w-full h-32 rounded-2xl border-2 border-dashed border-gray-300 hover:border-gray-400 bg-[#F7F7F5] flex flex-col items-center justify-center gap-2 cursor-pointer transition">
                     <UploadCloud className="w-8 h-8 text-gray-400" />
                     <span className="text-sm font-bold text-gray-700">
-                      {uploading ? 'Uploading image...' : 'Upload an image'}
+                      {uploading ? tr('이미지 업로드 중...', 'Uploading image...') : tr('이미지 업로드', 'Upload an image')}
                     </span>
                     <input
                       type="file"
@@ -222,7 +223,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                         onClick={() => setViewMode('iconGrid')}
                         className="px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-sm font-bold text-gray-900 transition cursor-pointer flex items-center gap-2"
                       >
-                        <Edit2 className="w-4 h-4" /> Change Icon
+                        <Edit2 className="w-4 h-4" /> {tr('아이콘 변경', 'Change icon')}
                       </button>
                       <button
                         type="button"
@@ -245,7 +246,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                     <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200">
                       <ImageIcon className="w-6 h-6 text-gray-600" />
                     </div>
-                    <span className="text-sm font-bold text-gray-900">Select an icon</span>
+                    <span className="text-sm font-bold text-gray-900">{tr('아이콘 선택', 'Select an icon')}</span>
                   </button>
                 )}
               </div>
@@ -264,7 +265,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search icons"
+                placeholder={tr('아이콘 검색', 'Search icons')}
                 className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#F7F7F5] border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-black"
               />
             </div>
@@ -305,7 +306,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                   {/* Category 1: SNS & Platforms */}
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 mb-2 px-1 flex items-center gap-1">
-                      <span>🇰🇷</span> 주요 SNS & 플랫폼
+                      <span>🌐</span> {tr('주요 SNS 및 플랫폼', 'Social platforms')}
                     </div>
                     <div className="grid grid-cols-4 gap-3">
                       {filteredIcons.filter(i => i.category === 'sns').map((item) => {
@@ -338,7 +339,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
                   {/* Category 2: General Icons */}
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-wider text-purple-600 mb-2 px-1 pt-2 flex items-center gap-1">
-                      <span>🌐</span> 일반 아이콘
+                      <span>◇</span> {tr('일반 아이콘', 'General icons')}
                     </div>
                     <div className="grid grid-cols-4 gap-3">
                       {filteredIcons.filter(i => i.category !== 'sns').map((item) => {
@@ -372,7 +373,7 @@ export const ThumbnailModal: React.FC<ThumbnailModalProps> = ({
 
               {filteredIcons.length === 0 && (
                 <div className="text-center py-8 text-xs font-semibold text-gray-400">
-                  No icons found matching "{searchQuery}"
+                  {tr(`“${searchQuery}”에 맞는 아이콘이 없습니다.`, `No icons found matching “${searchQuery}”.`)}
                 </div>
               )}
             </div>

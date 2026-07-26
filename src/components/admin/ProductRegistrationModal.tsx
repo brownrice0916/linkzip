@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus, Upload, FileText, Check } from 'lucide-react';
-import type { ProductItem } from '../../store/useStore';
+import { useStore, type ProductItem } from '../../store/useStore';
 
 interface ProductRegistrationModalProps {
   isOpen: boolean;
@@ -15,6 +15,8 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
   onRegister,
   initialProduct
 }) => {
+  const language = useStore((state) => state.language);
+  const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
   const [name, setName] = useState(initialProduct?.name || '전자책');
   const [price, setPrice] = useState<number>(initialProduct?.price || 50000);
   const [fileName, setFileName] = useState(initialProduct?.fileName || 'ebook_digital_file.pdf');
@@ -69,7 +71,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
         
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <h2 className="text-xl font-black text-gray-900 tracking-tight">Product registration</h2>
+          <h2 className="text-xl font-black text-gray-900 tracking-tight">{tr('상품 등록', 'Product registration')}</h2>
           <button
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-black rounded-full hover:bg-gray-100 transition cursor-pointer"
@@ -83,7 +85,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
           
           {/* Product Name* */}
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-600">product name<span className="text-red-500">*</span></label>
+            <label className="block text-xs font-bold text-gray-600">{tr('상품명', 'Product name')}<span className="text-red-500">*</span></label>
             <input
               type="text"
               value={name}
@@ -96,7 +98,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
           {/* Sales Price* */}
           <div className="space-y-1">
             <div className="flex items-center gap-1">
-              <label className="block text-xs font-bold text-gray-600">sales price<span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-600">{tr('판매 가격', 'Sales price')}<span className="text-red-500">*</span></label>
               <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
             </div>
             <div className="relative">
@@ -114,13 +116,13 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
           {/* Upload Files* */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-1">
-              <label className="block text-xs font-bold text-gray-600">Upload Files<span className="text-red-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-600">{tr('파일 업로드', 'Upload files')}<span className="text-red-500">*</span></label>
               <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
             </div>
 
             <label className="w-full py-3.5 bg-[#2B2D31] hover:bg-black text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-xs">
               <Plus className="w-4 h-4" />
-              <span>+ Add File</span>
+              <span>{tr('+ 파일 추가', '+ Add file')}</span>
               <input type="file" onChange={handleFileUpload} className="hidden" />
             </label>
 
@@ -146,7 +148,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
                   onChange={(e) => setShowDiscount(e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                 />
-                <span>discount & promotion</span>
+                <span>{tr('할인 및 프로모션', 'Discount & promotion')}</span>
                 <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
               </label>
 
@@ -172,7 +174,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
                   onChange={(e) => setShowStock(e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                 />
-                <span>stock quantity</span>
+                <span>{tr('재고 수량', 'Stock quantity')}</span>
               </label>
 
               {showStock && (
@@ -197,7 +199,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
                   onChange={(e) => setShowOrderNotes(e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                 />
-                <span>Order notes</span>
+                <span>{tr('주문 요청사항', 'Order notes')}</span>
               </label>
 
               {showOrderNotes && (
@@ -223,7 +225,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
             onClick={onClose}
             className="flex-1 py-3.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 rounded-2xl font-bold text-xs transition cursor-pointer"
           >
-            Cancel
+            {tr('취소', 'Cancel')}
           </button>
 
           <button
@@ -231,7 +233,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
             onClick={handleSave}
             className="flex-1 py-3.5 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-2xl font-bold text-xs transition cursor-pointer shadow-md"
           >
-            registration
+            {tr('등록', 'Register')}
           </button>
         </div>
 

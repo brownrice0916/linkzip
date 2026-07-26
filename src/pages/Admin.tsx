@@ -225,7 +225,10 @@ const Admin = () => {
   };
 
   return (
-    <div className="linkzip-admin admin-shell grid h-screen min-w-[1240px] grid-cols-[400px_minmax(700px,1fr)] grid-rows-[48px_64px_minmax(0,1fr)] gap-4 bg-[#ECEFF1] p-5 overflow-x-auto overflow-y-hidden select-none font-sans text-gray-900">
+    <div className={clsx(
+      "linkzip-admin admin-shell grid h-screen min-w-[1240px] grid-cols-[400px_minmax(700px,1fr)] grid-rows-[48px_64px_minmax(0,1fr)] gap-4 bg-[#ECEFF1] p-5 overflow-x-auto overflow-y-hidden select-none font-sans text-gray-900",
+      isMobileEditorOpen ? "mobile-editor-open" : "mobile-editor-closed"
+    )}>
       {/* Sidebar Navigation */}
       <div className="admin-top-nav col-start-2 row-start-2 w-full bg-white border border-gray-200 rounded-[24px] flex flex-row items-center px-3 py-2 gap-2 z-20 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
         <nav className="admin-nav-items flex flex-row items-center gap-1.5 min-w-0">
@@ -462,7 +465,7 @@ const Admin = () => {
             </div>
 
             {/* Tab Editor Views */}
-            <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500">Loading editor...</div>}>
+            <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500">{state.language === 'ko' ? '편집기 불러오는 중...' : 'Loading editor...'}</div>}>
               {activeTab === "links" && <LinksEditor />}
               {activeTab === "profile" && <ProfileEditor />}
               {activeTab === "appearance" && <AppearanceEditor />}

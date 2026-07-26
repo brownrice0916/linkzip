@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Search } from 'lucide-react';
 import clsx from 'clsx';
-import type { DonationConfig } from '../../store/useStore';
+import { useStore, type DonationConfig } from '../../store/useStore';
 import { verifyBankAccount } from '../../services/accountVerificationService';
 
 interface ProfitAccountModalProps {
@@ -150,6 +150,8 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   initialData,
   onSave
 }) => {
+  const language = useStore((state) => state.language);
+  const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
   const [accountType, setAccountType] = useState<'personal' | 'corporate'>(
     initialData?.accountType || 'personal'
   );
@@ -239,7 +241,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
         
         {/* Modal Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-black text-gray-900 tracking-tight">Profit Account Manage</h2>
+          <h2 className="text-xl font-black text-gray-900 tracking-tight">{tr('정산 계좌 관리', 'Payout account')}</h2>
           <button
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-black rounded-full hover:bg-gray-200 transition cursor-pointer"
@@ -253,21 +255,21 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
           
           {/* Account Type Selector */}
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-600">Account type*</label>
+            <label className="block text-xs font-bold text-gray-600">{tr('계좌 유형', 'Account type')}*</label>
             <select
               value={accountType}
               onChange={(e) => setAccountType(e.target.value as 'personal' | 'corporate')}
               className="w-full p-3.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black focus:border-black cursor-pointer"
             >
-              <option value="personal">Personal / Business Account</option>
-              <option value="corporate">corporate account</option>
+              <option value="personal">{tr('개인 / 개인사업자 계좌', 'Personal / business account')}</option>
+              <option value="corporate">{tr('법인 계좌', 'Corporate account')}</option>
             </select>
           </div>
 
           {/* ID Number / Business Registration Number */}
           <div className="space-y-1">
             <label className="block text-xs font-bold text-gray-600">
-              {accountType === 'personal' ? 'ID number*' : 'Company Registration Number*'}
+              {accountType === 'personal' ? tr('주민등록번호 / 사업자번호*', 'ID number*') : tr('법인등록번호*', 'Company registration number*')}
             </label>
             <input
               type="text"
@@ -276,7 +278,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
                 setIdNumber(e.target.value);
                 setIsCertified(false);
               }}
-              placeholder={accountType === 'personal' ? 'enter ID number (-Excluded)' : 'business registration number(-excluded)'}
+              placeholder={accountType === 'personal' ? tr('번호만 입력하세요', 'Enter ID number without hyphens') : tr('법인등록번호만 입력하세요', 'Enter registration number without hyphens')}
               className={clsx(
                 "w-full p-3.5 bg-white border rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 placeholder-gray-400 transition-all",
                 hasIdError
@@ -294,7 +296,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
           {/* Bank Name & Account Owner Name Grid */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-gray-600">name of bank*</label>
+              <label className="block text-xs font-bold text-gray-600">{tr('은행명', 'Bank name')}*</label>
               <div className="relative">
                 <select
                   value={bankName}
@@ -310,7 +312,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-gray-600">Account owner name*</label>
+              <label className="block text-xs font-bold text-gray-600">{tr('예금주명', 'Account holder')}*</label>
               <input
                 type="text"
                 value={accountOwnerName}
@@ -323,13 +325,13 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
 
           {/* Account Number & Certification */}
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-600">account number*</label>
+            <label className="block text-xs font-bold text-gray-600">{tr('계좌번호', 'Account number')}*</label>
             <div className="relative flex items-center">
               <input
                 type="text"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
-                placeholder="enter only numbers(excluding -)"
+                placeholder={tr('숫자만 입력하세요', 'Enter numbers only')}
                 className="w-full p-3.5 pr-28 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
               />
               <button
@@ -343,7 +345,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
                     : "bg-white hover:bg-gray-100 text-gray-600 border-gray-300"
                 )}
               >
-                {certifying ? "인증 중..." : isCertified ? "✓ 인증완료" : "certification"}
+                {certifying ? tr('인증 중...', 'Verifying...') : isCertified ? tr('✓ 인증 완료', '✓ Verified') : tr('인증', 'Verify')}
               </button>
             </div>
           </div>
@@ -360,9 +362,9 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
               ? "bg-black hover:bg-gray-800 text-white cursor-pointer shadow-md"
               : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
           )}
-          title={!isCertified ? "계좌 인증(certification)을 완료해야 저장할 수 있습니다." : "저장하기"}
+          title={!isCertified ? tr('계좌 인증을 완료해야 저장할 수 있습니다.', 'Verify the account before saving.') : tr('저장하기', 'Save')}
         >
-          <span>{isCertified ? "save" : "인증 완료 후 저장 가능 (save)"}</span>
+          <span>{isCertified ? tr('저장', 'Save') : tr('인증 완료 후 저장 가능', 'Verify before saving')}</span>
         </button>
 
       </div>
