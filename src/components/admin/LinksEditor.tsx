@@ -411,7 +411,7 @@ const LinksEditor = () => {
         title: isKo ? "오시는 길" : "Location",
         isVisible: true,
         iconName: "map-pin",
-        mapConfig: { query: "서울특별시" },
+        mapConfig: { query: "" },
       });
     } else if (blockType === "reservation" || blockType === "booking") {
       addBlockToTarget({

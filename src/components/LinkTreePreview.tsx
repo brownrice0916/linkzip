@@ -693,10 +693,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
             {customLinks.map((block) => {
               if (block.type === "collection") {
                 const collectionTitle = block.publicTitle ?? block.title;
+                const collectionLinks = (block.links || []).filter((link) => link.type !== 'map' || Boolean(link.mapConfig?.query.trim()));
                 if (block.layout === "carousel") {
                   const carouselNavigation = collectionCarouselNavigation[block.id];
                   const canGoBack = carouselNavigation?.canGoBack ?? false;
-                  const canGoForward = carouselNavigation?.canGoForward ?? ((block.links?.length || 0) > 2);
+                  const canGoForward = carouselNavigation?.canGoForward ?? (collectionLinks.length > 2);
                   return (
                     <div key={block.id} className="w-full pt-2">
                       {collectionTitle && !block.hideTitle && <h3 className={clsx("mb-3 pl-1 text-sm font-bold", textClass)}>{collectionTitle}</h3>}
@@ -706,7 +707,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           onScroll={() => updateCollectionCarouselNavigation(block.id)}
                           className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                         >
-                          {block.links?.map((link) => {
+                          {collectionLinks.map((link) => {
                             const isImage = link.thumbnailType === "image" || (!link.thumbnailType && link.icon);
                             const isNone = link.thumbnailType === "none";
                             const IconComp = getLinkIcon(link.iconName);
@@ -737,7 +738,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   );
                 }
                 if (block.layout === "grid") {
-                  const linkCount = block.links?.length || 0;
+                  const linkCount = collectionLinks.length;
                   const isEven = linkCount > 0 && linkCount % 2 === 0;
                   const gridColsClass = isEven ? "grid-cols-2" : "grid-cols-3";
 
@@ -754,7 +755,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         </h3>
                       )}
                       <div className={clsx("grid gap-3", gridColsClass)}>
-                        {block.links?.map((link) => {
+                        {collectionLinks.map((link) => {
                           const isImage =
                             link.thumbnailType === "image" ||
                             (!link.thumbnailType && link.icon);
@@ -830,7 +831,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         </h3>
                       )}
                       <div className="space-y-3">
-                        {block.links?.map((link) => {
+                        {collectionLinks.map((link) => {
                           const isImage =
                             link.thumbnailType === "image" ||
                             (!link.thumbnailType && link.icon);
@@ -1212,21 +1213,22 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   );
                 }
                 return (
-                  <a key={block.id} href={productUrl} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordLinkClick(block.id)} className="group overflow-hidden rounded-3xl border border-white/30 bg-white/25 text-left shadow-sm backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl" style={getCustomLinkStyle(block)}>
+                  <a key={block.id} href={productUrl} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordLinkClick(block.id)} className={clsx(buttonClass, "group !block overflow-hidden !p-0 text-left")} style={getCustomLinkStyle(block)}>
                     <div className="aspect-[16/10] w-full overflow-hidden bg-black/5">{affiliate?.imageUrl ? <img src={affiliate.imageUrl} alt={block.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><ShoppingBag className="h-10 w-10 opacity-30" /></div>}</div>
-                    <div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className={clsx("truncate text-[15px] font-extrabold", textClass)}>{block.title || (store.language === 'ko' ? '추천 상품' : 'Recommended product')}</p>{formattedPrice && <p className={clsx("mt-1 text-sm font-bold opacity-70", textClass)}>{formattedPrice}</p>}</div><ExternalLink className="h-5 w-5 shrink-0 opacity-50 transition group-hover:opacity-100" /></div>
+                    <div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="truncate text-[15px] font-extrabold">{block.title || (store.language === 'ko' ? '추천 상품' : 'Recommended product')}</p>{formattedPrice && <p className="mt-1 text-sm font-bold opacity-70">{formattedPrice}</p>}</div><ExternalLink className="h-5 w-5 shrink-0 opacity-50 transition group-hover:opacity-100" /></div>
                   </a>
                 );
               }
 
               if (block.type === 'map') {
                 const mapQuery = block.mapConfig?.query.trim() || '';
+                if (!mapQuery) return null;
                 const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
                 const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;
                 return (
                   <div key={block.id} className="overflow-hidden rounded-3xl border border-white/30 bg-white/20 shadow-sm backdrop-blur-md" style={getCustomLinkStyle(block)}>
-                    {mapQuery && <iframe title={`${block.title || '지도'} 지도`} src={mapEmbedUrl} className="h-52 w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
-                    <a href={mapQuery ? mapUrl : '#'} target="_blank" rel="noopener noreferrer" onClick={() => recordLinkClick(block.id)} className="flex items-center gap-3 p-4 transition hover:bg-white/15"><MapPin className="h-5 w-5 shrink-0" /><span className={clsx("min-w-0 flex-1 truncate text-[15px] font-bold", textClass)}>{block.title || (store.language === 'ko' ? '지도에서 보기' : 'View map')}</span><ExternalLink className="h-4 w-4 shrink-0 opacity-50" /></a>
+                    <iframe title={`${block.title || '지도'} 지도`} src={mapEmbedUrl} className="h-52 w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                    <a href={mapUrl} target="_blank" rel="noopener noreferrer" onClick={() => recordLinkClick(block.id)} className="flex items-center gap-3 p-4 transition hover:bg-white/15"><MapPin className="h-5 w-5 shrink-0" /><span className="min-w-0 flex-1"><span className={clsx("block truncate text-[15px] font-bold", textClass)}>{block.title || (store.language === 'ko' ? '지도에서 보기' : 'View map')}</span><span className={clsx("mt-0.5 block truncate text-xs font-medium opacity-65", textClass)}>{mapQuery}</span></span><ExternalLink className="h-4 w-4 shrink-0 opacity-50" /></a>
                   </div>
                 );
               }
