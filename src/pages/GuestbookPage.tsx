@@ -181,7 +181,7 @@ const GuestbookPage = () => {
                 type="text"
                 value={authorName}
                 onChange={(e) => setAuthorName(e.target.value)}
-                placeholder="예: 팬1호, 민우 (미입력 시 익명)"
+                placeholder="미입력 시 익명"
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-purple-600 focus:bg-white transition"
               />
             </div>
