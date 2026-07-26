@@ -444,6 +444,14 @@ const recursivelyUpdateLink = (links: CustomLink[], id: string, updates: Partial
   });
 };
 
+export const resetLinkThemeOverrides = (links: CustomLink[]): CustomLink[] => links.map((link) => ({
+  ...link,
+  buttonColor: undefined,
+  buttonTextColor: undefined,
+  customStyle: undefined,
+  ...(link.links ? { links: resetLinkThemeOverrides(link.links) } : {}),
+}));
+
 const recursivelyRemoveLink = (links: CustomLink[], id: string): CustomLink[] => {
   return links.filter(link => link.id !== id).map(link => {
     if (link.links && link.links.length > 0) {
@@ -536,6 +544,9 @@ export const useStore = create<AppState>((set) => ({
       templateType: type, 
       templateValue: value,
       ...(type === 'preset' ? {
+        buttonStyle: 'solid',
+        buttonRoundness: 'full',
+        buttonShadow: 'soft',
         buttonColor: '',
         buttonTextColor: '',
         buttonOpacity: 100,
@@ -545,7 +556,9 @@ export const useStore = create<AppState>((set) => ({
         backgroundOpacity: 100,
         fontFamily: themeFontMap[value] || state.fontFamily,
         titleFontFamily: '',
+        sticker: '',
         profile: { ...state.profile, titleColor: '' },
+        customLinks: resetLinkThemeOverrides(state.customLinks),
       } : {}),
       undoStack: [...state.undoStack, snap],
       redoStack: [],
@@ -555,9 +568,23 @@ export const useStore = create<AppState>((set) => ({
 
   setDesignSettings: (settings) => set((state) => {
     const snap = getSnapshotFromState(state);
+    const resetsLinkOverrides = (Object.keys(settings) as (keyof DesignSettings)[]).some((key) => [
+      'buttonStyle',
+      'buttonRoundness',
+      'buttonShadow',
+      'buttonColor',
+      'buttonTextColor',
+      'buttonOpacity',
+      'buttonTextOpacity',
+      'fontFamily',
+      'titleFontFamily',
+      'pageTextColor',
+      'pageTextOpacity',
+    ].includes(key));
     return {
       ...state,
       ...settings,
+      customLinks: resetsLinkOverrides ? resetLinkThemeOverrides(state.customLinks) : state.customLinks,
       undoStack: [...state.undoStack, snap],
       redoStack: [],
       isDirty: true
