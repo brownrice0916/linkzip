@@ -107,9 +107,12 @@ const LinksEditor = () => {
   const [activeThumbnailLink, setActiveThumbnailLink] =
     useState<CustomLink | null>(null);
 
-  // Add Block Modal State
+  // Add / Edit Reservation Schedule Modal State
   const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false);
-  const [activeReservationScheduleLink, setActiveReservationScheduleLink] = useState<CustomLink | null>(null);
+  const [activeReservationScheduleLink, setActiveReservationScheduleLink] = useState<{
+    link: CustomLink;
+    editingSchedule?: ReservationScheduleItem | null;
+  } | null>(null);
 
   // Universal Block Collapse State (Default: expanded false)
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<
@@ -1682,9 +1685,10 @@ const LinksEditor = () => {
                 일정 목록<span className="text-red-500">*</span>
               </label>
 
+              {/* + 일정 추가 Button */}
               <button
                 type="button"
-                onClick={() => setActiveReservationScheduleLink(link)}
+                onClick={() => setActiveReservationScheduleLink({ link })}
                 className="w-full py-3.5 bg-black hover:bg-gray-800 text-white font-extrabold text-xs rounded-2xl transition cursor-pointer shadow-md flex items-center justify-center gap-1.5 hover:scale-[1.01] active:scale-95"
               >
                 <Plus className="w-4 h-4" />
@@ -1706,35 +1710,35 @@ const LinksEditor = () => {
                           const nextStatus = sched.status === 'OPEN' ? 'CLOSED' : sched.status === 'CLOSED' ? 'FULL' : 'OPEN';
                           handleUpdateSchedule(sched.id, { status: nextStatus });
                         }}
-                        className="w-9 h-9 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                        className="w-9 h-9 rounded-full bg-black text-white font-black text-[9px] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs hover:scale-105 transition"
                         title="상태 변경 (OPEN / CLOSED / FULL)"
                       >
                         {sched.status || "OPEN"}
                       </button>
 
-                      {/* Time Range & Title Inputs */}
+                      {/* Time Range (Clickable to open Edit Modal) & Title Input */}
                       <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={
-                            sched.endDate
+                        <button
+                          type="button"
+                          onClick={() => setActiveReservationScheduleLink({ link, editingSchedule: sched })}
+                          className="text-xs font-bold text-gray-700 bg-gray-50 hover:bg-amber-50 hover:border-amber-300 border border-gray-200 rounded-xl p-2 text-left cursor-pointer transition flex items-center justify-between group"
+                          title="클릭하여 날짜 및 시간 수정하기"
+                        >
+                          <span className="truncate">
+                            {sched.endDate
                               ? `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시)' : ''} ~ ${sched.endDate}${sched.endHour ? ' (' + sched.endHour + '시)' : ''}`
-                              : `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시 업로드)' : ''}`
-                          }
-                          onChange={(e) => {
-                            const parts = e.target.value.split('~');
-                            handleUpdateSchedule(sched.id, {
-                              startDate: parts[0]?.trim() || sched.startDate,
-                              endDate: parts[1]?.trim() || ''
-                            });
-                          }}
-                          className="text-xs font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-2"
-                        />
+                              : `${sched.startDate}${sched.startHour ? ' (' + sched.startHour + '시 업로드)' : ''}`}
+                          </span>
+                          <span className="text-[10px] text-amber-700 font-extrabold opacity-0 group-hover:opacity-100 transition shrink-0 ml-1">
+                            ✏️ 수정
+                          </span>
+                        </button>
                         <input
                           type="text"
                           value={sched.title}
                           onChange={(e) => handleUpdateSchedule(sched.id, { title: e.target.value })}
-                          className="text-xs font-extrabold text-gray-900 bg-gray-50 border border-gray-200 rounded-xl p-2"
+                          placeholder="일정 설명"
+                          className="text-xs font-extrabold text-gray-900 bg-gray-50 focus:bg-white border border-gray-200 focus:border-black rounded-xl p-2 focus:ring-1 focus:ring-black"
                         />
                       </div>
                     </div>
@@ -2985,33 +2989,57 @@ const LinksEditor = () => {
         />
       )}
 
-      {/* Add Reservation Schedule Modal */}
+      {/* Add / Edit Reservation Schedule Modal */}
       {activeReservationScheduleLink && (
         <AddReservationScheduleModal
           isOpen={!!activeReservationScheduleLink}
+          initialData={activeReservationScheduleLink.editingSchedule}
           onClose={() => setActiveReservationScheduleLink(null)}
           onSave={(scheduleData) => {
-            const currentConfig = activeReservationScheduleLink.reservationConfig || {
+            const targetLink = activeReservationScheduleLink.link;
+            const currentConfig = targetLink.reservationConfig || {
               headerText: "",
               schedules: [],
               autoNotification: false
             };
 
-            const newSchedule: ReservationScheduleItem = {
-              id: `sched-${Date.now()}`,
-              startDate: scheduleData.startDate,
-              endDate: scheduleData.endDate,
-              startHour: scheduleData.startHour,
-              endHour: scheduleData.endHour,
-              title: scheduleData.title,
-              linkUrl: scheduleData.linkUrl,
-              status: 'OPEN'
-            };
+            const editingId = activeReservationScheduleLink.editingSchedule?.id;
 
-            updateCustomLink(activeReservationScheduleLink.id, {
+            let updatedSchedules: ReservationScheduleItem[];
+            if (editingId) {
+              // Update existing schedule
+              updatedSchedules = currentConfig.schedules.map((s) =>
+                s.id === editingId
+                  ? {
+                      ...s,
+                      title: scheduleData.title,
+                      startDate: scheduleData.startDate,
+                      startHour: scheduleData.startHour,
+                      endDate: scheduleData.endDate,
+                      endHour: scheduleData.endHour,
+                      linkUrl: scheduleData.linkUrl
+                    }
+                  : s
+              );
+            } else {
+              // Add new schedule
+              const newSchedule: ReservationScheduleItem = {
+                id: `sched-${Date.now()}`,
+                startDate: scheduleData.startDate,
+                endDate: scheduleData.endDate,
+                startHour: scheduleData.startHour,
+                endHour: scheduleData.endHour,
+                title: scheduleData.title,
+                linkUrl: scheduleData.linkUrl,
+                status: 'OPEN'
+              };
+              updatedSchedules = [...currentConfig.schedules, newSchedule];
+            }
+
+            updateCustomLink(targetLink.id, {
               reservationConfig: {
                 ...currentConfig,
-                schedules: [...currentConfig.schedules, newSchedule]
+                schedules: updatedSchedules
               }
             });
             setActiveReservationScheduleLink(null);
