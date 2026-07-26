@@ -114,9 +114,11 @@ export interface CustomLink {
   id: string;
   type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'anonymous_message' | 'sales' | 'reservation';
   title: string;
+  publicTitle?: string;
   url?: string;
   clicks?: number; // Total clicks counter for analytics
   layout?: 'list' | 'grid';
+  hideTitle?: boolean;
   links?: CustomLink[]; // For collections
   isVisible?: boolean;
   icon?: string; // image thumbnail URL

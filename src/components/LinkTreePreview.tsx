@@ -22,7 +22,6 @@ import { getLinkIcon } from "../lib/icons";
 import { DonationVisitorModal } from "./DonationVisitorModal";
 import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
 import { SalesVisitorModal } from "./SalesVisitorModal";
-import { AnonymousMessageVisitorModal } from "./AnonymousMessageVisitorModal";
 import clsx from "clsx";
 import { recordPublicLinkClick } from "../services/analyticsService";
 
@@ -157,7 +156,6 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
   const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
   const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
-  const [activeAnonymousMessageBlock, setActiveAnonymousMessageBlock] = useState<CustomLink | null>(null);
   const [expandedReservationIds, setExpandedReservationIds] = useState<Record<string, boolean>>({});
   const [activeCalendarDay, setActiveCalendarDay] = useState<{ blockId: string; day: number } | null>(null);
   const isColor = templateType === "color";
@@ -617,6 +615,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           <div className="w-full space-y-4 mb-12">
             {customLinks.map((block) => {
               if (block.type === "collection") {
+                const collectionTitle = block.publicTitle ?? block.title;
                 if (block.layout === "grid") {
                   const linkCount = block.links?.length || 0;
                   const isEven = linkCount > 0 && linkCount % 2 === 0;
@@ -624,14 +623,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
                   return (
                     <div key={block.id} className="w-full pt-2">
-                      {block.title && (
+                      {collectionTitle && !block.hideTitle && (
                         <h3
                           className={clsx(
                             "font-bold text-sm mb-3 pl-1",
                             textClass
                           )}
                         >
-                          {block.title}
+                          {collectionTitle}
                         </h3>
                       )}
                       <div className={clsx("grid gap-3", gridColsClass)}>
@@ -700,14 +699,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   // List Layout
                   return (
                     <div key={block.id} className="w-full pt-2">
-                      {block.title && (
+                      {collectionTitle && !block.hideTitle && (
                         <h3
                           className={clsx(
                             "font-bold text-sm mb-3 pl-1",
                             textClass
                           )}
                         >
-                          {block.title}
+                          {collectionTitle}
                         </h3>
                       )}
                       <div className="space-y-3">
@@ -1050,11 +1049,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
               if (block.type === 'anonymous_message') {
                 const MessageIcon = getLinkIcon(block.iconName || 'message-circle');
                 return (
-                  <button key={block.id} type="button" onClick={() => { recordLinkClick(block.id); setActiveAnonymousMessageBlock(block); }} className={buttonClass} style={getCustomLinkStyle(block)}>
+                  <a key={block.id} href={`/${profile.username || 'preview'}/message`} onClick={() => recordLinkClick(block.id)} className={buttonClass} style={getCustomLinkStyle(block)}>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/5" style={getCustomLinkIconContainerStyle(block)}><MessageIcon className="h-5 w-5" /></span>
                     <span className="flex-1 text-center text-[15px] font-bold">{block.title || '익명 메시지 보내기'}</span>
                     <MoreHorizontal className="h-5 w-5 shrink-0 opacity-60" />
-                  </button>
+                  </a>
                 );
               }
 
@@ -1280,9 +1279,6 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           block={activeSalesBlock}
           profile={profile}
         />
-      )}
-      {activeAnonymousMessageBlock && (
-        <AnonymousMessageVisitorModal block={activeAnonymousMessageBlock} ownerUid={props.ownerUid} targetUsername={profile.username || 'preview'} onClose={() => setActiveAnonymousMessageBlock(null)} />
       )}
     </>
   );

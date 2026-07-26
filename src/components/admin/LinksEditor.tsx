@@ -354,7 +354,7 @@ const LinksEditor = () => {
         id: `link-${Date.now()}`,
         type: "anonymous_message",
         title: isKo ? "익명 메시지 보내기" : "Send an anonymous message",
-        url: "#anonymous-message",
+        url: `/${userHandle}/message`,
         isVisible: true,
         iconName: "message-circle",
       });
@@ -692,7 +692,7 @@ const LinksEditor = () => {
                 updateCustomLink(collection.id, { title: e.target.value })
               }
               className="font-black text-sm text-gray-900 border-none p-0 focus:ring-0 bg-transparent placeholder-gray-400 flex-1 truncate"
-              placeholder={isKo ? "컬렉션 제목" : "Collection Title"}
+              placeholder={isKo ? "그룹명" : "Group name"}
             />
           </div>
 
@@ -710,12 +710,23 @@ const LinksEditor = () => {
         {/* Collapsible Children Links */}
         {!isCollapsed && (
           <div className="pl-4 border-l-2 border-indigo-100 space-y-3 pt-1 animate-in fade-in duration-200">
+            <div className="rounded-2xl border border-gray-200 bg-white px-3 py-3" data-no-style-editor>
+              <label htmlFor={`collection-public-title-${collection.id}`} className="mb-2 block text-xs font-black text-gray-800">공개 타이틀</label>
+              <input id={`collection-public-title-${collection.id}`} type="text" value={collection.publicTitle ?? collection.title} onChange={(event) => updateCustomLink(collection.id, { publicTitle: event.target.value })} placeholder="공개 화면에 표시할 타이틀" className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-indigo-400 focus:bg-white focus:ring-3 focus:ring-indigo-100" />
+              <p className="mt-1.5 text-[10px] font-medium text-gray-500">방문자에게 보이는 제목입니다. 위 그룹명과 다르게 설정할 수 있습니다.</p>
+            </div>
             <div className="flex items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/60 px-3 py-2.5" data-no-style-editor>
               <div><p className="text-xs font-black text-gray-800">컬렉션 표시 방식</p><p className="mt-0.5 text-[10px] font-medium text-gray-500">내부 링크를 목록이나 그리드로 표시합니다.</p></div>
               <div className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-xs">
                 <button type="button" onClick={() => updateCustomLink(collection.id, { layout: "list" })} className={clsx("flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-black transition cursor-pointer", collection.layout !== "grid" ? "bg-black text-white" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700")} aria-label="목록으로 표시"><LayoutList className="w-3.5 h-3.5" />목록</button>
                 <button type="button" onClick={() => updateCustomLink(collection.id, { layout: "grid" })} className={clsx("flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-black transition cursor-pointer", collection.layout === "grid" ? "bg-black text-white" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700")} aria-label="그리드로 표시"><LayoutGrid className="w-3.5 h-3.5" />그리드</button>
               </div>
+            </div>
+            <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-3 py-2.5" data-no-style-editor>
+              <div><p className="text-xs font-black text-gray-800">컬렉션 제목 표시</p><p className="mt-0.5 text-[10px] font-medium text-gray-500">제목을 숨겨도 관리자 목록에는 그대로 보관됩니다.</p></div>
+              <button type="button" role="switch" aria-checked={!collection.hideTitle} onClick={() => updateCustomLink(collection.id, { hideTitle: !collection.hideTitle })} className={clsx("relative h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors", collection.hideTitle ? "bg-gray-200" : "bg-black")} aria-label="공개 화면에 컬렉션 제목 표시">
+                <span className={clsx("absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform", collection.hideTitle ? "translate-x-1" : "translate-x-6")} />
+              </button>
             </div>
             {collection.links && collection.links.length > 0 ? (
               collection.links.map((nestedLink) => {
