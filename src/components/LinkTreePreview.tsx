@@ -16,14 +16,13 @@ import {
   FaEnvelope,
   FaGlobe,
   FaFigma,
-  FaFacebook,
-  FaWhatsapp,
 } from "react-icons/fa";
-import { User, Share, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown } from "lucide-react";
+import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import { DonationVisitorModal } from "./DonationVisitorModal";
 import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
 import { SalesVisitorModal } from "./SalesVisitorModal";
+import { AnonymousMessageVisitorModal } from "./AnonymousMessageVisitorModal";
 import clsx from "clsx";
 import { recordPublicLinkClick } from "../services/analyticsService";
 
@@ -156,9 +155,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     return { href: rawUrl ? `https://${rawUrl}` : '#', isInternal: false };
   };
 
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
   const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
+  const [activeAnonymousMessageBlock, setActiveAnonymousMessageBlock] = useState<CustomLink | null>(null);
   const [expandedReservationIds, setExpandedReservationIds] = useState<Record<string, boolean>>({});
   const [activeCalendarDay, setActiveCalendarDay] = useState<{ blockId: string; day: number } | null>(null);
   const isColor = templateType === "color";
@@ -360,11 +359,6 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
   const shareUrl = `${window.location.origin}/${profile.username || "preview"}`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(shareUrl);
-    alert("Link copied to clipboard!");
-  };
-
   const handleCopyEmail = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -434,8 +428,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
               )}
             />
           </div> */}
-          <div
-            onClick={() => setIsShareModalOpen(true)}
+          <button
+            type="button"
+            aria-label="프로필 공유"
+            title="Share profile"
+            onClick={(event) => handleOpenShareModal(event, {
+              title: profile.name || profile.username || '프로필 공유',
+              url: shareUrl,
+            })}
             className={clsx(
               "w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition shadow-2xs",
               profile.profileLayout === "banner"
@@ -443,13 +443,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 : "bg-black/5 hover:bg-black/10"
             )}
           >
-            <Share
+            <MoreHorizontal
               className={clsx(
                 "w-5 h-5",
                 profile.profileLayout === "banner" ? "text-gray-900" : textClass
               )}
             />
-          </div>
+          </button>
         </div>
 
         <div className="w-full px-6 flex flex-col items-center pb-24 relative z-10">
@@ -653,7 +653,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                               target={destination.isInternal ? "_self" : "_blank"}
                               rel="noopener noreferrer"
                               onClick={() => recordLinkClick(link.id)}
-                              className="aspect-square rounded-2xl flex flex-col items-center justify-center p-2 bg-white/20 backdrop-blur-md border border-white/20 hover:scale-105 transition-transform"
+                              className={clsx(
+                                "rounded-2xl flex flex-col items-center justify-center p-2 bg-white/20 backdrop-blur-md border border-white/20 hover:scale-105 transition-transform",
+                                isEven ? "aspect-[4/3]" : "aspect-square"
+                              )}
                               style={{
                                 ...(isColor && templateValue !== "#0f172a"
                                   ? {
@@ -1044,6 +1047,17 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 );
               }
 
+              if (block.type === 'anonymous_message') {
+                const MessageIcon = getLinkIcon(block.iconName || 'message-circle');
+                return (
+                  <button key={block.id} type="button" onClick={() => { recordLinkClick(block.id); setActiveAnonymousMessageBlock(block); }} className={buttonClass} style={getCustomLinkStyle(block)}>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/5" style={getCustomLinkIconContainerStyle(block)}><MessageIcon className="h-5 w-5" /></span>
+                    <span className="flex-1 text-center text-[15px] font-bold">{block.title || '익명 메시지 보내기'}</span>
+                    <MoreHorizontal className="h-5 w-5 shrink-0 opacity-60" />
+                  </button>
+                );
+              }
+
               if (block.type === 'sales') {
                 return (
                   <button
@@ -1170,125 +1184,6 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
         </div>
       </div>
 
-      {/* Share Modal Overlay */}
-      {isShareModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
-          onClick={() => setIsShareModalOpen(false)}
-        >
-          <div
-            className="bg-white w-full sm:w-[420px] rounded-t-3xl sm:rounded-3xl p-6 relative animate-slide-up sm:animate-fade-in shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div className="w-8" /> {/* Spacer for centering */}
-              <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                Share LinkZip
-              </h2>
-              <button
-                onClick={() => setIsShareModalOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            {/* Horizontal Scroll Share Options */}
-            <div className="flex overflow-x-auto gap-4 pb-4 mb-4 hide-scrollbar snap-x">
-              <button
-                onClick={handleCopy}
-                className="flex flex-col items-center gap-2 shrink-0 snap-start"
-              >
-                <div className="w-[60px] h-[60px] rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition shadow-sm border border-gray-200">
-                  <Link2 className="w-6 h-6 text-gray-700" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">
-                  Copy LinkZip
-                </span>
-              </button>
-
-              <a
-                href={`https://twitter.com/intent/tweet?url=${shareUrl}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center gap-2 shrink-0 snap-start"
-              >
-                <div className="w-[60px] h-[60px] rounded-full bg-black flex items-center justify-center hover:opacity-80 transition shadow-sm text-white">
-                  <FaTwitter className="w-6 h-6" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">X</span>
-              </a>
-
-              <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center gap-2 shrink-0 snap-start"
-              >
-                <div className="w-[60px] h-[60px] rounded-full bg-[#1877F2] flex items-center justify-center hover:opacity-80 transition shadow-sm text-white">
-                  <FaFacebook className="w-7 h-7" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">
-                  Facebook
-                </span>
-              </a>
-
-              <a
-                href={`https://api.whatsapp.com/send?text=${shareUrl}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center gap-2 shrink-0 snap-start"
-              >
-                <div className="w-[60px] h-[60px] rounded-full bg-[#25D366] flex items-center justify-center hover:opacity-80 transition shadow-sm text-white">
-                  <FaWhatsapp className="w-7 h-7" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">
-                  WhatsApp
-                </span>
-              </a>
-
-              <a
-                href={`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center gap-2 shrink-0 snap-start"
-              >
-                <div className="w-[60px] h-[60px] rounded-full bg-[#0A66C2] flex items-center justify-center hover:opacity-80 transition shadow-sm text-white">
-                  <FaLinkedin className="w-6 h-6" />
-                </div>
-                <span className="text-xs font-medium text-gray-700">
-                  LinkedIn
-                </span>
-              </a>
-            </div>
-
-            {/* Modal Footer / Upsell */}
-            {/* <div className="border-t border-gray-100 pt-6">
-              <h3 className="font-bold text-gray-900 mb-1 text-[15px]">
-                Join {profile.username || "username"} on LinkZip
-              </h3>
-              <p className="text-[13px] text-gray-500 mb-5 leading-relaxed pr-4">
-                Get your own free LinkZip. The only link in bio trusted by millions.
-              </p>
-              <div className="flex gap-3">
-                <a
-                  href="/"
-                  className="flex-1 py-3.5 bg-black text-white text-center rounded-full font-bold text-[15px] hover:bg-gray-800 transition"
-                >
-                  Sign up free
-                </a>
-                <a
-                  href="/"
-                  className="flex-1 py-3.5 bg-white text-black border border-gray-300 text-center rounded-full font-bold text-[15px] hover:bg-gray-50 transition"
-                >
-                  Find out more
-                </a>
-              </div>
-            </div> */}
-          </div>
-        </div>
-      )}
       {/* Share Specific Link Modal Popup */}
       {shareModalItem && (
         <div 
@@ -1385,6 +1280,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           block={activeSalesBlock}
           profile={profile}
         />
+      )}
+      {activeAnonymousMessageBlock && (
+        <AnonymousMessageVisitorModal block={activeAnonymousMessageBlock} ownerUid={props.ownerUid} targetUsername={profile.username || 'preview'} onClose={() => setActiveAnonymousMessageBlock(null)} />
       )}
     </>
   );

@@ -53,6 +53,21 @@ service cloud.firestore {
         allow read, delete: if isOwner(uid);
         allow update: if false;
       }
+
+      match /anonymous_messages/{messageId} {
+        allow create: if request.resource.data.keys().hasOnly([
+            'blockId', 'targetUsername', 'content', 'isRead', 'createdAt'
+          ])
+          && request.resource.data.blockId is string
+          && request.resource.data.targetUsername is string
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 1000
+          && request.resource.data.isRead == false
+          && exists(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername))
+          && get(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername)).data.uid == uid;
+        allow read, update, delete: if isOwner(uid);
+      }
     }
 
     match /publicProfiles/{profileId} {

@@ -112,7 +112,7 @@ export interface ReservationConfig {
 
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'sales' | 'reservation';
+  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'anonymous_message' | 'sales' | 'reservation';
   title: string;
   url?: string;
   clicks?: number; // Total clicks counter for analytics

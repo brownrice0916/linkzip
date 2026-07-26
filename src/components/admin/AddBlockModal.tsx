@@ -9,7 +9,8 @@ import {
   Heart, 
   CalendarCheck, 
   Phone,
-  Download
+  Download,
+  MessageSquareText
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { useStore } from '../../store/useStore';
@@ -70,13 +71,21 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           bgColor: 'bg-amber-500', 
           iconColor: 'text-white' 
         },
-        { 
+        {
           id: 'guestbook', 
           label: tr('방명록', 'Guestbook'),
           desc: tr('방문자가 응원 메시지나 댓글을 남길 수 있습니다.', 'Let visitors leave messages and comments.'),
           icon: PenTool, 
           bgColor: 'bg-rose-500', 
           iconColor: 'text-white' 
+        },
+        {
+          id: 'anonymous_message',
+          label: tr('익명 메시지 보내기', 'Anonymous messages'),
+          desc: tr('방문자가 이름 없이 비공개 메시지를 보냅니다.', 'Let visitors send you private anonymous messages.'),
+          icon: MessageSquareText,
+          bgColor: 'bg-violet-600',
+          iconColor: 'text-white'
         },
         { 
           id: 'customer_info', 

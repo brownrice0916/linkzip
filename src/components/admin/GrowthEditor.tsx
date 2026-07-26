@@ -15,9 +15,16 @@ import {
   FileText, 
   Search, 
   Trash2,
-  ExternalLink
+  ExternalLink,
+  ChevronDown
 } from "lucide-react";
 import { listCustomerData, removeCustomerData } from "../../services/customerDataService";
+import {
+  deleteAnonymousMessage,
+  markAnonymousMessageRead,
+  subscribeToAnonymousMessages,
+  type AnonymousMessage,
+} from "../../services/anonymousMessageService";
 import clsx from "clsx";
 
 export const GrowthEditor: React.FC = () => {
@@ -28,6 +35,8 @@ export const GrowthEditor: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [anonymousMessages, setAnonymousMessages] = useState<AnonymousMessage[]>([]);
+  const [messagesExpanded, setMessagesExpanded] = useState(false);
 
   // Fetch collected customer data from Firestore
   useEffect(() => {
@@ -49,10 +58,48 @@ export const GrowthEditor: React.FC = () => {
     fetchData();
   }, [user]);
 
+  useEffect(() => {
+    if (!user?.uid) {
+      setAnonymousMessages([]);
+      return;
+    }
+    return subscribeToAnonymousMessages(user.uid, setAnonymousMessages, (error) => {
+      console.error('Error fetching anonymous messages:', error);
+    });
+  }, [user?.uid]);
+
   // Counts based on customLinks
   const customerInfoBlocksCount = customLinks.filter(l => l.type === 'customer_info').length;
   const fileBlocksCount = customLinks.filter(l => l.type === 'file').length;
   const donationBlocksCount = customLinks.filter(l => l.type === 'donation').length;
+  const anonymousMessageBlocksCount = customLinks.filter(l => l.type === 'anonymous_message').length;
+  const profileMessages = anonymousMessages.filter((message) => message.targetUsername === profile.username);
+  const unreadMessagesCount = profileMessages.filter((message) => !message.isRead).length;
+
+  const toggleMessages = async () => {
+    const nextExpanded = !messagesExpanded;
+    setMessagesExpanded(nextExpanded);
+    if (!nextExpanded || !user?.uid || unreadMessagesCount === 0) return;
+    const unread = profileMessages.filter((message) => !message.isRead);
+    setAnonymousMessages((current) => current.map((message) => ({ ...message, isRead: true })));
+    await Promise.all(unread.map((message) => markAnonymousMessageRead(user.uid, message.id))).catch((error) => {
+      console.error('Error marking anonymous messages as read:', error);
+    });
+  };
+
+  const handleDeleteAnonymousMessage = async (id: string) => {
+    if (!user?.uid || !window.confirm(tr('이 메시지를 삭제하시겠습니까?', 'Delete this message?'))) return;
+    try {
+      await deleteAnonymousMessage(user.uid, id);
+    } catch (error) {
+      console.error('Error deleting anonymous message:', error);
+    }
+  };
+
+  const formatMessageDate = (message: AnonymousMessage) => {
+    if (!message.createdAt?.seconds) return tr('방금 전', 'Just now');
+    return new Date(message.createdAt.seconds * 1000).toLocaleString(language === 'ko' ? 'ko-KR' : 'en-US');
+  };
 
   const handleDeleteItem = async (id: string) => {
     if (!window.confirm('이 수집 항목을 삭제하시겠습니까?')) return;
@@ -97,6 +144,23 @@ export const GrowthEditor: React.FC = () => {
 
   return (
     <div className="space-y-6 font-sans max-w-4xl animate-fade-in pb-20">
+
+      <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-xs">
+        <button type="button" onClick={() => void toggleMessages()} className="flex w-full cursor-pointer items-center justify-between bg-gray-950 px-6 py-4 text-left text-white transition hover:bg-black" aria-expanded={messagesExpanded}>
+          <span className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500"><MessageCircle className="h-4 w-4" /></span><span className="min-w-0"><span className="block text-sm font-extrabold">{tr('익명 메시지함', 'Anonymous inbox')}</span><span className="block text-[10px] font-bold text-gray-400">{tr(`메시지 블록 ${anonymousMessageBlocksCount}개 · 받은 메시지 ${profileMessages.length}개`, `${anonymousMessageBlocksCount} blocks · ${profileMessages.length} messages`)}</span></span></span>
+          <span className="flex items-center gap-3">{unreadMessagesCount > 0 && <span className="rounded-full bg-violet-500 px-2.5 py-1 text-[10px] font-black">{tr(`새 메시지 ${unreadMessagesCount}`, `${unreadMessagesCount} new`)}</span>}<ChevronDown className={clsx('h-4 w-4 transition-transform', messagesExpanded && 'rotate-180')} /></span>
+        </button>
+        {messagesExpanded && (
+          <div className="space-y-3 p-5">
+            {profileMessages.length === 0 ? <div className="rounded-2xl bg-gray-50 px-4 py-10 text-center"><MessageCircle className="mx-auto mb-2 h-7 w-7 text-gray-300" /><p className="text-xs font-bold text-gray-400">{tr('아직 받은 익명 메시지가 없습니다.', 'No anonymous messages yet.')}</p></div> : profileMessages.map((message) => (
+              <article key={message.id} className="group rounded-2xl border border-gray-200 bg-white p-4 transition hover:border-violet-200 hover:shadow-sm">
+                <div className="mb-2 flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-[10px] font-black text-violet-600"><span className="h-2 w-2 rounded-full bg-violet-500" />{tr('익명', 'Anonymous')}</span><span className="flex items-center gap-2"><time className="text-[10px] font-semibold text-gray-400">{formatMessageDate(message)}</time><button type="button" onClick={() => void handleDeleteAnonymousMessage(message.id)} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-gray-300 transition hover:bg-red-50 hover:text-red-500" aria-label={tr('메시지 삭제', 'Delete message')}><Trash2 className="h-3.5 w-3.5" /></button></span></div>
+                <p className="whitespace-pre-wrap break-words text-sm font-semibold leading-relaxed text-gray-800">{message.content}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
       
       {/* 1. Customer Information Card (Matching Screenshot 2) */}
       <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-xs">

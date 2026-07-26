@@ -349,6 +349,15 @@ const LinksEditor = () => {
         isVisible: true,
         iconName: "pen-tool",
       });
+    } else if (blockType === "anonymous_message") {
+      addCustomLink({
+        id: `link-${Date.now()}`,
+        type: "anonymous_message",
+        title: isKo ? "익명 메시지 보내기" : "Send an anonymous message",
+        url: "#anonymous-message",
+        isVisible: true,
+        iconName: "message-circle",
+      });
     } else if (blockType === "customer_info") {
       addCustomLink({
         id: `link-${Date.now()}`,
