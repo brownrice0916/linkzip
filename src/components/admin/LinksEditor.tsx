@@ -20,7 +20,6 @@ import {
   Phone,
   Smartphone,
   Gift,
-  Paintbrush,
   Lock,
   HelpCircle,
   CalendarCheck
@@ -563,7 +562,7 @@ const LinksEditor = () => {
                 className="w-full h-full object-cover"
               />
             ) : isIcon && SelectedIconComp ? (
-              <SelectedIconComp className="w-5 h-5 text-gray-700" />
+              <span style={{ color: link.customStyle?.iconColor || '#374151', opacity: (link.customStyle?.iconOpacity ?? 100) / 100 }}><SelectedIconComp className="w-5 h-5" /></span>
             ) : (
               <ImageIcon className="w-4 h-4 text-gray-400 group-hover/thumb:text-black transition" />
             )}
@@ -593,15 +592,6 @@ const LinksEditor = () => {
 
           {/* Actions: Visibility Toggle & Delete */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveStyleLinkId(link.id)}
-              className="p-1.5 text-purple-600 hover:text-purple-800 rounded-lg hover:bg-purple-50 transition cursor-pointer opacity-60 group-hover:opacity-100"
-              title="링크 상세 편집"
-              aria-label="링크 상세 편집"
-            >
-              <Paintbrush className="w-4 h-4" />
-            </button>
             <button
               onClick={() =>
                 updateCustomLink(link.id, { isVisible: !link.isVisible })
@@ -684,22 +674,6 @@ const LinksEditor = () => {
               </div> */}
             </div>
 
-            <button
-              type="button"
-              onClick={() => toggleBlockCollapse(collection.id, true)}
-              className="p-1.5 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
-              title={isCollapsed ? "컬렉션 펼치기" : "컬렉션 접기"}
-            >
-              <ChevronDown
-                className={clsx(
-                  "w-4 h-4 transition-transform duration-200",
-                  isCollapsed
-                    ? "-rotate-90 text-gray-400"
-                    : "rotate-0 text-black"
-                )}
-              />
-            </button>
-
             <Folder className="w-4 h-4 text-indigo-600 shrink-0" />
 
             <input
@@ -714,49 +688,6 @@ const LinksEditor = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveStyleLinkId(collection.id)}
-              className="p-1.5 text-indigo-600 hover:text-indigo-800 rounded-lg hover:bg-indigo-50 transition cursor-pointer"
-              title="컬렉션 전체 스타일"
-              aria-label="컬렉션 전체 스타일"
-            >
-              <Paintbrush className="w-4 h-4" />
-            </button>
-            {/* Layout Toggle (List vs Grid) */}
-            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
-              <button
-                type="button"
-                onClick={() =>
-                  updateCustomLink(collection.id, { layout: "list" })
-                }
-                className={clsx(
-                  "p-1 rounded-md transition cursor-pointer",
-                  collection.layout !== "grid"
-                    ? "bg-white text-black shadow-xs font-bold"
-                    : "text-gray-400"
-                )}
-                title="List view"
-              >
-                <LayoutList className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  updateCustomLink(collection.id, { layout: "grid" })
-                }
-                className={clsx(
-                  "p-1 rounded-md transition cursor-pointer",
-                  collection.layout === "grid"
-                    ? "bg-white text-black shadow-xs font-bold"
-                    : "text-gray-400"
-                )}
-                title="Grid view"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
             {renderCollapseControl(collection.id, isCollapsed, true, "컬렉션 ")}
             <button
               onClick={() => removeCustomLink(collection.id)}
@@ -770,6 +701,13 @@ const LinksEditor = () => {
         {/* Collapsible Children Links */}
         {!isCollapsed && (
           <div className="pl-4 border-l-2 border-indigo-100 space-y-3 pt-1 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/60 px-3 py-2.5" data-no-style-editor>
+              <div><p className="text-xs font-black text-gray-800">컬렉션 표시 방식</p><p className="mt-0.5 text-[10px] font-medium text-gray-500">내부 링크를 목록이나 그리드로 표시합니다.</p></div>
+              <div className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-xs">
+                <button type="button" onClick={() => updateCustomLink(collection.id, { layout: "list" })} className={clsx("flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-black transition cursor-pointer", collection.layout !== "grid" ? "bg-black text-white" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700")} aria-label="목록으로 표시"><LayoutList className="w-3.5 h-3.5" />목록</button>
+                <button type="button" onClick={() => updateCustomLink(collection.id, { layout: "grid" })} className={clsx("flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-black transition cursor-pointer", collection.layout === "grid" ? "bg-black text-white" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700")} aria-label="그리드로 표시"><LayoutGrid className="w-3.5 h-3.5" />그리드</button>
+              </div>
+            </div>
             {collection.links && collection.links.length > 0 ? (
               collection.links.map((nestedLink) => {
                 if (nestedLink.type === "reservation") return renderReservationCard(nestedLink);

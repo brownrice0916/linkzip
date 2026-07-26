@@ -143,6 +143,10 @@ export interface LinkButtonStyle {
   borderRadius?: number;
   opacity?: number;
   textOpacity?: number;
+  iconColor?: string;
+  iconOpacity?: number;
+  iconBackgroundColor?: string;
+  iconBackgroundOpacity?: number;
   shadow?: 'inherit' | 'none' | 'soft' | 'medium' | 'strong';
 }
 

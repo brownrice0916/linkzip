@@ -327,6 +327,19 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     };
   };
 
+  const getCustomLinkIconStyle = (link: CustomLink): React.CSSProperties => {
+    const iconColor = link.customStyle?.iconColor;
+    if (!iconColor) return {};
+    return { color: colorWithOpacity(iconColor, link.customStyle?.iconOpacity ?? 100) };
+  };
+
+  const getCustomLinkIconContainerStyle = (link: CustomLink): React.CSSProperties => ({
+    ...getCustomLinkIconStyle(link),
+    ...(link.customStyle?.iconBackgroundColor
+      ? { backgroundColor: colorWithOpacity(link.customStyle.iconBackgroundColor, link.customStyle.iconBackgroundOpacity ?? 100) }
+      : {}),
+  });
+
   if (buttonStyle === "glass") {
     buttonClass +=
       " bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30";
@@ -652,7 +665,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                               }}
                             >
                               {!isNone && (
-                                <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-2 overflow-hidden shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-2 overflow-hidden shrink-0" style={getCustomLinkIconContainerStyle(link)}>
                                   {isImage && link.icon ? (
                                     <img
                                       src={link.icon}
@@ -661,7 +674,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                     />
                                   ) : (
                                     <IconComp
-                                      className={clsx("w-5 h-5", textClass)}
+                                      className={clsx("w-5 h-5", !link.customStyle?.iconColor && textClass)}
                                     />
                                   )}
                                 </div>
@@ -717,7 +730,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                               style={getCustomLinkStyle(link)}
                             >
                               {!isNone && (
-                                <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+                                <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden" style={getCustomLinkIconContainerStyle(link)}>
                                   {isImage && link.icon ? (
                                     <img
                                       src={link.icon}
@@ -779,6 +792,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             ? "bg-[#E54D26] text-white border-2 border-black font-bold"
                             : "bg-[#E54D26]/10 text-[#E54D26]"
                         )}
+                        style={getCustomLinkIconContainerStyle(block)}
                       >
                         {isImage && block.icon ? (
                           <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
@@ -823,6 +837,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             ? "bg-cyan-500 text-white border-2 border-black font-bold"
                             : "bg-cyan-50 text-cyan-600"
                         )}
+                        style={getCustomLinkIconContainerStyle(block)}
                       >
                         {isImage && block.icon ? (
                           <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
@@ -871,11 +886,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => recordLinkClick(block.id)}
-                          style={getCustomLinkStyle(block)}
+                          style={{ ...getCustomLinkStyle(block), ...getCustomLinkIconContainerStyle(block) }}
                           className="w-11 h-11 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center shadow-md hover:scale-110 transition cursor-pointer border border-gray-100"
                           title={item.platform}
                         >
-                          <Icon className="w-5 h-5" />
+                          <span style={getCustomLinkIconStyle(block)}><Icon className="w-5 h-5" /></span>
                         </a>
                       );
                     })}
@@ -1030,7 +1045,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     style={getCustomLinkStyle(block)}
                   >
                     {!isNone && (
-                      <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden" style={getCustomLinkIconContainerStyle(block)}>
                         {isImage && block.icon ? (
                           <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
                         ) : (
@@ -1073,6 +1088,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           ? "bg-amber-300 border-2 border-black text-black shadow-xs font-bold"
                           : "bg-black/5"
                       )}
+                      style={getCustomLinkIconContainerStyle(block)}
                     >
                       {isImage && block.icon ? (
                         <img
@@ -1084,7 +1100,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         <IconComp
                           className={clsx(
                             "w-5 h-5",
-                            templateValue.startsWith("neo-")
+                            templateValue.startsWith("neo-") && !block.customStyle?.iconColor
                               ? "text-black opacity-90"
                               : "opacity-85"
                           )}
