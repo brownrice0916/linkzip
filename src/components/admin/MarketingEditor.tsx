@@ -20,6 +20,7 @@ import {
 import { FaInstagram } from 'react-icons/fa';
 import { InstagramDmWizardModal } from './InstagramDmWizardModal';
 import { InstagramDmRuleCreateWizardModal } from './InstagramDmRuleCreateWizardModal';
+import { KakaoAlimtalkWizardModal } from './KakaoAlimtalkWizardModal';
 import clsx from 'clsx';
 
 export const MarketingEditor: React.FC = () => {
@@ -36,6 +37,7 @@ export const MarketingEditor: React.FC = () => {
 
   const [isDmWizardOpen, setIsDmWizardOpen] = useState(false);
   const [isRuleCreateModalOpen, setIsRuleCreateModalOpen] = useState(false);
+  const [isKakaoWizardOpen, setIsKakaoWizardOpen] = useState(false);
 
   // New Rule Quick Input
   const [newKeyword, setNewKeyword] = useState('');
@@ -283,7 +285,16 @@ export const MarketingEditor: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsKakaoWizardOpen(true)}
+              className="text-xs font-black text-black bg-amber-400 hover:bg-amber-500 border border-amber-300 px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-xs hover:scale-105"
+            >
+              <Zap className="w-4 h-4 fill-black" />
+              <span>1클릭 카카오 연동 자동화</span>
+            </button>
+
             <button
               type="button"
               onClick={() => alert(`[카카오 알림톡 연동 4단계 가이드]
@@ -292,10 +303,10 @@ export const MarketingEditor: React.FC = () => {
 2단계: 알림톡 발송 중계사(SOLAPI / CoolSMS) 가입 및 API Key 발급
 3단계: 알림톡 템플릿 등록 및 승인 (템플릿 코드 생성: 예: TP_LINKZIP_01)
 4단계: 아래 입력란에 발신번호, API Key, 템플릿 코드를 입력 후 상단 스위치를 [ON]으로 켜주세요!`)}
-              className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1"
+              className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-2 rounded-xl transition cursor-pointer flex items-center gap-1"
             >
               <HelpCircle className="w-3.5 h-3.5" />
-              <span>연동 방법 안내</span>
+              <span>수동 안내</span>
             </button>
 
             <button
@@ -321,15 +332,21 @@ export const MarketingEditor: React.FC = () => {
 
         {/* Setup Steps Accordion Guide */}
         <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl space-y-2 text-xs text-amber-900">
-          <div className="font-extrabold flex items-center gap-1.5 text-amber-950">
-            <Sparkles className="w-4 h-4 text-amber-600" />
-            <span>카카오 알림톡 4단계 설정 가이드</span>
+          <div className="font-extrabold flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-amber-950">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>카카오 알림톡 1클릭 간편 연동 시스템 지원</span>
+            </div>
+            <button
+              onClick={() => setIsKakaoWizardOpen(true)}
+              className="text-[11px] font-extrabold text-black bg-amber-400 hover:bg-amber-500 px-2.5 py-1 rounded-lg transition"
+            >
+              🚀 위자드 시작
+            </button>
           </div>
           <ol className="list-decimal list-inside space-y-1 text-[11px] font-medium text-amber-900 leading-relaxed">
-            <li><strong>카카오 비즈니스 채널 개설</strong>: 카카오톡 채널 관리자센터에서 비즈니스 채널을 만듭니다.</li>
-            <li><strong>발송 API Key 발급</strong>: 솔라피(SOLAPI) 또는 메시지 서비스에 가입하여 API Key를 발급받습니다.</li>
-            <li><strong>알림톡 템플릿 승인</strong>: 카카오에 알림톡 문구 템플릿을 등록하고 템플릿 코드를 받습니다.</li>
-            <li><strong>설정 완료</strong>: 아래에 발신번호, API Key, 템플릿 코드를 입력하고 스위치를 <strong>[ON]</strong>으로 켭니다.</li>
+            <li><strong>1클릭 자동 연동</strong>: 상단 <strong className="text-black bg-amber-300 px-1 rounded">[1클릭 카카오 연동 자동화]</strong> 버튼을 누르면 API Key와 템플릿이 자동 할당됩니다.</li>
+            <li><strong>수동 연결</strong>: 기존 솔라피/CoolSMS 계정이 있다면 아래 입력란에 API Key, Secret, 템플릿 코드를 직접 입력하세요.</li>
           </ol>
         </div>
 
@@ -391,6 +408,12 @@ export const MarketingEditor: React.FC = () => {
       <InstagramDmRuleCreateWizardModal
         isOpen={isRuleCreateModalOpen}
         onClose={() => setIsRuleCreateModalOpen(false)}
+      />
+
+      {/* Kakao Alimtalk 1-Click Auto Connection Wizard Modal Mount */}
+      <KakaoAlimtalkWizardModal
+        isOpen={isKakaoWizardOpen}
+        onClose={() => setIsKakaoWizardOpen(false)}
       />
 
     </div>
