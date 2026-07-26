@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   useStore,
   type UserProfile,
@@ -17,7 +17,7 @@ import {
   FaGlobe,
   FaFigma,
 } from "react-icons/fa";
-import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown } from "lucide-react";
+import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import { DonationVisitorModal } from "./DonationVisitorModal";
 import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
@@ -214,6 +214,25 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const [expandedReservationIds, setExpandedReservationIds] = useState<Record<string, boolean>>({});
   const [activeCalendarDay, setActiveCalendarDay] = useState<{ blockId: string; day: number } | null>(null);
   const [calendarViews, setCalendarViews] = useState<Record<string, { year: number; month: number }>>({});
+  const collectionCarouselRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [collectionCarouselNavigation, setCollectionCarouselNavigation] = useState<Record<string, { canGoBack: boolean; canGoForward: boolean }>>({});
+  const updateCollectionCarouselNavigation = (collectionId: string) => {
+    const carousel = collectionCarouselRefs.current[collectionId];
+    if (!carousel) return;
+    const maxScrollLeft = Math.max(0, carousel.scrollWidth - carousel.clientWidth);
+    const edgeThreshold = 12;
+    const next = { canGoBack: carousel.scrollLeft > edgeThreshold, canGoForward: carousel.scrollLeft < maxScrollLeft - edgeThreshold };
+    setCollectionCarouselNavigation((current) => {
+      const previous = current[collectionId];
+      if (previous?.canGoBack === next.canGoBack && previous?.canGoForward === next.canGoForward) return current;
+      return { ...current, [collectionId]: next };
+    });
+  };
+  const scrollCollectionCarousel = (collectionId: string, direction: -1 | 1) => {
+    const carousel = collectionCarouselRefs.current[collectionId];
+    if (!carousel) return;
+    carousel.scrollBy({ left: direction * carousel.clientWidth * 0.45, behavior: 'smooth' });
+  };
   const isColor = templateType === "color";
   const buttonStyle = props.design?.buttonStyle ?? store.buttonStyle;
   const buttonRoundness = props.design?.buttonRoundness ?? store.buttonRoundness;
@@ -672,6 +691,49 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
             {customLinks.map((block) => {
               if (block.type === "collection") {
                 const collectionTitle = block.publicTitle ?? block.title;
+                if (block.layout === "carousel") {
+                  const carouselNavigation = collectionCarouselNavigation[block.id];
+                  const canGoBack = carouselNavigation?.canGoBack ?? false;
+                  const canGoForward = carouselNavigation?.canGoForward ?? ((block.links?.length || 0) > 2);
+                  return (
+                    <div key={block.id} className="w-full pt-2">
+                      {collectionTitle && !block.hideTitle && <h3 className={clsx("mb-3 pl-1 text-sm font-bold", textClass)}>{collectionTitle}</h3>}
+                      <div className="group/carousel relative">
+                        <div
+                          ref={(element) => { collectionCarouselRefs.current[block.id] = element; }}
+                          onScroll={() => updateCollectionCarouselNavigation(block.id)}
+                          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        >
+                          {block.links?.map((link) => {
+                            const isImage = link.thumbnailType === "image" || (!link.thumbnailType && link.icon);
+                            const isNone = link.thumbnailType === "none";
+                            const IconComp = getLinkIcon(link.iconName);
+                            const destination = getLinkDestination(link);
+                            return (
+                              <a
+                                key={link.id}
+                                href={destination.href}
+                                target={destination.isInternal ? "_self" : "_blank"}
+                                rel="noopener noreferrer"
+                                onClick={() => recordLinkClick(link.id)}
+                                className="flex aspect-square w-[43%] min-w-[43%] snap-start flex-col items-center justify-center rounded-3xl border border-white/30 bg-white/20 p-3 backdrop-blur-md transition hover:-translate-y-1 hover:shadow-lg"
+                                style={{
+                                  ...(isColor && templateValue !== "#0f172a" ? { backgroundColor: "rgba(0,0,0,0.05)", borderColor: "rgba(0,0,0,0.1)" } : {}),
+                                  ...getCustomLinkStyle(link),
+                                }}
+                              >
+                                {!isNone && <div className="mb-3 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/10" style={getCustomLinkIconContainerStyle(link)}>{isImage && link.icon ? <img src={link.icon} alt={link.title} className="h-full w-full object-cover" /> : <IconComp className={clsx("h-6 w-6", !link.customStyle?.iconColor && textClass)} />}</div>}
+                                <span className={clsx("line-clamp-3 text-center text-sm font-bold leading-snug", textClass)}>{link.title || "Link Title"}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                        {canGoBack && <button type="button" onClick={() => scrollCollectionCarousel(block.id, -1)} className="absolute left-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/50 bg-white/70 text-gray-800 opacity-80 shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white/90 hover:opacity-100" aria-label="이전 컬렉션 링크"><ChevronLeft className="h-5 w-5" /></button>}
+                        {canGoForward && <button type="button" onClick={() => scrollCollectionCarousel(block.id, 1)} className="absolute right-1 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/50 bg-white/70 text-gray-800 opacity-80 shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white/90 hover:opacity-100" aria-label="다음 컬렉션 링크"><ChevronRight className="h-5 w-5" /></button>}
+                      </div>
+                    </div>
+                  );
+                }
                 if (block.layout === "grid") {
                   const linkCount = block.links?.length || 0;
                   const isEven = linkCount > 0 && linkCount % 2 === 0;
@@ -1243,7 +1305,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-black/10 hover:bg-black/20 text-xs font-bold transition backdrop-blur-md cursor-pointer"
               >
                 <Link2 className="w-3.5 h-3.5" />
-                <span>LinkZip</span>
+                <span>{store.language === "ko" ? "나만의 링크집 만들기" : "Create my LinkZip"}</span>
               </a>
               <div className="mt-4 flex gap-3 text-[11px] font-medium opacity-60 text-center flex-wrap justify-center max-w-[80%]">
                 <span className="cursor-pointer hover:underline">

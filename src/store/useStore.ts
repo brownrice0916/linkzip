@@ -117,7 +117,7 @@ export interface CustomLink {
   publicTitle?: string;
   url?: string;
   clicks?: number; // Total clicks counter for analytics
-  layout?: 'list' | 'grid';
+  layout?: 'list' | 'grid' | 'carousel';
   hideTitle?: boolean;
   links?: CustomLink[]; // For collections
   isVisible?: boolean;

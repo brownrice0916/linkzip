@@ -1,7 +1,6 @@
 import { 
   X, 
   Link2, 
-  Folder, 
   Megaphone, 
   PenTool, 
   CreditCard, 
@@ -41,14 +40,6 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           desc: tr('URL 링크를 하나 추가합니다.', 'Add a single URL link.'),
           icon: Link2, 
           bgColor: 'bg-emerald-500', 
-          iconColor: 'text-white' 
-        },
-        { 
-          id: 'group_link', 
-          label: tr('그룹 링크', 'Group link'),
-          desc: tr('여러 링크를 하나의 컬렉션으로 묶습니다.', 'Group multiple links into a collection.'),
-          icon: Folder, 
-          bgColor: 'bg-[#7C3AED]', 
           iconColor: 'text-white' 
         },
         { 

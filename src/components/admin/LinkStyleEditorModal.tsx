@@ -38,8 +38,8 @@ interface EffectiveDefaults {
 }
 
 const getVariant = (link: CustomLink, parentCollection?: CustomLink): EditorVariant => {
-  if (parentCollection) return parentCollection.layout === 'grid' ? 'group-grid' : 'group-list';
-  if (link.type === 'collection') return link.layout === 'grid' ? 'collection-grid' : 'collection-list';
+  if (parentCollection) return parentCollection.layout === 'grid' || parentCollection.layout === 'carousel' ? 'group-grid' : 'group-list';
+  if (link.type === 'collection') return link.layout === 'grid' || link.layout === 'carousel' ? 'collection-grid' : 'collection-list';
   if (link.type === 'reservation') return 'reservation';
   if (link.type === 'sns') return 'social';
   if (link.type === 'customer_info') return 'form';

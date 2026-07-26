@@ -9,6 +9,7 @@ import {
   Trash2,
   LayoutList,
   LayoutGrid,
+  GalleryHorizontal,
   Folder,
   GripVertical,
   CornerDownRight,
@@ -145,6 +146,7 @@ const LinksEditor = () => {
 
   // Add / Edit Reservation Schedule Modal State
   const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false);
+  const [addBlockTargetCollectionId, setAddBlockTargetCollectionId] = useState<string | null>(null);
   const [activeReservationScheduleLink, setActiveReservationScheduleLink] = useState<{
     link: CustomLink;
     editingSchedule?: ReservationScheduleItem | null;
@@ -244,23 +246,12 @@ const LinksEditor = () => {
     setCollapsedBlockIds((prev) => ({ ...prev, [newCollectionId]: false }));
   };
 
-  const handleAddNestedLink = (collectionId: string) => {
-    addCustomLink(
-      {
-        id: `link-${Date.now()}`,
-        title: "New Link",
-        url: "https://",
-        isVisible: true,
-      },
-      collectionId
-    );
-  };
-
   const handleSelectBlockType = (blockType: string) => {
     const userHandle = profile.username || "preview";
+    const addBlockToTarget = (block: CustomLink) => addCustomLink(block, addBlockTargetCollectionId || undefined);
 
     if (blockType === "link") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "link",
         title: "내 공식 사이트 바로가기",
@@ -268,10 +259,10 @@ const LinksEditor = () => {
         isVisible: true,
         iconName: "link",
       });
-    } else if (blockType === "group_link") {
+    } else if (blockType === "group_link" && !addBlockTargetCollectionId) {
       handleAddCollection();
     } else if (blockType === "sns") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "sns",
         title: "SNS",
@@ -291,7 +282,7 @@ const LinksEditor = () => {
         ],
       });
     } else if (blockType === "donation") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "donation",
         title: "💖 후원하기 (Donation)",
@@ -311,7 +302,7 @@ const LinksEditor = () => {
         },
       });
     } else if (blockType === "file") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "file",
         title: "자료집 및 대표 파일 다운로드",
@@ -327,7 +318,7 @@ const LinksEditor = () => {
         },
       });
     } else if (blockType === "notice") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "notice",
         title: "📢 8월 주요 공지사항",
@@ -342,7 +333,7 @@ const LinksEditor = () => {
         },
       });
     } else if (blockType === "guestbook") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         title: "✏️ 팬 방명록 (응원 메시지 남기기)",
         url: `/${userHandle}/guestbook`,
@@ -350,7 +341,7 @@ const LinksEditor = () => {
         iconName: "pen-tool",
       });
     } else if (blockType === "anonymous_message") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "anonymous_message",
         title: isKo ? "익명 메시지 보내기" : "Send an anonymous message",
@@ -359,7 +350,7 @@ const LinksEditor = () => {
         iconName: "message-circle",
       });
     } else if (blockType === "customer_info") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "customer_info",
         title: "Customer info (뉴스레터 구독 신청)",
@@ -375,7 +366,7 @@ const LinksEditor = () => {
         },
       });
     } else if (blockType === "sales") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "sales",
         title: "🛍️ 디지털 상품 판매",
@@ -392,7 +383,7 @@ const LinksEditor = () => {
         },
       });
     } else if (blockType === "reservation" || blockType === "booking") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "reservation",
         title: isKo ? "예약 일정" : "Appointments",
@@ -413,7 +404,7 @@ const LinksEditor = () => {
         }
       });
     } else if (blockType === "customer_inquiry" || blockType === "contact") {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         title: "📞 비즈니스 섭외 & 1:1 오픈채팅 문의",
         url: "https://open.kakao.com/o/linkzip",
@@ -421,7 +412,7 @@ const LinksEditor = () => {
         iconName: "message-circle",
       });
     } else {
-      addCustomLink({
+      addBlockToTarget({
         id: `link-${Date.now()}`,
         title: `${blockType.replace("_", " ")} block`,
         url: `https://${userHandle}.linkzip.me`,
@@ -715,11 +706,17 @@ const LinksEditor = () => {
               <input id={`collection-public-title-${collection.id}`} type="text" value={collection.publicTitle ?? collection.title} onChange={(event) => updateCustomLink(collection.id, { publicTitle: event.target.value })} placeholder="공개 화면에 표시할 타이틀" className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-indigo-400 focus:bg-white focus:ring-3 focus:ring-indigo-100" />
               <p className="mt-1.5 text-[10px] font-medium text-gray-500">방문자에게 보이는 제목입니다. 위 그룹명과 다르게 설정할 수 있습니다.</p>
             </div>
-            <div className="flex items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/60 px-3 py-2.5" data-no-style-editor>
-              <div><p className="text-xs font-black text-gray-800">컬렉션 표시 방식</p><p className="mt-0.5 text-[10px] font-medium text-gray-500">내부 링크를 목록이나 그리드로 표시합니다.</p></div>
-              <div className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-xs">
-                <button type="button" onClick={() => updateCustomLink(collection.id, { layout: "list" })} className={clsx("flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-black transition cursor-pointer", collection.layout !== "grid" ? "bg-black text-white" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700")} aria-label="목록으로 표시"><LayoutList className="w-3.5 h-3.5" />목록</button>
-                <button type="button" onClick={() => updateCustomLink(collection.id, { layout: "grid" })} className={clsx("flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-black transition cursor-pointer", collection.layout === "grid" ? "bg-black text-white" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700")} aria-label="그리드로 표시"><LayoutGrid className="w-3.5 h-3.5" />그리드</button>
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3" data-no-style-editor>
+              <div><p className="text-xs font-black text-gray-800">컬렉션 표시 방식</p><p className="mt-0.5 text-[10px] font-medium text-gray-500">내부 링크가 공개 화면에 보이는 방식을 선택합니다.</p></div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {([
+                  { value: 'list', label: '리스트', icon: LayoutList },
+                  { value: 'grid', label: '그리드', icon: LayoutGrid },
+                  { value: 'carousel', label: '캐러셀', icon: GalleryHorizontal },
+                ] as const).map(({ value, label, icon: LayoutIcon }) => {
+                  const isSelected = value === 'list' ? !collection.layout || collection.layout === 'list' : collection.layout === value;
+                  return <button key={value} type="button" onClick={() => updateCustomLink(collection.id, { layout: value })} className={clsx("flex min-h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border bg-white px-2 py-3 text-xs font-black transition", isSelected ? "border-black text-black shadow-sm ring-1 ring-black" : "border-gray-200 text-gray-500 hover:-translate-y-0.5 hover:border-gray-400 hover:text-gray-800 hover:shadow-sm")} aria-label={`${label}로 표시`} aria-pressed={isSelected}><LayoutIcon className="h-6 w-6" /><span>{label}</span></button>;
+                })}
               </div>
             </div>
             <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-3 py-2.5" data-no-style-editor>
@@ -749,11 +746,14 @@ const LinksEditor = () => {
             {/* Add Nested Link Button */}
             <div className="pt-1 flex justify-end">
               <button
-                onClick={() => handleAddNestedLink(collection.id)}
+                onClick={() => {
+                  setAddBlockTargetCollectionId(collection.id);
+                  setIsAddBlockModalOpen(true);
+                }}
                 className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>{isKo ? '내부 링크 추가' : 'Add link inside'}</span>
+                <span>{isKo ? '내부 블록 추가' : 'Add block inside'}</span>
               </button>
             </div>
           </div>
@@ -2719,7 +2719,17 @@ const LinksEditor = () => {
       {/* Action Pill Buttons Row (Add + Expand All / Collapse All) */}
       <div className="flex items-center gap-2.5">
         <button
-          onClick={() => setIsAddBlockModalOpen(true)}
+          onClick={handleAddCollection}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-full font-bold text-sm transition cursor-pointer"
+        >
+          <Folder className="w-4 h-4" />
+          <span>{isKo ? '그룹 링크' : 'Group links'}</span>
+        </button>
+        <button
+          onClick={() => {
+            setAddBlockTargetCollectionId(null);
+            setIsAddBlockModalOpen(true);
+          }}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-black hover:bg-gray-800 text-white rounded-full font-bold text-sm transition cursor-pointer shadow-md"
         >
           <Plus className="w-4 h-4" />
@@ -2793,7 +2803,10 @@ const LinksEditor = () => {
       {/* Add Block Modal (Matching Littly) */}
       <AddBlockModal
         isOpen={isAddBlockModalOpen}
-        onClose={() => setIsAddBlockModalOpen(false)}
+        onClose={() => {
+          setIsAddBlockModalOpen(false);
+          setAddBlockTargetCollectionId(null);
+        }}
         onSelectBlock={handleSelectBlockType}
       />
 
