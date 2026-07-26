@@ -1,14 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithGoogle } from "../lib/firebase";
 import { useStore } from "../store/useStore";
-import { Link2, Sparkles, ArrowRight, LayoutDashboard } from "lucide-react";
+import { Link2, Sparkles, ArrowRight, LayoutDashboard, Clock3, X } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 import { getUserByUid } from "../services/userService";
 
 const Landing = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
+  const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
 
   const handleGoogleLogin = async () => {
     try {
@@ -73,7 +74,7 @@ const Landing = () => {
                 Log in
               </button>
               <button
-                onClick={handleGoogleLogin}
+                onClick={() => setIsComingSoonOpen(true)}
                 className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-gray-100 font-semibold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.2)] cursor-pointer"
               >
                 Sign up
@@ -98,7 +99,7 @@ const Landing = () => {
         </h1>
 
         <button
-          onClick={user ? () => navigate('/admin') : handleGoogleLogin}
+          onClick={user ? () => navigate('/admin') : () => setIsComingSoonOpen(true)}
           className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-bold text-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] cursor-pointer"
         >
           {user ? (
@@ -119,6 +120,18 @@ const Landing = () => {
           Free forever. No credit card required.
         </p>
       </main>
+
+      {isComingSoonOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setIsComingSoonOpen(false)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="coming-soon-title" className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-[#151515] p-7 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => setIsComingSoonOpen(false)} className="absolute right-4 top-4 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-gray-400 transition hover:bg-white/10 hover:text-white" aria-label="팝업 닫기"><X className="h-4 w-4" /></button>
+            <span className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-300"><Clock3 className="h-7 w-7" /></span>
+            <h2 id="coming-soon-title" className="text-xl font-black text-white">현재 준비 중입니다</h2>
+            <p className="mt-2 text-sm font-medium leading-relaxed text-gray-400">회원가입 기능을 더 좋은 모습으로 준비하고 있어요.<br />조금만 기다려 주세요.</p>
+            <button type="button" onClick={() => setIsComingSoonOpen(false)} className="mt-6 w-full cursor-pointer rounded-2xl bg-white py-3.5 text-sm font-black text-black transition hover:bg-gray-100">확인</button>
+          </section>
+        </div>
+      )}
     </div>
   );
 };
