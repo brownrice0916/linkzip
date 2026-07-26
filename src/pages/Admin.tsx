@@ -15,7 +15,9 @@ import {
   Redo2,
   AlertTriangle,
   X,
-  Zap
+  Zap,
+  BarChart3,
+  Megaphone
 } from "lucide-react";
 import { auth, logout } from "../lib/firebase";
 import clsx from "clsx";
@@ -25,8 +27,10 @@ import ProfileEditor from "../components/admin/ProfileEditor";
 import AppearanceEditor from "../components/admin/AppearanceEditor";
 import SettingsEditor from "../components/admin/SettingsEditor";
 import GrowthEditor from "../components/admin/GrowthEditor";
+import { AnalyticsEditor } from "../components/admin/AnalyticsEditor";
+import { MarketingEditor } from "../components/admin/MarketingEditor";
 
-type TabType = "links" | "profile" | "appearance" | "automation" | "settings";
+type TabType = "links" | "profile" | "appearance" | "analytics" | "marketing" | "automation" | "settings";
 type TargetAction = TabType | "home" | "logout" | null;
 
 const Admin = () => {
@@ -45,6 +49,8 @@ const Admin = () => {
       if (tabLower === 'content' || tabLower === 'links') setActiveTab('links');
       else if (tabLower === 'header' || tabLower === 'profile') setActiveTab('profile');
       else if (tabLower === 'design' || tabLower === 'appearance') setActiveTab('appearance');
+      else if (tabLower === 'analyze' || tabLower === 'analytics') setActiveTab('analytics');
+      else if (tabLower === 'marketing' || tabLower === 'dm') setActiveTab('marketing');
       else if (tabLower === 'growth' || tabLower === 'automation') setActiveTab('automation');
       else if (tabLower === 'settings') setActiveTab('settings');
     }
@@ -70,18 +76,18 @@ const Admin = () => {
   }, [state.isDirty]);
 
   const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/");
-    } catch (error) {
-      console.error(error);
-    }
+    await logout();
+    navigate("/login");
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(profileUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
   };
 
   const handleManualSave = async () => {
@@ -142,6 +148,8 @@ const Admin = () => {
       target === "links" ||
       target === "profile" ||
       target === "appearance" ||
+      target === "analytics" ||
+      target === "marketing" ||
       target === "automation" ||
       target === "settings"
     ) {
@@ -149,6 +157,8 @@ const Admin = () => {
       const urlAlias = target === 'links' ? 'content'
         : target === 'profile' ? 'header'
         : target === 'appearance' ? 'design'
+        : target === 'analytics' ? 'analyze'
+        : target === 'marketing' ? 'marketing'
         : target === 'automation' ? 'growth'
         : 'settings';
       navigate(`/admin/${urlAlias}`);
@@ -186,11 +196,11 @@ const Admin = () => {
 
 
 
-        <nav className="flex flex-col gap-4 w-full px-3">
+        <nav className="flex flex-col gap-3 w-full px-2.5">
           <button
             onClick={() => requestNavigation("links")}
             className={clsx(
-              "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
+              "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "links"
                 ? "bg-black text-white shadow-md"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
@@ -203,7 +213,7 @@ const Admin = () => {
           <button
             onClick={() => requestNavigation("profile")}
             className={clsx(
-              "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
+              "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "profile"
                 ? "bg-black text-white shadow-md"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
@@ -216,7 +226,7 @@ const Admin = () => {
           <button
             onClick={() => requestNavigation("appearance")}
             className={clsx(
-              "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
+              "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "appearance"
                 ? "bg-black text-white shadow-md"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
@@ -227,9 +237,35 @@ const Admin = () => {
           </button>
 
           <button
+            onClick={() => requestNavigation("analytics")}
+            className={clsx(
+              "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
+              activeTab === "analytics"
+                ? "bg-black text-white shadow-md"
+                : "text-gray-500 hover:bg-gray-100 hover:text-black"
+            )}
+          >
+            <BarChart3 className="w-5 h-5 text-indigo-400" />
+            <span className="text-[10px] font-bold">Analyze</span>
+          </button>
+
+          <button
+            onClick={() => requestNavigation("marketing")}
+            className={clsx(
+              "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
+              activeTab === "marketing"
+                ? "bg-black text-white shadow-md"
+                : "text-gray-500 hover:bg-gray-100 hover:text-black"
+            )}
+          >
+            <Megaphone className="w-5 h-5 text-pink-500" />
+            <span className="text-[10px] font-bold">Marketing</span>
+          </button>
+
+          <button
             onClick={() => requestNavigation("automation")}
             className={clsx(
-              "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
+              "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "automation"
                 ? "bg-black text-white shadow-md"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
@@ -242,7 +278,7 @@ const Admin = () => {
           <button
             onClick={() => requestNavigation("settings")}
             className={clsx(
-              "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-full cursor-pointer",
+              "flex flex-col items-center gap-1 p-2.5 rounded-2xl transition-all w-full cursor-pointer",
               activeTab === "settings"
                 ? "bg-black text-white shadow-md"
                 : "text-gray-500 hover:bg-gray-100 hover:text-black"
@@ -327,6 +363,8 @@ const Admin = () => {
                 {activeTab === "links" && "Links"}
                 {activeTab === "profile" && "Profile"}
                 {activeTab === "appearance" && "Design"}
+                {activeTab === "analytics" && "Analytics & CTR"}
+                {activeTab === "marketing" && "Marketing & DM"}
                 {activeTab === "automation" && "Growth"}
                 {activeTab === "settings" && "Settings"}
               </h2>
@@ -403,6 +441,8 @@ const Admin = () => {
             {activeTab === "links" && <LinksEditor />}
             {activeTab === "profile" && <ProfileEditor />}
             {activeTab === "appearance" && <AppearanceEditor />}
+            {activeTab === "analytics" && <AnalyticsEditor />}
+            {activeTab === "marketing" && <MarketingEditor />}
             {activeTab === "automation" && <GrowthEditor />}
             {activeTab === "settings" && <SettingsEditor />}
           </div>

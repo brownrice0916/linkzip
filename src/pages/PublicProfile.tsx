@@ -4,11 +4,12 @@ import LinkTreePreview from '../components/LinkTreePreview';
 import { QrCode } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import type { UserProfile, SocialLink, CustomLink } from '../store/useStore';
+import { useStore, type UserProfile, type SocialLink, type CustomLink } from '../store/useStore';
 
 const PublicProfile = () => {
   const { username } = useParams<{ username: string }>();
   const [loading, setLoading] = useState(true);
+  const incrementPageViews = useStore((state) => state.incrementPageViews);
   
   const [userData, setUserData] = useState<{
     profile: UserProfile;
@@ -19,6 +20,7 @@ const PublicProfile = () => {
   } | null>(null);
 
   useEffect(() => {
+    incrementPageViews();
     const fetchProfile = async () => {
       try {
         if (!username) return;

@@ -96,6 +96,7 @@ export interface CustomLink {
   type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'sales';
   title: string;
   url?: string;
+  clicks?: number; // Total clicks counter for analytics
   layout?: 'list' | 'grid';
   links?: CustomLink[]; // For collections
   isVisible?: boolean;
@@ -110,6 +111,12 @@ export interface CustomLink {
   noticeConfig?: NoticeConfig;
   customerInfoConfig?: CustomerInfoConfig;
   salesConfig?: SalesConfig;
+}
+
+export interface AnalyticsDailyItem {
+  date: string;
+  views: number;
+  clicks: number;
 }
 
 export interface VerifiedAccountInfo {
@@ -252,6 +259,13 @@ interface AppState {
   redo: () => void;
   cancelChanges: () => void;
   markSaved: () => void;
+
+  // Analytics & Performance Metrics
+  pageViews: number;
+  analyticsDailyHistory: AnalyticsDailyItem[];
+  incrementPageViews: () => void;
+  recordLinkClick: (linkId: string) => void;
+  resetAnalytics: () => void;
 
   // Drag and Drop Actions
   moveItemToCollection: (itemId: string, targetCollectionId: string) => void;
@@ -783,4 +797,41 @@ export const useStore = create<AppState>((set) => ({
       isDirty: true
     };
   }),
+
+  // Analytics Initial State & Handlers
+  pageViews: 2840,
+  analyticsDailyHistory: [
+    { date: '월 (07/19)', views: 320, clicks: 154 },
+    { date: '화 (07/20)', views: 390, clicks: 188 },
+    { date: '수 (07/21)', views: 410, clicks: 215 },
+    { date: '목 (07/22)', views: 460, clicks: 232 },
+    { date: '금 (07/23)', views: 520, clicks: 268 },
+    { date: '토 (07/24)', views: 380, clicks: 176 },
+    { date: '일 (07/25)', views: 360, clicks: 159 },
+  ],
+
+  incrementPageViews: () => set((state) => ({ pageViews: state.pageViews + 1 })),
+
+  recordLinkClick: (linkId: string) => set((state) => {
+    const recursivelyIncrement = (links: CustomLink[]): CustomLink[] => {
+      return links.map(link => {
+        if (link.id === linkId) {
+          return { ...link, clicks: (link.clicks || 0) + 1 };
+        }
+        if (link.links && link.links.length > 0) {
+          return { ...link, links: recursivelyIncrement(link.links) };
+        }
+        return link;
+      });
+    };
+
+    return {
+      customLinks: recursivelyIncrement(state.customLinks),
+    };
+  }),
+
+  resetAnalytics: () => set((state) => ({
+    pageViews: 0,
+    customLinks: state.customLinks.map(l => ({ ...l, clicks: 0 })),
+  })),
 }));
