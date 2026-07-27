@@ -1391,7 +1391,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 <span>{store.language === "ko" ? "나만의 링크집 만들기" : "Create my LinkZip"}</span>
               </a>
             )}
-            <BusinessFooter compact />
+            <BusinessFooter compact showBusinessDetails={isPublic} />
           </div>
         </div>
 
