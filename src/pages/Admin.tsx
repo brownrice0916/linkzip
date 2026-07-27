@@ -32,6 +32,7 @@ import { t } from "../lib/i18n";
 import { saveUserProfilesData } from "../services/userService";
 import { deleteOwnedProfileImage } from "../services/storageService";
 import AdminProfilesHome from "../components/admin/AdminProfilesHome";
+import PrivateBetaBadge from "../components/PrivateBetaBadge";
 
 const LinksEditor = lazy(() => import("../components/admin/LinksEditor"));
 const ProfileEditor = lazy(() => import("../components/admin/ProfileEditor"));
@@ -353,6 +354,7 @@ const Admin = () => {
       <div className="admin-utility-bar col-start-2 row-start-1 flex items-center justify-between gap-3 min-w-0">
         <div className="flex h-full min-w-0 items-center rounded-full border border-gray-200 bg-white p-1 pl-5 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
           <div className="flex min-w-0 items-center gap-3 pr-4">
+            <PrivateBetaBadge language={state.language} compact />
             <span className="shrink-0 text-xs font-black text-gray-900">{t("myLinkZip", state.language)}</span>
             <a href={profileUrl} target="_blank" rel="noreferrer" className="truncate text-xs font-semibold text-gray-500 underline decoration-gray-300 underline-offset-4 transition hover:text-black">{profileUrl}</a>
           </div>
@@ -389,6 +391,7 @@ const Admin = () => {
           {activeTab === "settings" && t("navSettings", state.language)}
           {activeTab === "plan" && (state.language === 'ko' ? '플랜 관리' : 'Plan')}
         </h1>
+        <PrivateBetaBadge language={state.language} compact />
         <div className="ml-auto flex items-center gap-1">
           <button type="button" onClick={state.undo} disabled={state.undoStack.length === 0} className="mobile-toolbar-icon" aria-label="실행 취소"><Undo2 /></button>
           <button type="button" onClick={state.redo} disabled={state.redoStack.length === 0} className="mobile-toolbar-icon" aria-label="다시 실행"><Redo2 /></button>

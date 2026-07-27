@@ -4,6 +4,7 @@ import { Bell, Plus, Settings, X } from 'lucide-react';
 import LinkTreePreview from '../LinkTreePreview';
 import { useStore, type ProfileWorkspace } from '../../store/useStore';
 import { normalizeUsername } from '../../domain/profileData';
+import PrivateBetaBadge from '../PrivateBetaBadge';
 
 const profilePreviewBackdrop = (workspace: ProfileWorkspace) => {
   if (workspace.templateType === 'color') {
@@ -94,7 +95,10 @@ const AdminProfilesHome: React.FC = () => {
     <div className="admin-profiles-home min-h-screen bg-[#f5f5f3] text-gray-950">
       <header className="sticky top-0 z-20 flex h-20 items-center border-b border-gray-200 bg-white/95 px-5 backdrop-blur sm:px-8">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-600">LinkZip</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-600">LinkZip</p>
+            <PrivateBetaBadge language={state.language} compact />
+          </div>
           <h1 className="text-xl font-black tracking-tight sm:text-2xl">{isKo ? '내 프로필' : 'My profiles'}</h1>
         </div>
         <div className="ml-auto flex items-center gap-2">

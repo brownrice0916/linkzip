@@ -6,6 +6,7 @@ import { Link2, Sparkles, ArrowRight, LayoutDashboard, Clock3, X } from "lucide-
 import { FaGoogle } from "react-icons/fa";
 import { getUserByUid } from "../services/userService";
 import BusinessFooter from "../components/BusinessFooter";
+import PrivateBetaBadge from "../components/PrivateBetaBadge";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -55,6 +56,7 @@ const Landing = () => {
             <Link2 className="w-6 h-6 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight">LinkZip</span>
+          <PrivateBetaBadge dark />
         </div>
         
         <div className="flex items-center gap-4">
