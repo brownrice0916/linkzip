@@ -33,7 +33,8 @@ import {
   ClipboardList,
   ShoppingBag,
   FileDown,
-  Newspaper
+  Newspaper,
+  HandHeart,
 } from "lucide-react";
 import { getLinkIcon } from "../../lib/icons";
 import { ThumbnailModal } from "./ThumbnailModal";
@@ -915,6 +916,9 @@ const LinksEditor = () => {
               </button>
             </div> */}
 
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-700 shadow-xs">
+              <HandHeart className="h-6 w-6" />
+            </div>
             <div className="truncate text-sm font-black text-gray-900">도네이션</div>
           </div>
 

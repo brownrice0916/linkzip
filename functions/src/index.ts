@@ -84,6 +84,10 @@ interface PublicSalesLink {
     mainText?: unknown;
     products?: unknown;
   };
+  donationConfig?: {
+    mainText?: unknown;
+    minAmount?: unknown;
+  };
 }
 
 const setPublicPostCors = (request: Request, response: Response) => {
@@ -126,6 +130,12 @@ const createOrderNumber = () => {
   const now = new Date();
   const date = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}${String(now.getUTCDate()).padStart(2, "0")}`;
   return `LZ-${date}-${randomBytes(5).toString("hex").toUpperCase()}`;
+};
+
+const createDonationOrderNumber = () => {
+  const now = new Date();
+  const date = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}${String(now.getUTCDate()).padStart(2, "0")}`;
+  return `DN-${date}-${randomBytes(5).toString("hex").toUpperCase()}`;
 };
 
 export const createTossSalesOrder = onRequest(
@@ -243,6 +253,86 @@ export const createTossSalesOrder = onRequest(
   },
 );
 
+export const createTossDonationOrder = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 20,
+    invoker: "public",
+  },
+  async (request, response) => {
+    if (!setPublicPostCors(request, response)) return;
+
+    const ownerUid = cleanString(request.body?.ownerUid, 128);
+    const targetUsername = cleanString(request.body?.targetUsername, 30).toLowerCase();
+    const blockId = cleanString(request.body?.blockId, 128);
+    const nickname = cleanString(request.body?.nickname, 50) || "익명 후원자";
+    const message = cleanString(request.body?.message, 300);
+    const requestedAmount = request.body?.amount;
+
+    if (!/^[A-Za-z0-9_-]{6,128}$/.test(ownerUid) || !/^[\p{L}\p{N}._-]{3,30}$/u.test(targetUsername) || !blockId) {
+      response.status(400).json({message: "후원받을 프로필 정보를 확인해주세요."});
+      return;
+    }
+    if (!Number.isSafeInteger(requestedAmount) || requestedAmount > 10000000) {
+      response.status(400).json({message: "후원 금액을 확인해주세요."});
+      return;
+    }
+
+    const usernameSnapshot = await db.collection("usernames").doc(targetUsername).get();
+    const usernameData = usernameSnapshot.data();
+    if (!usernameSnapshot.exists || usernameData?.uid !== ownerUid) {
+      response.status(404).json({message: "후원받을 프로필을 찾을 수 없습니다."});
+      return;
+    }
+    const publicProfileId = typeof usernameData.publicProfileId === "string" ? usernameData.publicProfileId : ownerUid;
+    const publicProfileSnapshot = await db.collection("publicProfiles").doc(publicProfileId).get();
+    const publicProfile = publicProfileSnapshot.data();
+    if (!publicProfileSnapshot.exists || publicProfile?.ownerUid !== ownerUid) {
+      response.status(404).json({message: "후원받을 프로필을 찾을 수 없습니다."});
+      return;
+    }
+
+    const block = findPublicLink(publicProfile.customLinks, blockId);
+    if (!block || block.type !== "donation" || block.isVisible === false) {
+      response.status(404).json({message: "후원 블록을 찾을 수 없습니다."});
+      return;
+    }
+    const configuredMinimum = block.donationConfig?.minAmount;
+    const minAmount = typeof configuredMinimum === "number" && Number.isSafeInteger(configuredMinimum)
+      ? Math.max(configuredMinimum, 100)
+      : 1000;
+    if (requestedAmount < minAmount) {
+      response.status(400).json({message: `최소 후원 금액은 ${minAmount.toLocaleString("ko-KR")}원입니다.`});
+      return;
+    }
+
+    const orderNumber = createDonationOrderNumber();
+    const donationRecordRef = db.collection("users").doc(ownerUid).collection("donations").doc();
+    const paymentOrderRef = db.collection("tossPaymentOrders").doc(orderNumber);
+    const idempotencyKey = randomUUID();
+    const configuredName = cleanString(block.donationConfig?.mainText, 100);
+    const orderName = configuredName || "도네이션";
+    await paymentOrderRef.create({
+      kind: "donation",
+      ownerUid,
+      donationRecordId: donationRecordRef.id,
+      blockId,
+      targetUsername,
+      nickname,
+      message,
+      productName: orderName,
+      amount: requestedAmount,
+      status: "READY",
+      idempotencyKey,
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    response.status(201).json({orderNumber, amount: requestedAmount, orderName});
+  },
+);
+
 export const confirmTossSalesPayment = onRequest(
   {
     region: "asia-northeast3",
@@ -257,7 +347,7 @@ export const confirmTossSalesPayment = onRequest(
     const paymentKey = cleanString(request.body?.paymentKey, 200);
     const orderId = cleanString(request.body?.orderId, 64).toUpperCase();
     const returnedAmount = request.body?.amount;
-    if (!paymentKey || !/^LZ-\d{8}-[A-F0-9]{10}$/.test(orderId) || !Number.isSafeInteger(returnedAmount)) {
+    if (!paymentKey || !/^(?:LZ|DN)-\d{8}-[A-F0-9]{10}$/.test(orderId) || !Number.isSafeInteger(returnedAmount)) {
       response.status(400).json({message: "결제 승인 정보가 올바르지 않습니다."});
       return;
     }
@@ -293,9 +383,11 @@ export const confirmTossSalesPayment = onRequest(
     }
     if (orderData.status === "PAID") {
       response.status(200).json({
+        kind: orderData.kind || "sales",
         orderNumber: orderId,
         productName: orderData.productName,
         amount: orderData.amount,
+        nickname: orderData.nickname || "",
         method: orderData.paymentMethod || "",
         approvedAt: orderData.approvedAt || null,
         targetUsername: orderData.targetUsername,
@@ -342,31 +434,58 @@ export const confirmTossSalesPayment = onRequest(
     }
 
     const ownerUid = String(orderData.ownerUid);
-    const salesOrderId = String(orderData.salesOrderId);
     const paymentMethod = typeof tossResult.method === "string" ? tossResult.method : "";
     const approvedAt = typeof tossResult.approvedAt === "string" ? tossResult.approvedAt : null;
-    const salesOrderRef = db.collection("users").doc(ownerUid).collection("sales_orders").doc(salesOrderId);
-    await db.runTransaction(async (transaction) => {
-      transaction.update(orderRef, {
-        status: "PAID",
-        paymentKey,
-        paymentMethod,
-        approvedAt,
-        paidAt: FieldValue.serverTimestamp(),
-      });
-      transaction.update(salesOrderRef, {
-        status: "paid",
-        fulfillmentStatus: "preparing",
+    if (orderData.kind === "donation") {
+      const donationRecordId = String(orderData.donationRecordId);
+      const donationRef = db.collection("users").doc(ownerUid).collection("donations").doc(donationRecordId);
+      const donationRecord = {
+        blockId: orderData.blockId,
+        targetUsername: orderData.targetUsername,
+        nickname: orderData.nickname,
+        message: orderData.message,
+        amount: orderData.amount,
+        paymentId: orderId,
         paymentProvider: "toss",
-        paymentMethod,
-        paidAt: approvedAt,
+        createdAt: FieldValue.serverTimestamp(),
+      };
+      await db.runTransaction(async (transaction) => {
+        transaction.update(orderRef, {
+          status: "PAID",
+          paymentKey,
+          paymentMethod,
+          approvedAt,
+          paidAt: FieldValue.serverTimestamp(),
+        });
+        transaction.set(donationRef, donationRecord);
       });
-    });
+    } else {
+      const salesOrderId = String(orderData.salesOrderId);
+      const salesOrderRef = db.collection("users").doc(ownerUid).collection("sales_orders").doc(salesOrderId);
+      await db.runTransaction(async (transaction) => {
+        transaction.update(orderRef, {
+          status: "PAID",
+          paymentKey,
+          paymentMethod,
+          approvedAt,
+          paidAt: FieldValue.serverTimestamp(),
+        });
+        transaction.update(salesOrderRef, {
+          status: "paid",
+          fulfillmentStatus: "preparing",
+          paymentProvider: "toss",
+          paymentMethod,
+          paidAt: approvedAt,
+        });
+      });
+    }
 
     response.status(200).json({
+      kind: orderData.kind || "sales",
       orderNumber: orderId,
       productName: orderData.productName,
       amount: orderData.amount,
+      nickname: orderData.nickname || "",
       method: paymentMethod,
       approvedAt,
       targetUsername: orderData.targetUsername,

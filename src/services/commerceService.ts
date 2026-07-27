@@ -1,9 +1,7 @@
 import {
-  addDoc,
   collection,
   onSnapshot,
   query,
-  serverTimestamp,
   updateDoc,
   doc,
   where,
@@ -45,6 +43,19 @@ export interface DonationRecord {
   amount: number;
   paymentId: string;
   createdAt: { seconds?: number } | null;
+}
+
+export interface TossDonationOrder {
+  orderNumber: string;
+  amount: number;
+  orderName: string;
+}
+
+export interface TossDonationConfirmation {
+  orderNumber: string;
+  amount: number;
+  nickname: string;
+  targetUsername: string;
 }
 
 const salesOrdersCollection = (ownerUid: string) => collection(db, 'users', ownerUid, 'sales_orders');
@@ -155,14 +166,37 @@ export async function updateSalesOrderFulfillment(
   await updateDoc(doc(db, 'users', ownerUid, 'sales_orders', orderId), updates);
 }
 
-export async function recordDonation(
+export async function createDonationPaymentOrder(
   ownerUid: string,
-  donation: Omit<DonationRecord, 'id' | 'createdAt'>,
-): Promise<void> {
-  await addDoc(donationsCollection(ownerUid), {
-    ...donation,
-    createdAt: serverTimestamp(),
+  donation: Pick<DonationRecord, 'blockId' | 'targetUsername' | 'nickname' | 'message' | 'amount'>,
+): Promise<TossDonationOrder> {
+  const endpoint = import.meta.env.VITE_TOSS_DONATION_CREATE_URL
+    || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/createTossDonationOrder';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ownerUid, ...donation }),
   });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '후원 결제 정보를 만들지 못했습니다.');
+  return payload as TossDonationOrder;
+}
+
+export async function confirmTossDonationPayment(
+  paymentKey: string,
+  orderId: string,
+  amount: number,
+): Promise<TossDonationConfirmation> {
+  const endpoint = import.meta.env.VITE_TOSS_CONFIRM_URL
+    || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/confirmTossSalesPayment';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paymentKey, orderId, amount }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '후원 결제를 승인하지 못했습니다.');
+  return payload as TossDonationConfirmation;
 }
 
 export function subscribeToPublicDonations(

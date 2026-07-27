@@ -8,7 +8,7 @@ import {
   type DesignSettings,
   type ReservationScheduleItem,
 } from "../store/useStore";
-import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, MapPin } from "lucide-react";
+import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, MapPin, HandHeart } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import { getSocialUrl, normalizeSocialPlatform } from "../lib/social";
 import { DonationVisitorModal } from "./DonationVisitorModal";
@@ -161,6 +161,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const getPreviewLinkIcon = (link: CustomLink) => {
     if (link.url?.includes('/guestbook') || link.title?.includes('방명록')) return getLinkIcon('book');
     if (link.type === 'notice' || link.url?.includes('/notice')) return getLinkIcon('megaphone');
+    if (link.type === 'donation') return HandHeart;
     return getLinkIcon(link.iconName);
   };
 
@@ -959,7 +960,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           {isImage && block.icon ? <img src={block.icon} alt={block.title} className="w-full h-full object-cover" /> : <IconComp className="w-5 h-5" />}
                         </div>
                       )}
-                      <span className="flex-1 text-center font-bold text-[15px]">{block.donationConfig?.buttonText || block.donationConfig?.mainText || block.title || "후원하기"}</span>
+                      <span className="flex-1 text-center font-bold text-[15px]">{block.donationConfig?.mainText || block.donationConfig?.buttonText || block.title || "도네이션"}</span>
                       <span role="button" tabIndex={0} onClick={(e) => handleOpenShareModal(e, block)} className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10" title="링크 공유">
                         <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
                       </span>
