@@ -9,6 +9,7 @@ import {
   CalendarCheck, 
   Phone,
   Download,
+  FileDown,
   MessageSquareText,
   BadgeDollarSign,
   MapPinned
@@ -34,7 +35,7 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
 
   const categories = [
     {
-      title: tr('1. 기본 브랜딩 및 링크', '1. Branding & links'),
+      title: tr('링크와 위치', 'Links & location'),
       blocks: [
         { 
           id: 'link', 
@@ -51,19 +52,41 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           customIcon: <FaInstagram className="w-6 h-6 text-white" />, 
           bgColor: 'bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600' 
         },
+        {
+          id: 'map', label: tr('거주지', 'Location'),
+          desc: tr('한글 장소명이나 주소를 검색해 지도를 표시합니다.', 'Search a place or address and display a map.'),
+          icon: MapPinned, bgColor: 'bg-sky-600', iconColor: 'text-white'
+        },
+        {
+          id: 'contact', label: tr('비즈니스 연락처', 'Contact'),
+          desc: tr('비즈니스 이메일이나 담당자 연락처를 표시합니다.', 'Display a business email or contact person.'),
+          icon: Phone, bgColor: 'bg-stone-600', iconColor: 'text-white'
+        },
       ]
     },
     {
-      title: tr('2. 팬 소통 및 참여', '2. Fan engagement'),
+      title: tr('콘텐츠와 일정', 'Content & schedule'),
       blocks: [
-        { 
-          id: 'notice', 
-          label: tr('공지사항', 'Notice'),
-          desc: tr('일정, 이벤트 등의 소식을 눈에 띄게 게시합니다.', 'Highlight schedules, events, and other updates.'),
-          icon: Megaphone, 
-          bgColor: 'bg-amber-500', 
-          iconColor: 'text-white' 
+        {
+          id: 'notice', label: tr('공지사항', 'Notice'),
+          desc: tr('일정, 이벤트 등의 소식을 눈에 띄게 게시합니다.', 'Highlight schedules, events, and updates.'),
+          icon: Megaphone, bgColor: 'bg-amber-500', iconColor: 'text-white'
         },
+        {
+          id: 'file', label: tr('파일 공유', 'File sharing'),
+          desc: tr('PDF, 이미지, 문서 등을 방문자가 무료로 내려받게 합니다.', 'Let visitors download a file for free.'),
+          icon: FileDown, bgColor: 'bg-cyan-600', iconColor: 'text-white'
+        },
+        {
+          id: 'reservation', label: tr('캘린더', 'Calendar'),
+          desc: tr('달력에 일정과 예약 정보를 표시합니다.', 'Publish a calendar with schedule information.'),
+          icon: CalendarCheck, bgColor: 'bg-emerald-600', iconColor: 'text-white'
+        },
+      ]
+    },
+    {
+      title: tr('소통과 고객', 'Community & audience'),
+      blocks: [
         {
           id: 'guestbook', 
           label: tr('방명록', 'Guestbook'),
@@ -91,7 +114,7 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
       ]
     },
     {
-      title: tr('3. 수익화 및 비즈니스', '3. Monetization & business'),
+      title: tr('판매와 후원', 'Sales & support'),
       blocks: [
         { 
           id: 'digital_file_sales',
@@ -117,36 +140,12 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           bgColor: 'bg-fuchsia-600',
           iconColor: 'text-white'
         },
-        {
-          id: 'map',
-          label: tr('거주지', 'Location'),
-          desc: tr('한글 장소명이나 주소를 검색해 지도를 표시합니다.', 'Search a place or address and display a map.'),
-          icon: MapPinned,
-          bgColor: 'bg-sky-600',
-          iconColor: 'text-white'
-        },
         { 
           id: 'donation', 
           label: tr('후원', 'Donation'),
           desc: tr('후원금과 응원 메시지를 받습니다.', 'Receive donations and messages of support.'),
           icon: Heart, 
           bgColor: 'bg-red-500', 
-          iconColor: 'text-white' 
-        },
-        { 
-          id: 'reservation', 
-          label: tr('캘린더', 'Calendar'),
-          desc: tr('달력에 일정을 등록하고 예약을 받습니다.', 'Publish a calendar and accept appointments.'),
-          icon: CalendarCheck, 
-          bgColor: 'bg-emerald-600', 
-          iconColor: 'text-white' 
-        },
-        { 
-          id: 'contact', 
-          label: tr('비즈니스 연락처', 'Contact'),
-          desc: tr('비즈니스 이메일이나 담당자 연락처를 표시합니다.', 'Display a business email or contact person.'),
-          icon: Phone, 
-          bgColor: 'bg-stone-500', 
           iconColor: 'text-white' 
         },
       ]

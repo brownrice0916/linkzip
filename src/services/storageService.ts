@@ -30,6 +30,16 @@ export async function uploadPublicImage(pathPrefix: string, file: File): Promise
   return getDownloadURL(snapshot.ref);
 }
 
+export async function uploadPublicFile(uid: string, file: File): Promise<string> {
+  const path = `shared-files/${uid}/${Date.now()}_${safeFileName(file.name)}`;
+  const snapshot = await uploadBytes(ref(storage, path), file, {
+    contentType: file.type || 'application/octet-stream',
+    cacheControl: 'public,max-age=3600',
+    contentDisposition: `attachment; filename="${safeFileName(file.name)}"`,
+  });
+  return getDownloadURL(snapshot.ref);
+}
+
 export async function deleteOwnedProfileImage(url: string | undefined, uid: string, stillUsedUrls: Set<string>): Promise<void> {
   if (!url || stillUsedUrls.has(url) || !url.includes('firebasestorage.googleapis.com') || !url.includes(encodeURIComponent(`profiles/${uid}/`))) return;
   try {

@@ -55,6 +55,78 @@ interface InstagramConnection {
   status: "connected" | "disconnected";
 }
 
+const orderLookupOrigins = new Set([
+  "https://linkzip.kr",
+  "https://www.linkzip.kr",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]);
+
+export const lookupSalesOrder = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 15,
+    invoker: "public",
+  },
+  async (request, response) => {
+    const origin = request.get("origin") || "";
+    if (orderLookupOrigins.has(origin)) response.set("Access-Control-Allow-Origin", origin);
+    response.set("Vary", "Origin");
+    if (request.method === "OPTIONS") {
+      response.set("Access-Control-Allow-Headers", "Content-Type");
+      response.set("Access-Control-Allow-Methods", "POST");
+      response.status(204).send("");
+      return;
+    }
+    if (request.method !== "POST") {
+      response.set("Allow", "POST").status(405).json({message: "Method not allowed"});
+      return;
+    }
+    if (origin && !orderLookupOrigins.has(origin)) {
+      response.status(403).json({message: "허용되지 않은 요청입니다."});
+      return;
+    }
+
+    const ownerUid = typeof request.body?.ownerUid === "string" ? request.body.ownerUid.trim() : "";
+    const lookupValue = typeof request.body?.lookupValue === "string" ? request.body.lookupValue.trim() : "";
+    if (!/^[A-Za-z0-9_-]{6,128}$/.test(ownerUid) || lookupValue.length < 4 || lookupValue.length > 40) {
+      response.status(400).json({message: "휴대폰 번호 또는 주문번호를 확인해주세요."});
+      return;
+    }
+
+    const normalizedPhone = lookupValue.replace(/\D/g, "");
+    const isOrderNumber = /^LZ-\d{8}-[A-Z0-9]{6}$/.test(lookupValue.toUpperCase());
+    if (!isOrderNumber && normalizedPhone.length < 9) {
+      response.status(400).json({message: "휴대폰 번호를 정확히 입력해주세요."});
+      return;
+    }
+
+    const ordersRef = db.collection("users").doc(ownerUid).collection("sales_orders");
+    const snapshot = await (isOrderNumber
+      ? ordersRef.where("orderNumber", "==", lookupValue.toUpperCase()).limit(5)
+      : ordersRef.where("buyerContactNormalized", "==", normalizedPhone).limit(10)
+    ).get();
+
+    const orders = snapshot.docs.map((document) => {
+      const data = document.data();
+      const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : null;
+      return {
+        orderNumber: typeof data.orderNumber === "string" ? data.orderNumber : "",
+        productName: typeof data.productName === "string" ? data.productName : "상품",
+        amount: typeof data.amount === "number" ? data.amount : 0,
+        status: ["pending", "paid", "cancelled"].includes(data.status) ? data.status : "pending",
+        fulfillmentStatus: ["payment_pending", "preparing", "shipping", "delivered"].includes(data.fulfillmentStatus)
+          ? data.fulfillmentStatus : "payment_pending",
+        carrier: typeof data.carrier === "string" ? data.carrier : "",
+        trackingNumber: typeof data.trackingNumber === "string" ? data.trackingNumber : "",
+        createdAt,
+      };
+    });
+    response.status(200).json({orders});
+  },
+);
+
 export const metaInstagramWebhook = onRequest(
   {
     region: "asia-northeast3",

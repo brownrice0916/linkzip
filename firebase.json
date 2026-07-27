@@ -17,6 +17,13 @@
     ],
     "rewrites": [
       {
+        "source": "/api/orders/lookup",
+        "function": {
+          "functionId": "lookupSalesOrder",
+          "region": "asia-northeast3"
+        }
+      },
+      {
         "source": "/api/meta/instagram/webhook",
         "function": {
           "functionId": "metaInstagramWebhook",

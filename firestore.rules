@@ -73,7 +73,9 @@ service cloud.firestore {
         allow create: if request.resource.data.keys().hasOnly([
             'blockId', 'targetUsername', 'productId', 'productName', 'amount',
             'salesType', 'buyerName', 'buyerContact', 'buyerEmail',
-            'shippingAddress', 'status', 'createdAt'
+            'shippingAddress', 'postalCode', 'orderNumber',
+            'buyerContactNormalized', 'status', 'fulfillmentStatus',
+            'carrier', 'trackingNumber', 'createdAt'
           ])
           && request.resource.data.blockId is string
           && request.resource.data.targetUsername is string
@@ -93,11 +95,29 @@ service cloud.firestore {
           && request.resource.data.buyerEmail.size() <= 100
           && request.resource.data.shippingAddress is string
           && request.resource.data.shippingAddress.size() <= 300
-          && request.resource.data.status == 'pending';
+          && request.resource.data.postalCode is string
+          && request.resource.data.postalCode.size() <= 10
+          && request.resource.data.orderNumber is string
+          && request.resource.data.orderNumber.matches('LZ-[0-9]{8}-[A-Z0-9]{6}')
+          && request.resource.data.buyerContactNormalized is string
+          && request.resource.data.buyerContactNormalized.matches('[0-9]{9,15}')
+          && request.resource.data.status == 'pending'
+          && request.resource.data.fulfillmentStatus == 'payment_pending'
+          && request.resource.data.carrier == ''
+          && request.resource.data.trackingNumber == '';
         allow read, delete: if isOwner(uid);
         allow update: if isOwner(uid)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-          && request.resource.data.status in ['pending', 'paid', 'cancelled'];
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'fulfillmentStatus', 'carrier', 'trackingNumber'
+          ])
+          && request.resource.data.status in ['pending', 'paid', 'cancelled']
+          && request.resource.data.get('fulfillmentStatus', 'payment_pending') in [
+            'payment_pending', 'preparing', 'shipping', 'delivered'
+          ]
+          && request.resource.data.get('carrier', '') is string
+          && request.resource.data.get('carrier', '').size() <= 30
+          && request.resource.data.get('trackingNumber', '') is string
+          && request.resource.data.get('trackingNumber', '').size() <= 50;
       }
 
       match /donations/{donationId} {

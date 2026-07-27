@@ -54,7 +54,7 @@ import type {
 } from "../../store/useStore";
 import { BlockList } from "./BlockList";
 import { LinkStyleEditorModal } from "./LinkStyleEditorModal";
-import { uploadPublicImage } from "../../services/storageService";
+import { uploadPublicFile, uploadPublicImage } from "../../services/storageService";
 
 const getSocialIconComp = (platform: string) => {
   return getLinkIcon(platform);
@@ -96,6 +96,7 @@ const LinksEditor = () => {
     useState<CustomLink | null>(null);
   const [activeStyleLinkId, setActiveStyleLinkId] = useState<string | null>(null);
   const [uploadingAffiliateId, setUploadingAffiliateId] = useState<string | null>(null);
+  const [uploadingFileId, setUploadingFileId] = useState<string | null>(null);
 
   const findLinkContext = (
     links: CustomLink[],
@@ -1113,17 +1114,25 @@ const LinksEditor = () => {
       });
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file) return;
-
-      const fakeUrl = URL.createObjectURL(file);
+      if (!file || !user?.uid) return;
+      if (file.size > 25 * 1024 * 1024) {
+        alert(isKo ? "파일 크기는 25MB 이하여야 합니다." : "The file must be 25MB or smaller.");
+        return;
+      }
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      updateConfig({
-        fileUrl: fakeUrl,
-        fileName: file.name,
-        fileSize: `${sizeMb}MB`,
-      });
+      try {
+        setUploadingFileId(link.id);
+        const fileUrl = await uploadPublicFile(user.uid, file);
+        updateConfig({ fileUrl, fileName: file.name, fileSize: `${sizeMb}MB` });
+      } catch (error) {
+        console.error("Failed to upload shared file", error);
+        alert(isKo ? "파일 업로드에 실패했습니다." : "File upload failed.");
+      } finally {
+        setUploadingFileId(null);
+        e.target.value = "";
+      }
     };
 
     return (
@@ -1266,7 +1275,7 @@ const LinksEditor = () => {
             {/* 3. Upload Files* Button & Uploaded File Badge */}
             <div className="space-y-2 pt-1">
               <label className="block text-xs font-bold text-gray-600">
-                Upload Files<span className="text-red-500">*</span>
+                {isKo ? "공유 파일" : "Shared file"}<span className="text-red-500">*</span>
               </label>
 
               {config.fileName && (
@@ -1287,10 +1296,11 @@ const LinksEditor = () => {
               )}
 
               <label className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2">
-                <span>+ Add File</span>
+                <span>{uploadingFileId === link.id ? (isKo ? "업로드 중..." : "Uploading...") : (isKo ? "+ 파일 선택" : "+ Choose file")}</span>
                 <input
                   type="file"
                   onChange={handleFileUpload}
+                  disabled={uploadingFileId === link.id}
                   className="hidden"
                 />
               </label>
