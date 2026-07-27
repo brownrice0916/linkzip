@@ -17,6 +17,20 @@
     ],
     "rewrites": [
       {
+        "source": "/api/payments/orders",
+        "function": {
+          "functionId": "createTossSalesOrder",
+          "region": "asia-northeast3"
+        }
+      },
+      {
+        "source": "/api/payments/confirm",
+        "function": {
+          "functionId": "confirmTossSalesPayment",
+          "region": "asia-northeast3"
+        }
+      },
+      {
         "source": "/api/orders/lookup",
         "function": {
           "functionId": "lookupSalesOrder",

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Check, CheckCircle2, Copy, Download, MapPin, PackageSearch,
+  Download, MapPin,
   Search, ShoppingBag, X,
 } from 'lucide-react';
 import type { CustomLink, UserProfile } from '../store/useStore';
@@ -10,6 +10,7 @@ import {
   type PublicOrderLookupResult,
 } from '../services/commerceService';
 import { openKakaoPostcode } from '../lib/kakaoPostcode';
+import { requestTossPayment } from '../services/tossPaymentService';
 
 interface SalesVisitorModalProps {
   isOpen: boolean;
@@ -20,10 +21,10 @@ interface SalesVisitorModalProps {
 }
 
 const paymentLabel: Record<PublicOrderLookupResult['status'], string> = {
-  pending: '입금 확인 전', paid: '결제 확인', cancelled: '주문 취소',
+  pending: '결제 대기', paid: '결제 완료', cancelled: '주문 취소',
 };
 const fulfillmentLabel: Record<PublicOrderLookupResult['fulfillmentStatus'], string> = {
-  payment_pending: '입금 확인 전', preparing: '상품 준비 중', shipping: '배송 중', delivered: '배송 완료',
+  payment_pending: '결제 대기', preparing: '상품 준비 중', shipping: '배송 중', delivered: '배송 완료',
 };
 
 export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, onClose, block, profile, ownerUid }) => {
@@ -31,8 +32,6 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
   const isPhysical = config.salesType === 'product';
   const [tab, setTab] = useState<'order' | 'lookup'>('order');
   const [selectedProductIndex, setSelectedProductIndex] = useState(0);
-  const [copiedValue, setCopiedValue] = useState<'account' | 'order' | null>(null);
-  const [purchased, setPurchased] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [buyerName, setBuyerName] = useState('');
   const [buyerContact, setBuyerContact] = useState('');
@@ -40,7 +39,6 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
   const [postalCode, setPostalCode] = useState('');
   const [baseAddress, setBaseAddress] = useState('');
   const [detailAddress, setDetailAddress] = useState('');
-  const [orderNumber, setOrderNumber] = useState('');
   const [lookupValue, setLookupValue] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupResults, setLookupResults] = useState<PublicOrderLookupResult[] | null>(null);
@@ -49,8 +47,6 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
   useEffect(() => {
     if (!isOpen) return;
     setTab('order');
-    setPurchased(false);
-    setOrderNumber('');
     setLookupResults(null);
   }, [isOpen, block.id]);
 
@@ -58,18 +54,6 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
     id: 'prod-1', name: config.mainText || '상품', price: 50000, fileName: 'digital_content.pdf',
   };
   const amount = activeProduct.discountPrice ?? activeProduct.price;
-  const accountInfo = {
-    bankName: config.bankName || 'NH농협은행',
-    accountNumber: config.accountNumber || '3020683730641',
-    accountOwner: config.accountOwner || profile.name || '판매자',
-  };
-
-  const copyText = async (value: string, kind: 'account' | 'order') => {
-    await navigator.clipboard.writeText(value);
-    setCopiedValue(kind);
-    window.setTimeout(() => setCopiedValue(null), 1800);
-  };
-
   const handleAddressSearch = async () => {
     try {
       await openKakaoPostcode((result) => {
@@ -103,11 +87,18 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
         shippingAddress: isPhysical ? `[${postalCode}] ${baseAddress.trim()} ${detailAddress.trim()}` : '',
         postalCode: isPhysical ? postalCode : '',
       });
-      setOrderNumber(result.orderNumber);
-      setPurchased(true);
+      await requestTossPayment({
+        orderId: result.orderNumber,
+        orderName: result.orderName,
+        amount: result.amount,
+        customerName: buyerName.trim(),
+        customerEmail: buyerEmail.trim() || undefined,
+        customerMobilePhone: buyerContact,
+        targetUsername: profile.username,
+      });
     } catch (error) {
       console.error('Failed to create sales order:', error);
-      alert('구매 신청을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');
+      alert(error instanceof Error ? error.message : '결제창을 열지 못했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
     }
@@ -159,14 +150,6 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
               </div>)}
             </div>
           </div>
-        ) : purchased ? (
-          <div className="space-y-5 py-3 text-center">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
-            <div><h3 className="text-lg font-black">주문이 접수되었습니다</h3><p className="mt-1 text-xs font-medium text-gray-500">주문번호는 배송조회에 필요하니 보관해주세요.</p></div>
-            <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-left"><p className="text-[11px] font-bold text-indigo-600">주문번호</p><div className="mt-1 flex items-center justify-between gap-2"><strong className="font-mono text-sm text-indigo-950">{orderNumber}</strong><button onClick={() => void copyText(orderNumber, 'order')} className="flex cursor-pointer items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[11px] font-black shadow-sm">{copiedValue === 'order' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}복사</button></div></div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-left"><div className="flex items-center justify-between text-xs font-bold text-gray-600"><span>입금 계좌 정보</span><span className="text-indigo-600">{amount.toLocaleString()}원</span></div><div className="mt-3 flex items-center justify-between gap-2"><div><p className="text-sm font-black">{accountInfo.bankName} {accountInfo.accountNumber}</p><p className="text-xs font-semibold text-gray-500">예금주: {accountInfo.accountOwner}</p></div><button onClick={() => void copyText(`${accountInfo.bankName} ${accountInfo.accountNumber}`, 'account')} className="flex shrink-0 cursor-pointer items-center gap-1 rounded-xl bg-black px-3 py-1.5 text-xs font-bold text-white">{copiedValue === 'account' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}계좌 복사</button></div></div>
-            <button onClick={() => { setTab('lookup'); setLookupValue(orderNumber); setPurchased(false); }} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-black py-4 text-xs font-black text-white"><PackageSearch className="h-4 w-4" />이 주문 조회하기</button>
-          </div>
         ) : (
           <div className="space-y-5">
             {config.image && <img src={config.image} alt="상품" className="h-48 w-full rounded-2xl border border-gray-200 object-cover" />}
@@ -175,7 +158,7 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="구매자 이름" className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black" /><input type="tel" inputMode="tel" value={buyerContact} onChange={(e) => setBuyerContact(e.target.value)} placeholder="휴대폰 번호" className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black" /><input type="email" value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} placeholder={isPhysical ? '이메일 (선택)' : '파일을 받을 이메일'} className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black sm:col-span-2" />
               {isPhysical && <><div className="flex gap-2 sm:col-span-2"><div className="relative min-w-0 flex-1"><MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" /><input readOnly value={baseAddress ? `[${postalCode}] ${baseAddress}` : ''} placeholder="배송지 주소를 검색해주세요" className="w-full cursor-pointer rounded-xl border border-gray-200 py-3 pl-9 pr-3 text-xs font-semibold outline-none" onClick={() => void handleAddressSearch()} /></div><button onClick={() => void handleAddressSearch()} className="cursor-pointer rounded-xl border border-black px-4 text-xs font-black transition hover:bg-black hover:text-white">주소 검색</button></div><input ref={detailAddressRef} value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} placeholder="상세주소" className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black sm:col-span-2" /></>}
             </div>
-            <button onClick={() => void handlePurchaseRequest()} disabled={submitting} className="w-full cursor-pointer rounded-2xl bg-black py-4 text-sm font-black text-white shadow-md transition hover:bg-gray-800 disabled:opacity-50">{submitting ? '주문 접수 중...' : `${amount.toLocaleString()}원 주문하기 / 입금 안내`}</button>
+            <button onClick={() => void handlePurchaseRequest()} disabled={submitting} className="w-full cursor-pointer rounded-2xl bg-black py-4 text-sm font-black text-white shadow-md transition hover:bg-gray-800 disabled:opacity-50">{submitting ? '결제창 여는 중...' : `${amount.toLocaleString()}원 결제하기`}</button>
           </div>
         )}
       </div>

@@ -70,41 +70,7 @@ service cloud.firestore {
       }
 
       match /sales_orders/{orderId} {
-        allow create: if request.resource.data.keys().hasOnly([
-            'blockId', 'targetUsername', 'productId', 'productName', 'amount',
-            'salesType', 'buyerName', 'buyerContact', 'buyerEmail',
-            'shippingAddress', 'postalCode', 'orderNumber',
-            'buyerContactNormalized', 'status', 'fulfillmentStatus',
-            'carrier', 'trackingNumber', 'createdAt'
-          ])
-          && request.resource.data.blockId is string
-          && request.resource.data.targetUsername is string
-          && exists(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername))
-          && get(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername)).data.uid == uid
-          && request.resource.data.productId is string
-          && request.resource.data.productName is string
-          && request.resource.data.amount is number
-          && request.resource.data.amount >= 0
-          && request.resource.data.salesType in ['digital_file', 'product']
-          && request.resource.data.buyerName is string
-          && request.resource.data.buyerName.size() > 0
-          && request.resource.data.buyerName.size() <= 50
-          && request.resource.data.buyerContact is string
-          && request.resource.data.buyerContact.size() <= 50
-          && request.resource.data.buyerEmail is string
-          && request.resource.data.buyerEmail.size() <= 100
-          && request.resource.data.shippingAddress is string
-          && request.resource.data.shippingAddress.size() <= 300
-          && request.resource.data.postalCode is string
-          && request.resource.data.postalCode.size() <= 10
-          && request.resource.data.orderNumber is string
-          && request.resource.data.orderNumber.matches('LZ-[0-9]{8}-[A-Z0-9]{6}')
-          && request.resource.data.buyerContactNormalized is string
-          && request.resource.data.buyerContactNormalized.matches('[0-9]{9,15}')
-          && request.resource.data.status == 'pending'
-          && request.resource.data.fulfillmentStatus == 'payment_pending'
-          && request.resource.data.carrier == ''
-          && request.resource.data.trackingNumber == '';
+        allow create: if false;
         allow read, delete: if isOwner(uid);
         allow update: if isOwner(uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([

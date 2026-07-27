@@ -30,6 +30,9 @@ export interface SalesOrder {
   fulfillmentStatus: 'payment_pending' | 'preparing' | 'shipping' | 'delivered';
   carrier: string;
   trackingNumber: string;
+  paymentProvider?: 'toss';
+  paymentMethod?: string;
+  paidAt?: string | null;
   createdAt: { seconds?: number } | null;
 }
 
@@ -50,19 +53,22 @@ const donationsCollection = (ownerUid: string) => collection(db, 'users', ownerU
 export async function createSalesOrder(
   ownerUid: string,
   order: Omit<SalesOrder, 'id' | 'orderNumber' | 'buyerContactNormalized' | 'status' | 'fulfillmentStatus' | 'carrier' | 'trackingNumber' | 'createdAt'>,
-): Promise<{ id: string; orderNumber: string }> {
-  const orderNumber = createOrderNumber();
-  const result = await addDoc(salesOrdersCollection(ownerUid), {
-    ...order,
-    orderNumber,
-    buyerContactNormalized: normalizePhone(order.buyerContact),
-    status: 'pending',
-    fulfillmentStatus: 'payment_pending',
-    carrier: '',
-    trackingNumber: '',
-    createdAt: serverTimestamp(),
+): Promise<{ id: string; orderNumber: string; amount: number; orderName: string }> {
+  const endpoint = import.meta.env.VITE_TOSS_ORDER_CREATE_URL
+    || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/createTossSalesOrder';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ownerUid, ...order }),
   });
-  return { id: result.id, orderNumber };
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '결제 주문을 만들지 못했습니다.');
+  return {
+    id: String(payload.id || ''),
+    orderNumber: String(payload.orderNumber || ''),
+    amount: Number(payload.amount || 0),
+    orderName: String(payload.orderName || order.productName),
+  };
 }
 
 export interface PublicOrderLookupResult {
@@ -76,15 +82,6 @@ export interface PublicOrderLookupResult {
   createdAt: string | null;
 }
 
-const normalizePhone = (value: string) => value.replace(/\D/g, '');
-
-const createOrderNumber = () => {
-  const today = new Date();
-  const date = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-  const random = crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase().padStart(6, '0').slice(-6);
-  return `LZ-${date}-${random}`;
-};
-
 export async function lookupSalesOrders(ownerUid: string, lookupValue: string): Promise<PublicOrderLookupResult[]> {
   const endpoint = import.meta.env.VITE_ORDER_LOOKUP_URL
     || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/lookupSalesOrder';
@@ -96,6 +93,32 @@ export async function lookupSalesOrders(ownerUid: string, lookupValue: string): 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '주문 정보를 조회하지 못했습니다.');
   return Array.isArray(payload?.orders) ? payload.orders : [];
+}
+
+export interface TossPaymentConfirmation {
+  orderNumber: string;
+  productName: string;
+  amount: number;
+  method: string;
+  approvedAt: string | null;
+  targetUsername: string;
+}
+
+export async function confirmTossSalesPayment(
+  paymentKey: string,
+  orderId: string,
+  amount: number,
+): Promise<TossPaymentConfirmation> {
+  const endpoint = import.meta.env.VITE_TOSS_CONFIRM_URL
+    || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/confirmTossSalesPayment';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paymentKey, orderId, amount }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '결제를 승인하지 못했습니다.');
+  return payload as TossPaymentConfirmation;
 }
 
 export function subscribeToSalesOrders(

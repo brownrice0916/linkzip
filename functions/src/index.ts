@@ -5,6 +5,9 @@ import {defineSecret} from "firebase-functions/params";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
+import {randomBytes, randomUUID} from "node:crypto";
+import type {Request} from "firebase-functions/v2/https";
+import type {Response} from "express";
 
 import {
   buildReplyText,
@@ -34,6 +37,7 @@ const metaWebhookVerifyToken = defineSecret("META_WEBHOOK_VERIFY_TOKEN");
 const metaAppSecret = defineSecret("META_APP_SECRET");
 const metaInstagramAppId = defineSecret("META_INSTAGRAM_APP_ID");
 const metaTokenEncryptionKey = defineSecret("META_TOKEN_ENCRYPTION_KEY");
+const tossSecretKey = defineSecret("TOSS_SECRET_KEY");
 
 const instagramRedirectUri = "https://linkzip.kr/auth/instagram/callback";
 const instagramGraphVersion = "v24.0";
@@ -61,6 +65,314 @@ const orderLookupOrigins = new Set([
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ]);
+
+interface PublicSalesProduct {
+  id?: unknown;
+  name?: unknown;
+  price?: unknown;
+  discountPrice?: unknown;
+}
+
+interface PublicSalesLink {
+  id?: unknown;
+  type?: unknown;
+  isVisible?: unknown;
+  title?: unknown;
+  links?: unknown;
+  salesConfig?: {
+    salesType?: unknown;
+    mainText?: unknown;
+    products?: unknown;
+  };
+}
+
+const setPublicPostCors = (request: Request, response: Response) => {
+  const origin = request.get("origin") || "";
+  if (orderLookupOrigins.has(origin)) response.set("Access-Control-Allow-Origin", origin);
+  response.set("Vary", "Origin");
+  if (request.method === "OPTIONS") {
+    response.set("Access-Control-Allow-Headers", "Content-Type");
+    response.set("Access-Control-Allow-Methods", "POST");
+    response.status(204).send("");
+    return false;
+  }
+  if (request.method !== "POST") {
+    response.set("Allow", "POST").status(405).json({message: "Method not allowed"});
+    return false;
+  }
+  if (origin && !orderLookupOrigins.has(origin)) {
+    response.status(403).json({message: "허용되지 않은 요청입니다."});
+    return false;
+  }
+  return true;
+};
+
+const findPublicLink = (links: unknown, linkId: string): PublicSalesLink | null => {
+  if (!Array.isArray(links)) return null;
+  for (const candidate of links) {
+    if (!candidate || typeof candidate !== "object") continue;
+    const link = candidate as PublicSalesLink;
+    if (link.id === linkId) return link;
+    const nested = findPublicLink(link.links, linkId);
+    if (nested) return nested;
+  }
+  return null;
+};
+
+const cleanString = (value: unknown, maxLength: number) =>
+  typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+
+const createOrderNumber = () => {
+  const now = new Date();
+  const date = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}${String(now.getUTCDate()).padStart(2, "0")}`;
+  return `LZ-${date}-${randomBytes(5).toString("hex").toUpperCase()}`;
+};
+
+export const createTossSalesOrder = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 20,
+    invoker: "public",
+  },
+  async (request, response) => {
+    if (!setPublicPostCors(request, response)) return;
+
+    const ownerUid = cleanString(request.body?.ownerUid, 128);
+    const targetUsername = cleanString(request.body?.targetUsername, 30).toLowerCase();
+    const blockId = cleanString(request.body?.blockId, 128);
+    const productId = cleanString(request.body?.productId, 128);
+    const buyerName = cleanString(request.body?.buyerName, 50);
+    const buyerContact = cleanString(request.body?.buyerContact, 50);
+    const buyerEmail = cleanString(request.body?.buyerEmail, 100);
+    const shippingAddress = cleanString(request.body?.shippingAddress, 300);
+    const postalCode = cleanString(request.body?.postalCode, 10);
+    const normalizedPhone = buyerContact.replace(/\D/g, "");
+
+    if (!/^[A-Za-z0-9_-]{6,128}$/.test(ownerUid) || !/^[\p{L}\p{N}._-]{3,30}$/u.test(targetUsername) || !blockId || !productId) {
+      response.status(400).json({message: "상품 정보를 확인해주세요."});
+      return;
+    }
+    if (!buyerName || !/^\d{9,15}$/.test(normalizedPhone)) {
+      response.status(400).json({message: "구매자 이름과 휴대폰 번호를 확인해주세요."});
+      return;
+    }
+
+    const usernameSnapshot = await db.collection("usernames").doc(targetUsername).get();
+    const usernameData = usernameSnapshot.data();
+    if (!usernameSnapshot.exists || usernameData?.uid !== ownerUid) {
+      response.status(404).json({message: "판매자 프로필을 찾을 수 없습니다."});
+      return;
+    }
+    const publicProfileId = typeof usernameData.publicProfileId === "string" ? usernameData.publicProfileId : ownerUid;
+    const publicProfileSnapshot = await db.collection("publicProfiles").doc(publicProfileId).get();
+    const publicProfile = publicProfileSnapshot.data();
+    if (!publicProfileSnapshot.exists || publicProfile?.ownerUid !== ownerUid) {
+      response.status(404).json({message: "판매자 프로필을 찾을 수 없습니다."});
+      return;
+    }
+
+    const block = findPublicLink(publicProfile.customLinks, blockId);
+    if (!block || block.type !== "sales" || block.isVisible === false) {
+      response.status(404).json({message: "판매 중인 상품을 찾을 수 없습니다."});
+      return;
+    }
+    const salesType = block.salesConfig?.salesType === "digital_file" ? "digital_file" : "product";
+    if (salesType === "digital_file" && !buyerEmail) {
+      response.status(400).json({message: "파일을 받을 이메일을 입력해주세요."});
+      return;
+    }
+    if (salesType === "product" && (!shippingAddress || !postalCode)) {
+      response.status(400).json({message: "배송지 주소를 입력해주세요."});
+      return;
+    }
+
+    const products = Array.isArray(block.salesConfig?.products)
+      ? block.salesConfig.products as PublicSalesProduct[]
+      : [];
+    const product = products.find((item) => item?.id === productId);
+    const rawAmount = product?.discountPrice ?? product?.price;
+    const amount = typeof rawAmount === "number" ? rawAmount : Number.NaN;
+    const productName = cleanString(product?.name, 100);
+    if (!product || !productName || !Number.isSafeInteger(amount) || amount < 100) {
+      response.status(400).json({message: "상품 가격 정보를 확인해주세요."});
+      return;
+    }
+
+    const orderNumber = createOrderNumber();
+    const salesOrderRef = db.collection("users").doc(ownerUid).collection("sales_orders").doc();
+    const paymentOrderRef = db.collection("tossPaymentOrders").doc(orderNumber);
+    const idempotencyKey = randomUUID();
+    const orderName = productName.slice(0, 100);
+    await db.runTransaction(async (transaction) => {
+      transaction.create(salesOrderRef, {
+        blockId,
+        targetUsername,
+        productId,
+        productName,
+        amount,
+        salesType,
+        buyerName,
+        buyerContact,
+        buyerEmail,
+        shippingAddress: salesType === "product" ? shippingAddress : "",
+        postalCode: salesType === "product" ? postalCode : "",
+        orderNumber,
+        buyerContactNormalized: normalizedPhone,
+        status: "pending",
+        fulfillmentStatus: "payment_pending",
+        carrier: "",
+        trackingNumber: "",
+        paymentProvider: "toss",
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      transaction.create(paymentOrderRef, {
+        ownerUid,
+        salesOrderId: salesOrderRef.id,
+        targetUsername,
+        productName,
+        amount,
+        status: "READY",
+        idempotencyKey,
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+      });
+    });
+
+    response.status(201).json({id: salesOrderRef.id, orderNumber, amount, orderName});
+  },
+);
+
+export const confirmTossSalesPayment = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    invoker: "public",
+    secrets: [tossSecretKey],
+  },
+  async (request, response) => {
+    if (!setPublicPostCors(request, response)) return;
+
+    const paymentKey = cleanString(request.body?.paymentKey, 200);
+    const orderId = cleanString(request.body?.orderId, 64).toUpperCase();
+    const returnedAmount = request.body?.amount;
+    if (!paymentKey || !/^LZ-\d{8}-[A-F0-9]{10}$/.test(orderId) || !Number.isSafeInteger(returnedAmount)) {
+      response.status(400).json({message: "결제 승인 정보가 올바르지 않습니다."});
+      return;
+    }
+
+    const orderRef = db.collection("tossPaymentOrders").doc(orderId);
+    let orderData: FirebaseFirestore.DocumentData | undefined;
+    try {
+      await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(orderRef);
+        orderData = snapshot.data();
+        if (!snapshot.exists || !orderData) throw new Error("ORDER_NOT_FOUND");
+        if (orderData.status === "PAID") return;
+        if (orderData.status !== "READY" && orderData.status !== "CONFIRMING") {
+          throw new Error("ORDER_INVALID_STATUS");
+        }
+        if (orderData.amount !== returnedAmount) throw new Error("AMOUNT_MISMATCH");
+        if (orderData.status === "READY") {
+          transaction.update(orderRef, {status: "CONFIRMING", confirmingAt: FieldValue.serverTimestamp()});
+        }
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      const message = code === "AMOUNT_MISMATCH"
+        ? "결제 금액이 주문 금액과 일치하지 않습니다."
+        : code === "ORDER_INVALID_STATUS" ? "결제할 수 없는 주문 상태입니다." : "주문을 찾을 수 없습니다.";
+      response.status(400).json({message});
+      return;
+    }
+
+    if (!orderData) {
+      response.status(404).json({message: "주문을 찾을 수 없습니다."});
+      return;
+    }
+    if (orderData.status === "PAID") {
+      response.status(200).json({
+        orderNumber: orderId,
+        productName: orderData.productName,
+        amount: orderData.amount,
+        method: orderData.paymentMethod || "",
+        approvedAt: orderData.approvedAt || null,
+        targetUsername: orderData.targetUsername,
+      });
+      return;
+    }
+
+    const authorization = Buffer.from(`${tossSecretKey.value()}:`, "utf8").toString("base64");
+    let tossResponse: globalThis.Response;
+    try {
+      tossResponse = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${authorization}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": String(orderData.idempotencyKey),
+        },
+        body: JSON.stringify({paymentKey, orderId, amount: orderData.amount}),
+      });
+    } catch (error) {
+      await orderRef.update({status: "READY", lastErrorAt: FieldValue.serverTimestamp()});
+      logger.error("Toss payment confirmation network error", {orderId, error});
+      response.status(502).json({message: "결제 승인 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요."});
+      return;
+    }
+
+    const tossResult = await tossResponse.json() as Record<string, unknown>;
+    if (!tossResponse.ok) {
+      await orderRef.update({
+        status: "READY",
+        lastErrorCode: typeof tossResult.code === "string" ? tossResult.code : "UNKNOWN",
+        lastErrorAt: FieldValue.serverTimestamp(),
+      });
+      response.status(tossResponse.status >= 500 ? 502 : 400).json({
+        message: typeof tossResult.message === "string" ? tossResult.message : "결제를 승인하지 못했습니다.",
+      });
+      return;
+    }
+
+    if (tossResult.orderId !== orderId || tossResult.totalAmount !== orderData.amount) {
+      logger.error("Toss payment response did not match the stored order", {orderId});
+      response.status(502).json({message: "결제 승인 결과를 확인하지 못했습니다. 고객센터에 문의해주세요."});
+      return;
+    }
+
+    const ownerUid = String(orderData.ownerUid);
+    const salesOrderId = String(orderData.salesOrderId);
+    const paymentMethod = typeof tossResult.method === "string" ? tossResult.method : "";
+    const approvedAt = typeof tossResult.approvedAt === "string" ? tossResult.approvedAt : null;
+    const salesOrderRef = db.collection("users").doc(ownerUid).collection("sales_orders").doc(salesOrderId);
+    await db.runTransaction(async (transaction) => {
+      transaction.update(orderRef, {
+        status: "PAID",
+        paymentKey,
+        paymentMethod,
+        approvedAt,
+        paidAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(salesOrderRef, {
+        status: "paid",
+        fulfillmentStatus: "preparing",
+        paymentProvider: "toss",
+        paymentMethod,
+        paidAt: approvedAt,
+      });
+    });
+
+    response.status(200).json({
+      orderNumber: orderId,
+      productName: orderData.productName,
+      amount: orderData.amount,
+      method: paymentMethod,
+      approvedAt,
+      targetUsername: orderData.targetUsername,
+    });
+  },
+);
 
 export const lookupSalesOrder = onRequest(
   {
@@ -96,7 +408,7 @@ export const lookupSalesOrder = onRequest(
     }
 
     const normalizedPhone = lookupValue.replace(/\D/g, "");
-    const isOrderNumber = /^LZ-\d{8}-[A-Z0-9]{6}$/.test(lookupValue.toUpperCase());
+    const isOrderNumber = /^LZ-\d{8}-(?:[A-Z0-9]{6}|[A-F0-9]{10})$/.test(lookupValue.toUpperCase());
     if (!isOrderNumber && normalizedPhone.length < 9) {
       response.status(400).json({message: "휴대폰 번호를 정확히 입력해주세요."});
       return;

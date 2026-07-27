@@ -17,6 +17,8 @@ const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const GuestbookPage = lazy(() => import("./pages/GuestbookPage"));
 const NoticePage = lazy(() => import("./pages/NoticePage").then((module) => ({ default: module.NoticePage })));
 const AnonymousMessagePage = lazy(() => import("./pages/AnonymousMessagePage"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+const PaymentFail = lazy(() => import("./pages/PaymentFail"));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -203,6 +205,8 @@ function App() {
         <Route path="/notice/:username" element={<NoticePage />} />
         <Route path="/:username/notice" element={<NoticePage />} />
         <Route path="/:username/message" element={<AnonymousMessagePage />} />
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/fail" element={<PaymentFail />} />
 
         {/* Public Profile - Matches anything not defined above */}
         <Route path="/:username" element={<PublicProfile />} />
