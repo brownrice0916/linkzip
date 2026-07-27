@@ -2411,7 +2411,7 @@ const LinksEditor = () => {
                   uploadingSalesImageId === link.id
                     ? "cursor-wait border-gray-300 opacity-70"
                     : "cursor-pointer border-gray-300 hover:border-black",
-                )}>
+                )} data-no-style-editor onClick={(event) => event.stopPropagation()}>
                   {config.image ? (
                     <img
                       src={config.image}
