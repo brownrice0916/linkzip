@@ -113,6 +113,10 @@ export interface TossPaymentConfirmation {
   method: string;
   approvedAt: string | null;
   targetUsername: string;
+  downloadUrl?: string;
+  downloadFileName?: string;
+  downloadExpiresAt?: string;
+  downloadError?: string;
 }
 
 export async function confirmTossSalesPayment(

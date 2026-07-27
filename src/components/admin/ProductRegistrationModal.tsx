@@ -1,26 +1,31 @@
 import React, { useState } from 'react';
-import { X, Plus, Upload, FileText, Check } from 'lucide-react';
+import { X, Plus, FileText } from 'lucide-react';
 import { useStore, type ProductItem } from '../../store/useStore';
+import { uploadPrivateDigitalProductFile } from '../../services/storageService';
 
 interface ProductRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRegister: (product: ProductItem) => void;
   initialProduct?: ProductItem;
+  salesType?: 'digital_file' | 'product';
 }
 
 export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> = ({
   isOpen,
   onClose,
   onRegister,
-  initialProduct
+  initialProduct,
+  salesType = 'digital_file',
 }) => {
   const language = useStore((state) => state.language);
+  const user = useStore((state) => state.user);
   const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
   const [name, setName] = useState(initialProduct?.name || '전자책');
   const [price, setPrice] = useState<number>(initialProduct?.price || 50000);
-  const [fileName, setFileName] = useState(initialProduct?.fileName || 'ebook_digital_file.pdf');
-  const [fileUrl, setFileUrl] = useState(initialProduct?.fileUrl || 'https://images.unsplash.com/photo-1542435503-956c469947f6');
+  const [fileName, setFileName] = useState(initialProduct?.fileName || '');
+  const [filePath, setFilePath] = useState(initialProduct?.filePath || '');
+  const [isUploading, setIsUploading] = useState(false);
 
   // Optional checkbox states matching Screenshot 3
   const [showDiscount, setShowDiscount] = useState(!!initialProduct?.discountPrice);
@@ -32,11 +37,23 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
   const [showOrderNotes, setShowOrderNotes] = useState(!!initialProduct?.orderNote);
   const [orderNote, setOrderNote] = useState(initialProduct?.orderNote || '');
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    e.target.value = '';
+    if (!file) return;
+    if (!user) {
+      alert('파일을 업로드하려면 먼저 로그인해 주세요.');
+      return;
+    }
+    try {
+      setIsUploading(true);
+      const uploadedPath = await uploadPrivateDigitalProductFile(user.uid, file);
       setFileName(file.name);
-      setFileUrl(URL.createObjectURL(file));
+      setFilePath(uploadedPath);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '파일 업로드에 실패했습니다.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -49,13 +66,17 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
       alert('판매 가격을 입력해주세요.');
       return;
     }
+    if (salesType === 'digital_file' && !filePath) {
+      alert('구매자에게 전달할 파일을 업로드해주세요.');
+      return;
+    }
 
     onRegister({
       id: initialProduct?.id || `prod-${Date.now()}`,
       name,
       price,
       fileName,
-      fileUrl,
+      filePath,
       discountPrice: showDiscount ? discountPrice : undefined,
       stock: showStock ? stock : undefined,
       orderNote: showOrderNotes ? orderNote : undefined
@@ -114,16 +135,17 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
           </div>
 
           {/* Upload Files* */}
+          {salesType === 'digital_file' && (
           <div className="space-y-1.5">
             <div className="flex items-center gap-1">
               <label className="block text-xs font-bold text-gray-600">{tr('파일 업로드', 'Upload files')}<span className="text-red-500">*</span></label>
               <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">i</span>
             </div>
 
-            <label className="w-full py-3.5 bg-[#2B2D31] hover:bg-black text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-xs">
+            <label className={`w-full py-3.5 bg-[#2B2D31] hover:bg-black text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs ${isUploading ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
               <Plus className="w-4 h-4" />
-              <span>{tr('+ 파일 추가', '+ Add file')}</span>
-              <input type="file" onChange={handleFileUpload} className="hidden" />
+              <span>{isUploading ? '업로드 중...' : tr('+ 파일 추가', '+ Add file')}</span>
+              <input type="file" onChange={handleFileUpload} disabled={isUploading} className="hidden" />
             </label>
 
             {fileName && (
@@ -136,6 +158,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
               </div>
             )}
           </div>
+          )}
 
           {/* Options Checkboxes */}
           <div className="space-y-3 pt-2 text-xs font-semibold text-gray-700">
@@ -231,7 +254,8 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 py-3.5 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-2xl font-bold text-xs transition cursor-pointer shadow-md"
+            disabled={isUploading}
+            className="flex-1 py-3.5 bg-[#3B82F6] hover:bg-blue-600 disabled:cursor-wait disabled:opacity-60 text-white rounded-2xl font-bold text-xs transition cursor-pointer shadow-md"
           >
             {tr('등록', 'Register')}
           </button>

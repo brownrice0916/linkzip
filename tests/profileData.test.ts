@@ -46,6 +46,30 @@ test('keeps legacy affiliate product images on public profiles', () => {
   assert.equal(product.icon, 'https://example.com/product.jpg');
 });
 
+test('removes paid digital file locations from public profiles', () => {
+  const [sales] = sanitizePublicLinks([{
+    id: 'digital-sales',
+    type: 'sales',
+    title: 'ebook',
+    salesConfig: {
+      salesType: 'digital_file',
+      mainText: 'ebook',
+      products: [{
+        id: 'ebook-1',
+        name: 'ebook',
+        price: 5000,
+        fileName: 'ebook.pdf',
+        filePath: 'digital-products/owner/ebook.pdf',
+        fileUrl: 'https://storage.example/private-token',
+      }],
+    },
+  }]);
+
+  assert.equal(sales.salesConfig?.products[0].filePath, undefined);
+  assert.equal(sales.salesConfig?.products[0].fileUrl, undefined);
+  assert.equal(sales.salesConfig?.products[0].fileName, 'ebook.pdf');
+});
+
 test('applies server click totals recursively without mutating input', () => {
   const source = [{
     id: 'collection',

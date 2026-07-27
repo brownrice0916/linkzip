@@ -2872,6 +2872,7 @@ const LinksEditor = () => {
       {activeProductRegisterLink && (
         <ProductRegistrationModal
           isOpen={!!activeProductRegisterLink}
+          salesType={activeProductRegisterLink.salesConfig?.salesType}
           onClose={() => setActiveProductRegisterLink(null)}
           onRegister={(product) => {
             const currentSalesConfig =

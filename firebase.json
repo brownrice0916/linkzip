@@ -15,7 +15,14 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+      "rewrites": [
+        {
+          "source": "/api/orders/download",
+          "function": {
+            "functionId": "downloadDigitalOrder",
+            "region": "asia-northeast3"
+          }
+        },
       {
         "source": "/api/payments/orders",
         "function": {

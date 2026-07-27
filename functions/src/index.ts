@@ -1,11 +1,12 @@
 import {initializeApp} from "firebase-admin/app";
 import {FieldValue, Timestamp, getFirestore} from "firebase-admin/firestore";
+import {getStorage} from "firebase-admin/storage";
 import {logger} from "firebase-functions";
 import {defineSecret} from "firebase-functions/params";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
-import {randomBytes, randomUUID} from "node:crypto";
+import {createHash, randomBytes, randomUUID, timingSafeEqual} from "node:crypto";
 import type {Request} from "firebase-functions/v2/https";
 import type {Response} from "express";
 
@@ -71,6 +72,8 @@ interface PublicSalesProduct {
   name?: unknown;
   price?: unknown;
   discountPrice?: unknown;
+  fileName?: unknown;
+  filePath?: unknown;
 }
 
 interface PublicSalesLink {
@@ -121,6 +124,45 @@ const findPublicLink = (links: unknown, linkId: string): PublicSalesLink | null 
     if (nested) return nested;
   }
   return null;
+};
+
+const findPrivateProfileLinks = (
+  userData: FirebaseFirestore.DocumentData | undefined,
+  username: string,
+): unknown => {
+  if (!userData) return [];
+  const workspaces = Array.isArray(userData.profileWorkspaces) ? userData.profileWorkspaces : [];
+  const workspace = workspaces.find((candidate: unknown) => {
+    if (!candidate || typeof candidate !== "object") return false;
+    const profile = (candidate as {profile?: {username?: unknown}}).profile;
+    return typeof profile?.username === "string" && profile.username.trim().toLowerCase() === username;
+  }) as {customLinks?: unknown} | undefined;
+  return workspace?.customLinks || userData.customLinks || [];
+};
+
+const createDigitalDownload = async (
+  orderData: FirebaseFirestore.DocumentData,
+  orderRef: FirebaseFirestore.DocumentReference,
+  orderId: string,
+) => {
+  if (orderData.salesType !== "digital_file") return {};
+  const ownerUid = cleanString(orderData.ownerUid, 128);
+  const filePath = cleanString(orderData.filePath, 1024);
+  if (!ownerUid || !filePath.startsWith(`digital-products/${ownerUid}/`)) {
+    logger.error("Digital order is missing a valid private file path", {orderNumber: orderData.orderNumber});
+    return {downloadError: "다운로드 파일 정보를 확인하지 못했습니다. 판매자에게 문의해주세요."};
+  }
+  const expiresAt = Date.now() + 15 * 60 * 1000;
+  const token = randomBytes(32).toString("hex");
+  await orderRef.update({
+    downloadTokenHash: createHash("sha256").update(token).digest("hex"),
+    downloadExpiresAt: Timestamp.fromMillis(expiresAt),
+  });
+  return {
+    downloadUrl: `https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/downloadDigitalOrder?orderId=${encodeURIComponent(orderId)}&token=${token}`,
+    downloadFileName: cleanString(orderData.fileName, 255) || "디지털 상품",
+    downloadExpiresAt: new Date(expiresAt).toISOString(),
+  };
 };
 
 const cleanString = (value: unknown, maxLength: number) =>
@@ -209,6 +251,26 @@ export const createTossSalesOrder = onRequest(
       return;
     }
 
+    let filePath = "";
+    let fileName = "";
+    if (salesType === "digital_file") {
+      const privateUserSnapshot = await db.collection("users").doc(ownerUid).get();
+      const privateBlock = findPublicLink(
+        findPrivateProfileLinks(privateUserSnapshot.data(), targetUsername),
+        blockId,
+      );
+      const privateProducts = Array.isArray(privateBlock?.salesConfig?.products)
+        ? privateBlock.salesConfig.products as PublicSalesProduct[]
+        : [];
+      const privateProduct = privateProducts.find((item) => item?.id === productId);
+      filePath = cleanString(privateProduct?.filePath, 1024);
+      fileName = cleanString(privateProduct?.fileName, 255);
+      if (!filePath.startsWith(`digital-products/${ownerUid}/`)) {
+        response.status(400).json({message: "판매 파일이 등록되지 않았습니다. 파일을 다시 업로드해주세요."});
+        return;
+      }
+    }
+
     const orderNumber = createOrderNumber();
     const salesOrderRef = db.collection("users").doc(ownerUid).collection("sales_orders").doc();
     const paymentOrderRef = db.collection("tossPaymentOrders").doc(orderNumber);
@@ -234,6 +296,7 @@ export const createTossSalesOrder = onRequest(
         carrier: "",
         trackingNumber: "",
         paymentProvider: "toss",
+        ...(salesType === "digital_file" ? {fileName} : {}),
         createdAt: FieldValue.serverTimestamp(),
       });
       transaction.create(paymentOrderRef, {
@@ -242,6 +305,8 @@ export const createTossSalesOrder = onRequest(
         targetUsername,
         productName,
         amount,
+        salesType,
+        ...(salesType === "digital_file" ? {filePath, fileName} : {}),
         status: "READY",
         idempotencyKey,
         createdAt: FieldValue.serverTimestamp(),
@@ -382,6 +447,7 @@ export const confirmTossSalesPayment = onRequest(
       return;
     }
     if (orderData.status === "PAID") {
+      const digitalDownload = await createDigitalDownload(orderData, orderRef, orderId);
       response.status(200).json({
         kind: orderData.kind || "sales",
         orderNumber: orderId,
@@ -391,6 +457,7 @@ export const confirmTossSalesPayment = onRequest(
         method: orderData.paymentMethod || "",
         approvedAt: orderData.approvedAt || null,
         targetUsername: orderData.targetUsername,
+        ...digitalDownload,
       });
       return;
     }
@@ -489,6 +556,70 @@ export const confirmTossSalesPayment = onRequest(
       method: paymentMethod,
       approvedAt,
       targetUsername: orderData.targetUsername,
+      ...await createDigitalDownload({...orderData, status: "PAID"}, orderRef, orderId),
+    });
+  },
+);
+
+export const downloadDigitalOrder = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    invoker: "public",
+  },
+  async (request, response) => {
+    if (request.method !== "GET") {
+      response.set("Allow", "GET").status(405).send("Method not allowed");
+      return;
+    }
+    const orderId = cleanString(request.query.orderId, 64).toUpperCase();
+    const token = cleanString(request.query.token, 64);
+    if (!/^LZ-\d{8}-[A-F0-9]{10}$/.test(orderId) || !/^[a-f0-9]{64}$/.test(token)) {
+      response.status(400).send("다운로드 주소가 올바르지 않습니다.");
+      return;
+    }
+
+    const orderSnapshot = await db.collection("tossPaymentOrders").doc(orderId).get();
+    const orderData = orderSnapshot.data();
+    const expectedHash = cleanString(orderData?.downloadTokenHash, 64);
+    const actualHash = createHash("sha256").update(token).digest("hex");
+    const tokenMatches = expectedHash.length === actualHash.length && timingSafeEqual(
+      Buffer.from(expectedHash, "hex"),
+      Buffer.from(actualHash, "hex"),
+    );
+    const expiresAt = orderData?.downloadExpiresAt instanceof Timestamp
+      ? orderData.downloadExpiresAt.toMillis()
+      : 0;
+    if (!orderSnapshot.exists || orderData?.status !== "PAID" || orderData?.salesType !== "digital_file" || !tokenMatches || expiresAt < Date.now()) {
+      response.status(403).send("다운로드 링크가 만료되었거나 사용할 수 없습니다.");
+      return;
+    }
+
+    const ownerUid = cleanString(orderData.ownerUid, 128);
+    const filePath = cleanString(orderData.filePath, 1024);
+    if (!filePath.startsWith(`digital-products/${ownerUid}/`)) {
+      response.status(404).send("다운로드할 파일을 찾을 수 없습니다.");
+      return;
+    }
+    const file = getStorage().bucket().file(filePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      response.status(404).send("다운로드할 파일을 찾을 수 없습니다.");
+      return;
+    }
+    const fileName = cleanString(orderData.fileName, 255) || "digital-product";
+    response.set("Content-Type", "application/octet-stream");
+    response.set("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    response.set("Cache-Control", "private, no-store");
+    await new Promise<void>((resolve, reject) => {
+      file.createReadStream()
+        .on("error", reject)
+        .on("end", resolve)
+        .pipe(response);
+    }).catch((error) => {
+      logger.error("Digital product download failed", {orderId, filePath, error});
+      if (!response.headersSent) response.status(500).send("파일 다운로드에 실패했습니다.");
     });
   },
 );

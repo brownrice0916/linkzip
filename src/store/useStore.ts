@@ -71,6 +71,7 @@ export interface ProductItem {
   name: string;
   price: number;
   fileName?: string;
+  filePath?: string;
   fileUrl?: string;
   discountPrice?: number;
   stock?: number;

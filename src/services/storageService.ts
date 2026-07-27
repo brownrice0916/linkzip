@@ -40,6 +40,19 @@ export async function uploadPublicFile(uid: string, file: File): Promise<string>
   return getDownloadURL(snapshot.ref);
 }
 
+export async function uploadPrivateDigitalProductFile(uid: string, file: File): Promise<string> {
+  if (file.size > 100 * 1024 * 1024) {
+    throw new Error('디지털 파일은 100MB 이하만 업로드할 수 있습니다.');
+  }
+  const path = `digital-products/${uid}/${Date.now()}_${safeFileName(file.name)}`;
+  await uploadBytes(ref(storage, path), file, {
+    contentType: file.type || 'application/octet-stream',
+    cacheControl: 'private,no-store',
+    contentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`,
+  });
+  return path;
+}
+
 export async function deleteOwnedProfileImage(url: string | undefined, uid: string, stillUsedUrls: Set<string>): Promise<void> {
   if (!url || stillUsedUrls.has(url) || !url.includes('firebasestorage.googleapis.com') || !url.includes(encodeURIComponent(`profiles/${uid}/`))) return;
   try {

@@ -22,6 +22,17 @@ export function sanitizePublicLinks(links: CustomLink[]): CustomLink[] {
       sanitized.donationConfig = { ...link.donationConfig };
       delete sanitized.donationConfig.idNumber;
     }
+    if (link.salesConfig) {
+      sanitized.salesConfig = {
+        ...link.salesConfig,
+        products: (link.salesConfig.products || []).map((product) => {
+          const publicProduct = { ...product };
+          delete publicProduct.filePath;
+          delete publicProduct.fileUrl;
+          return publicProduct;
+        }),
+      };
+    }
     if (link.links) sanitized.links = sanitizePublicLinks(link.links);
     return sanitized;
   });
