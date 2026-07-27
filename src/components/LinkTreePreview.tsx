@@ -119,9 +119,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const templateValue = props.templateValue || store.templateValue;
   const socialLinks = props.socialLinks || store.socialLinks;
   const customLinks = props.customLinks || store.customLinks;
+  const ownerUid = props.ownerUid || store.user?.uid;
   const recordLinkClick = (linkId: string) => {
-    if (isPublic && props.ownerUid) {
-      void recordPublicLinkClick(props.ownerUid, linkId).catch((error) => {
+    if (isPublic && ownerUid) {
+      void recordPublicLinkClick(ownerUid, linkId).catch((error) => {
         console.warn('Unable to record link click:', error);
       });
     } else {
@@ -965,7 +966,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
                       </span>
                     </button>
-                    <DonationFeed ownerUid={props.ownerUid} blockId={block.id} style={getCustomLinkStyle(block)} />
+                    <DonationFeed ownerUid={ownerUid} blockId={block.id} style={getCustomLinkStyle(block)} />
                   </div>
                 );
               }
@@ -1223,7 +1224,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     key={block.id}
                     block={block}
                     config={config}
-                    ownerUid={props.ownerUid}
+                    ownerUid={ownerUid}
                     style={getCustomLinkStyle(block)}
                     themeActionColor={block.buttonTextColor || buttonTextColor || pageTextColor || '#111827'}
                     themeActionTextColor={block.buttonColor || buttonColor || '#FFFFFF'}
@@ -1498,7 +1499,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           onClose={() => setActiveDonationBlock(null)}
           donationConfig={activeDonationBlock.donationConfig}
           creatorName={profile.name || profile.username || '크리에이터'}
-          ownerUid={props.ownerUid}
+          ownerUid={ownerUid}
           blockId={activeDonationBlock.id}
           targetUsername={profile.username}
         />
@@ -1511,7 +1512,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           onClose={() => setActiveSalesBlock(null)}
           block={activeSalesBlock}
           profile={profile}
-          ownerUid={props.ownerUid}
+          ownerUid={ownerUid}
         />
       )}
     </>
