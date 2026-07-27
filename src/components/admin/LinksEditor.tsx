@@ -97,6 +97,7 @@ const LinksEditor = () => {
     useState<CustomLink | null>(null);
   const [activeStyleLinkId, setActiveStyleLinkId] = useState<string | null>(null);
   const [uploadingAffiliateId, setUploadingAffiliateId] = useState<string | null>(null);
+  const [uploadingSalesImageId, setUploadingSalesImageId] = useState<string | null>(null);
   const [uploadingFileId, setUploadingFileId] = useState<string | null>(null);
 
   const findLinkContext = (
@@ -2120,6 +2121,34 @@ const LinksEditor = () => {
       });
     };
 
+    const handleSalesImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+      if (!user) {
+        alert("이미지를 업로드하려면 먼저 로그인해 주세요.");
+        return;
+      }
+      if (!file.type.startsWith("image/")) {
+        alert("이미지 파일만 업로드할 수 있습니다.");
+        return;
+      }
+
+      try {
+        setUploadingSalesImageId(link.id);
+        const imageUrl = await uploadPublicImage(
+          `profiles/${user.uid}/sales-products/${link.id}`,
+          file,
+        );
+        updateConfig({ image: imageUrl });
+      } catch (error) {
+        console.error("Failed to upload sales product image", error);
+        alert("대표 상품 이미지 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      } finally {
+        setUploadingSalesImageId(null);
+      }
+    };
+
     // Step 1: Choose Sales Type (Screenshot 1)
     if (!config.salesType) {
       return (
@@ -2377,24 +2406,36 @@ const LinksEditor = () => {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 hover:border-black flex flex-col items-center justify-center cursor-pointer transition bg-gray-50 overflow-hidden shrink-0">
+                <label className={clsx(
+                  "relative flex h-24 w-24 shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-gray-50 transition",
+                  uploadingSalesImageId === link.id
+                    ? "cursor-wait border-gray-300 opacity-70"
+                    : "cursor-pointer border-gray-300 hover:border-black",
+                )}>
                   {config.image ? (
                     <img
                       src={config.image}
-                      alt="Product"
+                      alt="대표 상품"
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <Plus className="w-6 h-6 text-gray-400" />
+                    <>
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="mt-1 text-[10px] font-bold text-gray-400">
+                        {uploadingSalesImageId === link.id ? "업로드 중" : "이미지 선택"}
+                      </span>
+                    </>
+                  )}
+                  {config.image && uploadingSalesImageId === link.id && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-[10px] font-black text-white">
+                      업로드 중
+                    </span>
                   )}
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file)
-                        updateConfig({ image: URL.createObjectURL(file) });
-                    }}
+                    onChange={handleSalesImageUpload}
+                    disabled={uploadingSalesImageId === link.id}
                     className="hidden"
                   />
                 </label>
