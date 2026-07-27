@@ -4,7 +4,7 @@ import { MEMBERSHIP_PLANS, normalizeMembershipPlan } from '../src/domain/members
 
 test('defines Basic, Standard, and Premium in ascending price order', () => {
   assert.deepEqual(MEMBERSHIP_PLANS.map((plan) => plan.id), ['basic', 'standard', 'premium']);
-  assert.deepEqual(MEMBERSHIP_PLANS.map((plan) => plan.monthlyPrice), [990, 3900, 9900]);
+  assert.deepEqual(MEMBERSHIP_PLANS.map((plan) => plan.monthlyPrice), [0, 3900, 9900]);
 });
 
 test('falls back unknown or legacy memberships to Basic', () => {

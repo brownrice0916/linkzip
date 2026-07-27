@@ -18,7 +18,7 @@ export const MEMBERSHIP_PLANS: MembershipPlanDefinition[] = [
     id: 'basic',
     name: 'Basic',
     nameKo: '베이직',
-    monthlyPrice: 990,
+    monthlyPrice: 0,
     description: 'A simple profile for essential links.',
     descriptionKo: '꼭 필요한 링크를 가볍게 운영하는 플랜',
     features: ['1 profile', 'Links and collections', 'Basic design', 'Basic analytics'],
