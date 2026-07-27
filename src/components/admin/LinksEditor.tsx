@@ -668,6 +668,15 @@ const LinksEditor = () => {
     return (
       <div
         key={collection.id}
+        className={clsx("relative", isCollapsed && hasCollectionItems && "mb-4")}
+      >
+        {isCollapsed && hasCollectionItems && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-2.5 bottom-[-9px] top-2 z-0 rounded-3xl border border-gray-300 bg-white"
+          />
+        )}
+        <div
         data-testid={`collection-card-${collection.id}`}
         data-collapsed={isCollapsed}
         onClick={(event) => handleCollectionCardClick(event, collection.id)}
@@ -680,7 +689,7 @@ const LinksEditor = () => {
           "group-card relative z-10 cursor-pointer rounded-3xl border bg-white transition-[border-color,background-color]",
           isCollapsed
             ? hasCollectionItems
-              ? "collection-single-stack mb-4 p-4"
+              ? "p-4"
               : "p-4 shadow-xs"
             : "p-5 space-y-4 shadow-sm",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
@@ -820,6 +829,7 @@ const LinksEditor = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     );
   };

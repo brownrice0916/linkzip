@@ -1308,7 +1308,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       </div>
                     )}
                     <span className="flex-1 text-center font-bold text-[15px]">
-                      🛍️ {block.salesConfig?.mainText || block.title || "디지털 상품 구매"}
+                      {(block.salesConfig?.mainText || block.title || "실물 상품 판매").replace(/^[🛍️\s]+/u, "")}
                     </span>
                     <button
                       type="button"

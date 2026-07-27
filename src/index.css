@@ -643,35 +643,3 @@
   }
 
 }
-/* A collapsed collection has exactly one persistent card underneath it. */
-.collection-single-stack {
-  position: relative;
-  isolation: isolate;
-  box-shadow: none;
-}
-
-.collection-single-stack::after {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  left: 10px;
-  right: 10px;
-  bottom: -9px;
-  height: 18px;
-  border: 1px solid #d1d5db;
-  border-top: 0;
-  border-radius: 0 0 1.5rem 1.5rem;
-  background: #fff;
-  pointer-events: none;
-}
-
-.admin-link-editor [data-testid^="collection-card-"].collection-single-stack:hover {
-  background: #fff;
-  box-shadow: none;
-}
-
-.collection-single-stack:hover::after {
-  display: block;
-  border-color: #d1d5db;
-  background: #fff;
-}
