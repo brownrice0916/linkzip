@@ -19,6 +19,12 @@ import {
   ChevronDown
 } from "lucide-react";
 import { listCustomerData, removeCustomerData } from "../../services/customerDataService";
+import { subscribeToGuestbook } from "../../services/guestbookService";
+import {
+  subscribeToSalesOrders,
+  updateSalesOrderStatus,
+  type SalesOrder,
+} from "../../services/commerceService";
 import {
   deleteAnonymousMessage,
   markAnonymousMessageRead,
@@ -37,6 +43,10 @@ export const GrowthEditor: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [anonymousMessages, setAnonymousMessages] = useState<AnonymousMessage[]>([]);
   const [messagesExpanded, setMessagesExpanded] = useState(false);
+  const [guestbookEntryCount, setGuestbookEntryCount] = useState(0);
+  const [guestbookCountLoading, setGuestbookCountLoading] = useState(true);
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [salesExpanded, setSalesExpanded] = useState(false);
 
   // Fetch collected customer data from Firestore
   useEffect(() => {
@@ -68,6 +78,40 @@ export const GrowthEditor: React.FC = () => {
     });
   }, [user?.uid]);
 
+  useEffect(() => {
+    const targetUsername = profile.username?.trim();
+    if (!targetUsername) {
+      setGuestbookEntryCount(0);
+      setGuestbookCountLoading(false);
+      return;
+    }
+
+    setGuestbookCountLoading(true);
+    return subscribeToGuestbook(
+      targetUsername,
+      (entries) => {
+        setGuestbookEntryCount(entries.length);
+        setGuestbookCountLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching guestbook entry count:', error);
+        setGuestbookEntryCount(0);
+        setGuestbookCountLoading(false);
+      },
+    );
+  }, [profile.username]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setSalesOrders([]);
+      return;
+    }
+    return subscribeToSalesOrders(user.uid, setSalesOrders, (error) => {
+      console.error('Error fetching sales orders:', error);
+      setSalesOrders([]);
+    });
+  }, [user?.uid]);
+
   // Counts based on customLinks
   const customerInfoBlocksCount = customLinks.filter(l => l.type === 'customer_info').length;
   const fileBlocksCount = customLinks.filter(l => l.type === 'file').length;
@@ -75,6 +119,37 @@ export const GrowthEditor: React.FC = () => {
   const anonymousMessageBlocksCount = customLinks.filter(l => l.type === 'anonymous_message').length;
   const profileMessages = anonymousMessages.filter((message) => message.targetUsername === profile.username);
   const unreadMessagesCount = profileMessages.filter((message) => !message.isRead).length;
+  const profileSalesOrders = salesOrders.filter((order) => order.targetUsername === profile.username);
+  const paidSalesOrders = profileSalesOrders.filter((order) => order.status === 'paid');
+  const pendingSalesOrders = profileSalesOrders.filter((order) => order.status === 'pending');
+  const totalPaidSales = paidSalesOrders.reduce((sum, order) => sum + order.amount, 0);
+  const salesByProduct = Array.from(profileSalesOrders.reduce((summary, order) => {
+    const key = `${order.blockId}:${order.productId}`;
+    const current = summary.get(key) || {
+      key,
+      productName: order.productName,
+      paidAmount: 0,
+      buyerKeys: new Set<string>(),
+      pendingCount: 0,
+    };
+    if (order.status === 'paid') {
+      current.paidAmount += order.amount;
+      current.buyerKeys.add(order.buyerEmail || order.buyerContact || order.buyerName || order.id);
+    }
+    if (order.status === 'pending') current.pendingCount += 1;
+    summary.set(key, current);
+    return summary;
+  }, new Map<string, { key: string; productName: string; paidAmount: number; buyerKeys: Set<string>; pendingCount: number }>()).values());
+
+  const handleOrderStatus = async (orderId: string, status: SalesOrder['status']) => {
+    if (!user?.uid) return;
+    try {
+      await updateSalesOrderStatus(user.uid, orderId, status);
+    } catch (error) {
+      console.error('Error updating sales order:', error);
+      alert(tr('구매 상태를 변경하지 못했습니다.', 'Unable to update the order status.'));
+    }
+  };
 
   const toggleMessages = async () => {
     const nextExpanded = !messagesExpanded;
@@ -206,6 +281,18 @@ export const GrowthEditor: React.FC = () => {
             </span>
           </div>
 
+          <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center">
+                <MessageCircle className="w-4 h-4" />
+              </div>
+              <span className="text-gray-900">{tr('방명록 작성 수', 'Guestbook entries')}</span>
+            </div>
+            <span className={clsx("font-extrabold", guestbookEntryCount > 0 ? "text-amber-600" : "text-gray-400")}>
+              {guestbookCountLoading ? tr('집계 중', 'Loading') : tr(`${guestbookEntryCount}개`, `${guestbookEntryCount} entries`)}
+            </span>
+          </div>
+
         </div>
       </div>
 
@@ -217,29 +304,42 @@ export const GrowthEditor: React.FC = () => {
           <div className="flex items-center gap-3">
             <h2 className="text-sm sm:text-base font-extrabold tracking-tight">{tr('판매 실적', 'Sales performance')}</h2>
             <span className="text-gray-400 font-bold">|</span>
-            <span className="text-xs font-bold text-gray-300">{tr('예상 금액: 0원', 'Expected amount: KRW 0')}</span>
+            <span className="text-xs font-bold text-gray-300">{tr(`확정 판매: ${totalPaidSales.toLocaleString()}원`, `Paid sales: KRW ${totalPaidSales.toLocaleString()}`)}</span>
           </div>
 
           <button
-            onClick={() => alert('수익 및 매출 내역 상세 페이지 준비 중입니다.')}
+            onClick={() => setSalesExpanded((current) => !current)}
             className="text-xs font-bold text-gray-200 hover:text-white underline underline-offset-4 cursor-pointer transition"
           >
-            {tr('자세히 보기', 'View details')}
+            {salesExpanded ? tr('접기', 'Close') : tr('자세히 보기', 'View details')}
           </button>
         </div>
 
         {/* List Body */}
         <div className="p-6 space-y-5 text-gray-800 font-bold text-xs sm:text-sm">
           
-          <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
+          <button type="button" onClick={() => setSalesExpanded((current) => !current)} className="flex w-full cursor-pointer items-center justify-between rounded-xl p-2.5 text-left transition hover:bg-gray-50">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center">
                 <ShoppingBag className="w-4 h-4" />
               </div>
               <span className="text-gray-900">{tr('판매', 'Sales')}</span>
             </div>
-            <span className="text-gray-400 font-extrabold">0KRW</span>
-          </div>
+            <span className={clsx("font-extrabold", totalPaidSales > 0 ? "text-emerald-600" : "text-gray-400")}>{totalPaidSales.toLocaleString()}KRW</span>
+          </button>
+
+          {salesExpanded && (
+            <div className="space-y-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              {salesByProduct.length === 0 && <p className="py-4 text-center text-xs font-bold text-gray-400">{tr('아직 구매 신청이 없습니다.', 'No purchase requests yet.')}</p>}
+              {salesByProduct.map((item) => (
+                <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-xs">
+                  <div className="min-w-0"><p className="truncate text-xs font-black text-gray-900">{item.productName}</p><p className="mt-0.5 text-[10px] font-bold text-gray-400">{tr(`구매자 ${item.buyerKeys.size}명${item.pendingCount ? ` · 입금 확인 대기 ${item.pendingCount}건` : ''}`, `${item.buyerKeys.size} buyers${item.pendingCount ? ` · ${item.pendingCount} pending` : ''}`)}</p></div>
+                  <strong className="shrink-0 text-xs font-black text-gray-900">{item.paidAmount.toLocaleString()}원</strong>
+                </div>
+              ))}
+              {pendingSalesOrders.length > 0 && <div className="space-y-2 border-t border-gray-200 pt-3"><p className="text-[10px] font-black text-gray-500">{tr('입금 확인 대기', 'Pending payment confirmation')}</p>{pendingSalesOrders.map((order) => <div key={order.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5"><div className="min-w-0"><p className="truncate text-xs font-black text-gray-900">{order.productName} · {order.buyerName}</p><p className="text-[10px] font-bold text-gray-500">{order.amount.toLocaleString()}원 · {order.buyerContact}</p></div><div className="flex gap-1.5"><button type="button" onClick={() => void handleOrderStatus(order.id, 'paid')} className="cursor-pointer rounded-lg bg-black px-2.5 py-1.5 text-[10px] font-black text-white hover:bg-gray-800">{tr('입금 확인', 'Mark paid')}</button><button type="button" onClick={() => void handleOrderStatus(order.id, 'cancelled')} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-gray-500 hover:text-red-500">{tr('취소', 'Cancel')}</button></div></div>)}</div>}
+            </div>
+          )}
 
           <div className="flex items-center justify-between hover:bg-gray-50 p-2.5 rounded-xl transition">
             <div className="flex items-center gap-3">

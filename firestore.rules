@@ -68,6 +68,58 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername)).data.uid == uid;
         allow read, update, delete: if isOwner(uid);
       }
+
+      match /sales_orders/{orderId} {
+        allow create: if request.resource.data.keys().hasOnly([
+            'blockId', 'targetUsername', 'productId', 'productName', 'amount',
+            'salesType', 'buyerName', 'buyerContact', 'buyerEmail',
+            'shippingAddress', 'status', 'createdAt'
+          ])
+          && request.resource.data.blockId is string
+          && request.resource.data.targetUsername is string
+          && exists(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername))
+          && get(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername)).data.uid == uid
+          && request.resource.data.productId is string
+          && request.resource.data.productName is string
+          && request.resource.data.amount is number
+          && request.resource.data.amount >= 0
+          && request.resource.data.salesType in ['digital_file', 'product']
+          && request.resource.data.buyerName is string
+          && request.resource.data.buyerName.size() > 0
+          && request.resource.data.buyerName.size() <= 50
+          && request.resource.data.buyerContact is string
+          && request.resource.data.buyerContact.size() <= 50
+          && request.resource.data.buyerEmail is string
+          && request.resource.data.buyerEmail.size() <= 100
+          && request.resource.data.shippingAddress is string
+          && request.resource.data.shippingAddress.size() <= 300
+          && request.resource.data.status == 'pending';
+        allow read, delete: if isOwner(uid);
+        allow update: if isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status in ['pending', 'paid', 'cancelled'];
+      }
+
+      match /donations/{donationId} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly([
+            'blockId', 'targetUsername', 'nickname', 'message', 'amount',
+            'paymentId', 'createdAt'
+          ])
+          && request.resource.data.blockId is string
+          && request.resource.data.targetUsername is string
+          && exists(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername))
+          && get(/databases/$(database)/documents/usernames/$(request.resource.data.targetUsername)).data.uid == uid
+          && request.resource.data.nickname is string
+          && request.resource.data.nickname.size() > 0
+          && request.resource.data.nickname.size() <= 50
+          && request.resource.data.message is string
+          && request.resource.data.message.size() <= 300
+          && request.resource.data.amount is number
+          && request.resource.data.amount > 0
+          && request.resource.data.paymentId is string;
+        allow update, delete: if isOwner(uid);
+      }
     }
 
     match /publicProfiles/{profileId} {

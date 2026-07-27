@@ -15,22 +15,33 @@
 }
 
 .admin-link-editor [data-testid^="link-card-"],
-.admin-link-editor [data-testid^="collection-card-"] {
+.admin-link-editor [data-testid^="collection-card-"],
+.admin-link-editor [data-testid^="affiliate-card-"],
+.admin-link-editor [data-testid^="map-card-"] {
   cursor: pointer;
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
 }
 
 .admin-link-editor [data-testid^="link-card-"]:hover,
-.admin-link-editor [data-testid^="collection-card-"]:hover {
+.admin-link-editor [data-testid^="collection-card-"]:hover,
+.admin-link-editor [data-testid^="affiliate-card-"]:hover,
+.admin-link-editor [data-testid^="map-card-"]:hover {
   transform: translateY(-2px);
-  border-color: rgb(196 181 253);
+  border-color: rgb(209 213 219);
   background-color: rgb(250 250 249 / 0.8);
-  box-shadow: 0 7px 18px rgb(15 23 42 / 0.08), 0 0 0 2px rgb(237 233 254 / 0.65);
+  box-shadow: 0 7px 18px rgb(15 23 42 / 0.08);
 }
 
 .admin-link-editor [data-testid^="link-card-"]:active,
-.admin-link-editor [data-testid^="collection-card-"]:active {
+.admin-link-editor [data-testid^="collection-card-"]:active,
+.admin-link-editor [data-testid^="affiliate-card-"]:active,
+.admin-link-editor [data-testid^="map-card-"]:active {
   transform: translateY(0) scale(0.995);
+}
+
+.admin-link-editor [data-collapsed="true"] > div:first-child {
+  padding-bottom: 0 !important;
+  border-bottom-width: 0 !important;
 }
 
 .color-hue-slider {
@@ -631,4 +642,36 @@
     height: 100%;
   }
 
+}
+/* A collapsed collection has exactly one persistent card underneath it. */
+.collection-single-stack {
+  position: relative;
+  isolation: isolate;
+  box-shadow: none;
+}
+
+.collection-single-stack::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 10px;
+  right: 10px;
+  bottom: -9px;
+  height: 18px;
+  border: 1px solid #d1d5db;
+  border-top: 0;
+  border-radius: 0 0 1.5rem 1.5rem;
+  background: #fff;
+  pointer-events: none;
+}
+
+.admin-link-editor [data-testid^="collection-card-"].collection-single-stack:hover {
+  background: #fff;
+  box-shadow: none;
+}
+
+.collection-single-stack:hover::after {
+  display: block;
+  border-color: #d1d5db;
+  background: #fff;
 }

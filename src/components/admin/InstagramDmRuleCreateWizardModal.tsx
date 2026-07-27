@@ -143,7 +143,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h3 className="text-base font-extrabold text-gray-900">Create automation</h3>
+            <h3 className="text-base font-extrabold text-gray-900">자동화 만들기</h3>
           </div>
           <button 
             onClick={onClose}
@@ -161,7 +161,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               style={{ width: `${(step / 5) * 100}%` }}
             />
           </div>
-          <span className="text-xs font-bold text-gray-500">Step {step} of 5</span>
+          <span className="text-xs font-bold text-gray-500">5단계 중 {step}단계</span>
         </div>
 
         {/* Content Body */}
@@ -173,7 +173,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 1 && (
             <div className="space-y-4">
               <h4 className="text-sm font-extrabold text-gray-900">
-                Which posts would you like to automate?
+                어떤 게시물에 자동화를 적용할까요?
               </h4>
 
               {/* Radio Group */}
@@ -187,7 +187,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     className="w-4 h-4 text-black focus:ring-black"
                   />
                   <span className="flex items-center gap-1">
-                    Settings for uploaded posts <Info className="w-3.5 h-3.5 text-gray-400" />
+                    게시된 게시물 설정 <Info className="w-3.5 h-3.5 text-gray-400" />
                   </span>
                 </label>
 
@@ -199,7 +199,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     onChange={() => setPostType('upcoming')}
                     className="w-4 h-4 text-black focus:ring-black"
                   />
-                  <span>Pre-set upcoming posts</span>
+                  <span>게시 예정 콘텐츠 미리 설정</span>
                 </label>
               </div>
 
@@ -248,7 +248,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 2 && (
             <div className="space-y-5">
               <h4 className="text-sm font-extrabold text-gray-900">
-                Which comments to send a DM to?
+                어떤 댓글에 DM을 보낼까요?
               </h4>
 
               {/* Radio Group */}
@@ -261,7 +261,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     onChange={() => setKeywordMode('all')}
                     className="w-4 h-4 text-black focus:ring-black"
                   />
-                  <span>All keywords</span>
+                  <span>모든 댓글</span>
                 </label>
 
                 <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-900">
@@ -272,14 +272,14 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     onChange={() => setKeywordMode('specific')}
                     className="w-4 h-4 text-black focus:ring-black"
                   />
-                  <span>Send based on specific keywords (e.g., monetization, automation)</span>
+                  <span>특정 키워드가 포함된 댓글만 전송 (예: 구매, 링크)</span>
                 </label>
               </div>
 
               {/* Keywords Tag Input */}
               {keywordMode === 'specific' && (
                 <div className="space-y-2 pt-2 text-left">
-                  <label className="text-xs font-bold text-gray-700">Keywords<span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-gray-700">키워드<span className="text-red-500">*</span></label>
                   <div className="bg-white p-3 rounded-2xl border border-gray-300 min-h-[60px] flex flex-wrap gap-2 items-center shadow-2xs">
                     {keywords.map((kw) => (
                       <span 
@@ -301,7 +301,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                       value={keywordInput}
                       onChange={(e) => setKeywordInput(e.target.value)}
                       onKeyDown={handleAddKeyword}
-                      placeholder={keywords.length === 0 ? "Enter keyword..." : ""}
+                      placeholder={keywords.length === 0 ? "키워드를 입력하세요" : ""}
                       className="flex-1 bg-transparent border-none text-xs font-bold focus:outline-none min-w-[100px]"
                     />
                   </div>
@@ -316,7 +316,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 3 && (
             <div className="space-y-5">
               <h4 className="text-sm font-extrabold text-gray-900 flex items-center gap-1">
-                <span>Please write the Instagram message you want to send.</span>
+                <span>인스타그램으로 보낼 메시지를 작성해 주세요.</span>
                 <Info className="w-4 h-4 text-gray-400" />
               </h4>
 
@@ -325,13 +325,13 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                 <div className="w-10 h-10 rounded-full overflow-hidden border border-amber-300 shrink-0 bg-amber-100 flex items-center justify-center">
                   <img 
                     src={state.profile.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"} 
-                    alt="avatar" 
+                    alt="프로필 이미지"
                     className="w-full h-full object-cover" 
                   />
                 </div>
 
                 <div className="bg-[#E5E7EB] p-4 rounded-2xl rounded-bl-xs text-xs font-semibold text-gray-900 shadow-2xs flex-1 space-y-2">
-                  <p>{message || 'Please enter your message'}</p>
+                  <p>{message || '보낼 메시지를 입력하세요'}</p>
 
                   {/* Render Button Slots based on buttonCount */}
                   {buttonCount > 0 && (
@@ -341,7 +341,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                           key={idx}
                           className="bg-white py-2.5 px-4 rounded-xl text-center text-xs font-bold text-gray-400 border border-gray-100 shadow-2xs truncate"
                         >
-                          {buttons[idx]?.name || 'Please enter the button name'}
+                          {buttons[idx]?.name || '버튼 이름을 입력하세요'}
                         </div>
                       ))}
                     </div>
@@ -353,11 +353,11 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               <div className="space-y-4 text-left">
                 {/* Message Textarea */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-700">Message<span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-gray-700">메시지<span className="text-red-500">*</span></label>
                   <textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Please enter your message"
+                    placeholder="보낼 메시지를 입력하세요"
                     rows={3}
                     className="w-full p-4 rounded-2xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
                   />
@@ -365,7 +365,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
 
                 {/* Message buttons selector */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700">Message buttons<span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-gray-700">메시지 버튼 수<span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-4 gap-2">
                     {[0, 1, 2, 3].map((count) => (
                       <button
@@ -379,7 +379,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                             : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                         )}
                       >
-                        {count === 0 ? 'none' : count}
+                        {count === 0 ? '없음' : `${count}개`}
                       </button>
                     ))}
                   </div>
@@ -394,7 +394,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 4 && (
             <div className="space-y-5">
               <h4 className="text-sm font-extrabold text-gray-900">
-                Button link #{currentButtonIndex + 1} setup
+                {currentButtonIndex + 1}번 버튼 링크 설정
               </h4>
 
               {/* Live Preview Container (Matching Screenshot 4) */}
@@ -402,7 +402,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                 <div className="w-10 h-10 rounded-full overflow-hidden border border-amber-300 shrink-0 bg-amber-100 flex items-center justify-center">
                   <img 
                     src={state.profile.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"} 
-                    alt="avatar" 
+                    alt="프로필 이미지"
                     className="w-full h-full object-cover" 
                   />
                 </div>
@@ -421,7 +421,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                             : "bg-white/80 text-gray-400 border-gray-100"
                         )}
                       >
-                        {buttons[idx]?.name || 'Please enter the button name'}
+                        {buttons[idx]?.name || '버튼 이름을 입력하세요'}
                       </div>
                     ))}
                   </div>
@@ -432,12 +432,12 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               <div className="space-y-4 text-left">
                 {/* Button Message Name */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-700">Button message<span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-gray-700">버튼 이름<span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={buttons[currentButtonIndex]?.name || ''}
                     onChange={(e) => handleUpdateButtonName(currentButtonIndex, e.target.value)}
-                    placeholder="Please enter the button name"
+                    placeholder="버튼 이름을 입력하세요"
                     className="w-full p-3.5 rounded-2xl border border-gray-300 text-xs font-extrabold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
                   />
                 </div>
@@ -456,7 +456,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                         urlMode === 'new' ? "bg-black text-white border-black" : "bg-white text-gray-700 border-gray-200"
                       )}
                     >
-                      Set up a new link
+                      새 링크 입력
                     </button>
 
                     <button
@@ -467,7 +467,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                         urlMode === 'blocks' ? "bg-black text-white border-black" : "bg-white text-gray-700 border-gray-200"
                       )}
                     >
-                      Select from your link blocks
+                      내 링크 블록에서 선택
                     </button>
                   </div>
 
@@ -490,7 +490,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 5 && (
             <div className="space-y-6 pt-4 text-left">
               <h4 className="text-base font-extrabold text-gray-900">
-                Automatically reply to the comments you send messages to?
+                메시지를 보낸 댓글에 자동 답글도 남길까요?
               </h4>
 
               {/* Radio Options */}
@@ -503,7 +503,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     onChange={() => setWantCommentReply('no')}
                     className="w-4 h-4 text-black focus:ring-black"
                   />
-                  <span>No, thank you</span>
+                  <span>답글을 남기지 않아요</span>
                 </label>
 
                 <label className="flex items-center gap-3 cursor-pointer text-xs font-bold text-gray-900">
@@ -514,7 +514,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     onChange={() => setWantCommentReply('yes')}
                     className="w-4 h-4 text-black focus:ring-black"
                   />
-                  <span>Yes, I want to reply</span>
+                  <span>자동 답글을 남길게요</span>
                 </label>
               </div>
 
@@ -522,7 +522,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               {wantCommentReply === 'yes' && (
                 <div className="space-y-3 pt-2">
                   <p className="text-xs text-gray-500 font-medium">
-                    Set random reply comments to make your account look natural:
+                    자연스럽게 번갈아 사용할 답글을 등록하세요.
                   </p>
                   <div className="space-y-2">
                     {commentReplies.map((reply, idx) => (
@@ -543,7 +543,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                       type="text"
                       value={newReplyInput}
                       onChange={(e) => setNewReplyInput(e.target.value)}
-                      placeholder="Add reply (e.g. DM 확인해보세요! ❤️)"
+                      placeholder="답글 추가 (예: DM을 확인해 주세요! ❤️)"
                       className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-300 text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-black"
                     />
                     <button
@@ -556,7 +556,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                       }}
                       className="px-4 py-2.5 bg-black hover:bg-gray-800 text-white rounded-2xl text-xs font-bold transition cursor-pointer"
                     >
-                      Add
+                      추가
                     </button>
                   </div>
                 </div>
@@ -573,7 +573,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               onClick={() => setStep(2)}
               className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
-              Next
+              다음
             </button>
           )}
 
@@ -582,7 +582,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               onClick={() => setStep(3)}
               className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
-              Next
+              다음
             </button>
           )}
 
@@ -591,7 +591,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               onClick={handleStep3Next}
               className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
-              Next
+              다음
             </button>
           )}
 
@@ -600,7 +600,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               onClick={handleStep4LinkNext}
               className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
-              {currentButtonIndex + 1}/{buttonCount} link setup complete
+              {currentButtonIndex + 1}/{buttonCount} 링크 설정 완료
             </button>
           )}
 
@@ -609,7 +609,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
               onClick={handleSaveAutomationRule}
               className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
-              Finish &amp; Save
+              완료하고 저장
             </button>
           )}
         </div>

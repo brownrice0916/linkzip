@@ -50,14 +50,14 @@ const PublicProfile = () => {
   }, [username]);
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center bg-gray-100">Loading...</div>;
+    return <div className="flex h-screen items-center justify-center bg-gray-100">불러오는 중...</div>;
   }
 
   if (!userData) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 flex-col">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">User not found</h1>
-        <p className="text-gray-500">The profile you are looking for does not exist or hasn't been set up.</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">프로필을 찾을 수 없습니다</h1>
+        <p className="text-gray-500">요청한 프로필이 없거나 아직 설정되지 않았습니다.</p>
       </div>
     );
   }

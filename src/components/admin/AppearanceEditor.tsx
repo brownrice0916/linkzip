@@ -11,72 +11,30 @@ import {
   Square, 
   Smile, 
   Palette, 
-  Type, 
-  Layers 
+  Type,
+  Layers
 } from 'lucide-react';
 import clsx from 'clsx';
 import { ColorPickerPopover } from './ColorPickerPopover';
+import { getThemeDesignPreset, getThemeWallpaperStyle } from '../../domain/themePresets';
+import { designFonts as fonts } from '../../domain/designFonts';
+import { GiphyPicker } from './GiphyPicker';
 
 const themes = [
-  { id: 'minimalist', name: 'Minimalist', classes: 'bg-[#FAF9F6] border-gray-200 text-gray-900' },
-  { id: 'neon-dark', name: 'Neon Dark', classes: 'bg-gray-900 border-indigo-500 text-white' },
-  { id: 'soft-gradient', name: 'Soft Gradient', classes: 'bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-400 border-transparent text-white' },
-  { id: 'air', name: 'Air', classes: 'bg-gray-100 border-gray-300 text-gray-900' },
-  { id: 'neo-pop', name: 'Neo Pop ⚡', classes: 'bg-gradient-to-tr from-yellow-300 via-pink-400 to-indigo-500 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
-  { id: 'neo-sunshine', name: 'Neo Sunshine ⚡', classes: 'bg-yellow-300 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
-  { id: 'neo-cyber', name: 'Neo Cyber ⚡', classes: 'bg-cyan-300 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
-  { id: 'neo-mint', name: 'Neo Mint ⚡', classes: 'bg-emerald-300 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
-  { id: 'bloom', name: 'Bloom', classes: 'bg-gradient-to-br from-pink-500 to-rose-600 text-white' },
-  { id: 'sunbloom', name: 'Sunbloom', classes: 'bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400 border-amber-300 text-amber-950' },
-  { id: 'blocks', name: 'Blocks', classes: 'bg-purple-600 border-purple-800 text-white' },
-  { id: 'groove', name: 'Groove', classes: 'bg-gradient-to-r from-amber-500 via-red-500 to-purple-600 text-white' },
-  { id: 'lake', name: 'Lake', classes: 'bg-slate-800 border-slate-700 text-white' },
-  { id: 'nourish', name: 'Nourish', classes: 'bg-emerald-700 border-emerald-900 text-white' },
-];
-
-const fonts = [
-  // Korean Fonts (한글 폰트)
-  { id: 'Pretendard', name: '프리텐다드 (Pretendard)', font: 'Pretendard', badge: 'bolt', category: 'korean' },
-  { id: 'Gowun Batang', name: '고운 바탕 (Gowun Batang)', font: 'Gowun Batang', badge: 'bolt', category: 'korean' },
-  { id: 'Gowun Dodum', name: '고운 도돋 (Gowun Dodum)', font: 'Gowun Dodum', badge: 'bolt', category: 'korean' },
-  { id: 'Black Han Sans', name: '블랙한상스 (Black Han)', font: 'Black Han Sans', badge: 'bolt', category: 'korean' },
-  { id: 'Do Hyeon', name: '도현 (Do Hyeon)', font: 'Do Hyeon', badge: 'bolt', category: 'korean' },
-  { id: 'Jua', name: '주아 (Jua)', font: 'Jua', badge: 'bolt', category: 'korean' },
-  { id: 'Gamja Flower', name: '감자꽃 (Gamja Flower)', font: 'Gamja Flower', badge: 'bolt', category: 'korean' },
-  { id: 'Nanum Gothic', name: '나눔고딕 (Nanum Gothic)', font: 'Nanum Gothic', category: 'korean' },
-  { id: 'Nanum Myeongjo', name: '나눔명조 (Nanum Myeongjo)', font: 'Nanum Myeongjo', category: 'korean' },
-  { id: 'Nanum Pen Script', name: '나눔펜 (Nanum Pen)', font: 'Nanum Pen Script', badge: 'bolt', category: 'korean' },
-  { id: 'Sunflower', name: '해바라기 (Sunflower)', font: 'Sunflower', category: 'korean' },
-  { id: 'Dongle', name: '동글 (Dongle)', font: 'Dongle', badge: 'bolt', category: 'korean' },
-  { id: 'Song Myung', name: '송명 (Song Myung)', font: 'Song Myung', category: 'korean' },
-
-  // English & Global Fonts
-  { id: 'Albert Sans', name: 'Albert Sans', font: 'Albert Sans', category: 'global' },
-  { id: 'Belanosima', name: 'Belanosima', font: 'Belanosima', badge: 'bolt', category: 'global' },
-  { id: 'Bricolage Grotesque', name: 'Bricolage Grotesque', font: 'Bricolage Grotesque', badge: 'bolt', category: 'global' },
-  { id: 'DM Sans', name: 'DM Sans', font: 'DM Sans', category: 'global' },
-  { id: 'Epilogue', name: 'Epilogue', font: 'Epilogue', category: 'global' },
-  { id: 'IBM Plex Sans', name: 'IBM Plex Sans', font: 'IBM Plex Sans', category: 'global' },
-  { id: 'Inter', name: 'Inter', font: 'Inter', category: 'global' },
-  { id: 'Lato', name: 'Lato', font: 'Lato', badge: 'bolt', category: 'global' },
-  { id: 'Manrope', name: 'Manrope', font: 'Manrope', category: 'global' },
-  { id: 'Oxanium', name: 'Oxanium', font: 'Oxanium', category: 'global' },
-  { id: 'Poppins', name: 'Poppins', font: 'Poppins', badge: 'pro', category: 'global' },
-  { id: 'Red Hat Display', name: 'Red Hat Display', font: 'Red Hat Display', category: 'global' },
-  { id: 'Roboto', name: 'Roboto', font: 'Roboto', badge: 'bolt', category: 'global' },
-  { id: 'Rubik', name: 'Rubik', font: 'Rubik', badge: 'bolt', category: 'global' },
-  { id: 'Space Grotesk', name: 'Space Grotesk', font: 'Space Grotesk', badge: 'bolt', category: 'global' },
-  { id: 'Syne', name: 'Syne', font: 'Syne', badge: 'bolt', category: 'global' },
-  { id: 'BioRhyme', name: 'BioRhyme', font: 'BioRhyme', badge: 'bolt', category: 'global' },
-  { id: 'Bitter', name: 'Bitter', font: 'Bitter', badge: 'bolt', category: 'global' },
-  { id: 'Caudex', name: 'Caudex', font: 'Caudex', category: 'global' },
-  { id: 'Corben', name: 'Corben', font: 'Corben', category: 'global' },
-  { id: 'Domine', name: 'Domine', font: 'Domine', category: 'global' },
-  { id: 'Hahmlet', name: 'Hahmlet', font: 'Hahmlet', category: 'global' },
-  { id: 'IBM Plex Serif', name: 'IBM Plex Serif', font: 'IBM Plex Serif', badge: 'bolt', category: 'global' },
-  { id: 'Lora', name: 'Lora', font: 'Lora', badge: 'bolt', category: 'global' },
-  { id: 'Space Mono', name: 'Space Mono', font: 'Space Mono', category: 'global' },
-  { id: 'Outfit', name: 'Outfit', font: 'Outfit', category: 'global' },
+  { id: 'minimalist', nameKo: '미니멀', nameEn: 'Minimalist', classes: 'bg-[#FAF9F6] border-gray-200 text-gray-900' },
+  { id: 'neon-dark', nameKo: '네온 다크', nameEn: 'Neon Dark', classes: 'bg-gray-900 border-indigo-500 text-white' },
+  { id: 'soft-gradient', nameKo: '소프트 그라데이션', nameEn: 'Soft Gradient', classes: 'bg-gradient-to-r from-pink-200 via-purple-200 to-indigo-300 border-transparent text-indigo-950' },
+  { id: 'air', nameKo: '에어', nameEn: 'Air', classes: 'bg-gray-100 border-gray-300 text-gray-900' },
+  { id: 'neo-pop', nameKo: '네오 팝 ⚡', nameEn: 'Neo Pop ⚡', classes: 'bg-gradient-to-tr from-yellow-300 via-pink-400 to-indigo-500 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
+  { id: 'neo-sunshine', nameKo: '네오 선샤인 ⚡', nameEn: 'Neo Sunshine ⚡', classes: 'bg-amber-400 border-2 border-[#18120B] text-[#18120B] shadow-[3px_3px_0px_0px_rgba(24,18,11,1)]' },
+  { id: 'neo-cyber', nameKo: '네오 사이버 ⚡', nameEn: 'Neo Cyber ⚡', classes: 'bg-slate-950 border-2 border-cyan-300 text-cyan-100 shadow-[3px_3px_0px_0px_rgba(34,211,238,.65)]' },
+  { id: 'neo-mint', nameKo: '네오 민트 ⚡', nameEn: 'Neo Mint ⚡', classes: 'bg-emerald-300 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
+  { id: 'bloom', nameKo: '블룸', nameEn: 'Bloom', classes: 'bg-gradient-to-br from-pink-400 to-rose-600 text-rose-950' },
+  { id: 'sunbloom', nameKo: '선블룸', nameEn: 'Sunbloom', classes: 'bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400 border-amber-300 text-amber-950' },
+  { id: 'blocks', nameKo: '블록', nameEn: 'Blocks', classes: 'bg-purple-600 border-purple-800 text-white' },
+  { id: 'groove', nameKo: '그루브', nameEn: 'Groove', classes: 'bg-gradient-to-r from-amber-500 via-red-500 to-purple-600 text-white' },
+  { id: 'lake', nameKo: '레이크', nameEn: 'Lake', classes: 'bg-slate-800 border-slate-700 text-white' },
+  { id: 'nourish', nameKo: '너리시', nameEn: 'Nourish', classes: 'bg-emerald-700 border-emerald-900 text-white' },
 ];
 
 const stickers = [
@@ -90,6 +48,7 @@ const stickers = [
   { id: 'fire', label: 'Fire', emoji: '🔥' },
   { id: 'rocket', label: 'Rocket', emoji: '🚀' },
   { id: 'avocado', label: 'Avocado', emoji: '🥑' },
+  { id: 'chrome-heart', label: 'Chrome Heart', emoji: '/stickers/chrome-heart-flame.png' },
 ];
 
 const AppearanceEditor = () => {
@@ -117,9 +76,11 @@ const AppearanceEditor = () => {
   const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
   const stickerLabel = (id: string, fallback: string) => language === 'ko' ? ({
     '': '없음', cat: '고양이', flower: '꽃', bolt: '번개', heart: '반짝이는 하트',
-    sparkles: '반짝임', crown: '왕관', fire: '불꽃', rocket: '로켓', avocado: '아보카도'
+    sparkles: '반짝임', crown: '왕관', fire: '불꽃', rocket: '로켓', avocado: '아보카도', 'chrome-heart': '크롬 하트'
   }[id] || fallback) : fallback;
   const buttonStyleLabel = buttonStyle === 'glass' ? tr('글래스', 'Glass') : buttonStyle === 'outline' ? tr('테두리', 'Outline') : tr('단색', 'Solid');
+  const selectedPreset = getThemeDesignPreset(templateValue);
+  const selectedThemeName = themes.find((theme) => theme.id === templateValue);
 
   const [currentView, setCurrentView] = useState<'main' | 'theme' | 'buttons' | 'colors' | 'stickers'>('main');
   const [activeFontModal, setActiveFontModal] = useState<'page' | 'title' | null>(null);
@@ -174,11 +135,11 @@ const AppearanceEditor = () => {
                     isSelected ? "border-black bg-gray-50 ring-2 ring-black" : "border-gray-200 hover:border-gray-300"
                   )}
                 >
-                  <div className={clsx("w-full h-24 rounded-xl border flex flex-col items-center justify-center p-2 mb-2 shadow-xs", t.classes)}>
+                  <div style={getThemeWallpaperStyle(t.id)} className={clsx("w-full h-24 rounded-xl border flex flex-col items-center justify-center p-2 mb-2 shadow-xs", t.classes)}>
                     <span className="font-bold text-xs">Aa</span>
                     <div className="w-12 h-2.5 rounded-full bg-current opacity-20 mt-2" />
                   </div>
-                  <span className="text-xs font-bold text-gray-900">{t.name}</span>
+                  <span className="text-xs font-bold text-gray-900">{language === 'ko' ? t.nameKo : t.nameEn}</span>
                   {isSelected && (
                     <div className="absolute top-3 right-3 bg-black text-white p-1 rounded-full shadow-md">
                       <Check className="w-3 h-3" />
@@ -188,6 +149,21 @@ const AppearanceEditor = () => {
               );
             })}
           </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-5">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">{tr('배경 직접 설정', 'Custom background')}</h3>
+            <p className="mt-1 text-xs text-gray-400">{tr('색상을 고르면 바로 전체 배경에 적용됩니다.', 'Choose a color to apply it to the full background.')}</p>
+          </div>
+          <ColorPickerPopover
+            label={tr('배경 색상', 'Background color')}
+            value={templateType === 'color' ? templateValue : selectedPreset.backgroundColor}
+            opacity={backgroundOpacity ?? 100}
+            onChange={(color) => setTemplate('color', color)}
+            onOpacityChange={(opacity) => setDesignSettings({ backgroundOpacity: opacity })}
+            suggested={['#FAF9F6', '#FFFFFF', '#FDEBDB', '#022B49', '#000000', '#C9CBEE']}
+          />
         </div>
       </div>
     );
@@ -502,7 +478,7 @@ const AppearanceEditor = () => {
             <span className="text-xs font-bold text-gray-700">{tr('페이지 글자색', 'Page text color')}</span>
             <ColorPickerPopover
               label={tr('페이지 글자색', 'Page text color')}
-              value={pageTextColor || '#000000'}
+              value={pageTextColor || selectedPreset.pageTextColor}
               opacity={pageTextOpacity ?? 100}
               onChange={(color) => setDesignSettings({ pageTextColor: color })}
               onOpacityChange={(opacity) => setDesignSettings({ pageTextColor: pageTextColor || '#000000', pageTextOpacity: opacity })}
@@ -515,7 +491,7 @@ const AppearanceEditor = () => {
             <span className="text-xs font-bold text-gray-700">{tr('배경 색상', 'Wallpaper background color')}</span>
             <ColorPickerPopover
               label={tr('배경 색상', 'Wallpaper background color')}
-              value={templateType === 'color' ? templateValue : '#FAF9F6'}
+              value={templateType === 'color' ? templateValue : selectedPreset.backgroundColor}
               opacity={backgroundOpacity ?? 100}
               onChange={(color) => setTemplate('color', color)}
               onOpacityChange={(opacity) => setDesignSettings({ backgroundOpacity: opacity })}
@@ -540,7 +516,7 @@ const AppearanceEditor = () => {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <div>
             <h3 className="text-sm font-bold text-gray-900 mb-1">{tr('페이지 꾸미기', 'Decorate your page')}</h3>
-            <p className="text-xs text-gray-400">{tr('프로필 이미지에 표시할 스티커를 선택하세요.', 'Choose a sticker badge for your profile avatar.')}</p>
+            <p className="text-xs text-gray-400">{tr('스티커를 선택한 뒤 왼쪽 미리보기에서 직접 드래그해 위치를 옮기세요.', 'Choose a sticker, then drag it directly in the preview.')}</p>
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-4">
@@ -555,11 +531,16 @@ const AppearanceEditor = () => {
                     isSelected ? "border-black bg-gray-50 ring-2 ring-black scale-105" : "border-gray-200 hover:bg-gray-50"
                   )}
                 >
-                  <span className="text-3xl">{s.emoji}</span>
+                  {/^(?:https?:\/\/|\/)/.test(s.emoji) ? <img src={s.emoji} alt="" className="h-12 w-12 object-contain" /> : <span className="text-3xl">{s.emoji}</span>}
                   <span className="text-[10px] font-bold text-gray-600">{stickerLabel(s.id, s.label)}</span>
                 </button>
               );
             })}
+          </div>
+          {sticker && <button type="button" onClick={() => setDesignSettings({ stickerX: 62, stickerY: 22 })} className="w-full rounded-2xl border border-gray-200 py-3 text-xs font-black text-gray-700 transition hover:bg-gray-50">스티커 위치 초기화</button>}
+          <div className="border-t border-gray-100 pt-5">
+            <div className="mb-3"><h3 className="text-sm font-black text-gray-900">움직이는 스티커</h3><p className="mt-1 text-xs font-medium text-gray-400">한글로 검색해 선택할 수 있습니다.</p></div>
+            <GiphyPicker kind="stickers" onSelect={(url) => setDesignSettings({ sticker: url })} />
           </div>
         </div>
       </div>
@@ -581,7 +562,7 @@ const AppearanceEditor = () => {
           </div>
           <div>
             <h3 className="font-bold text-gray-900 text-sm">{tr('테마', 'Theme')}</h3>
-            <p className="text-xs text-gray-400 capitalize">{templateType === 'preset' ? templateValue : tr('사용자 지정 색상', 'Custom Color')}</p>
+            <p className="text-xs text-gray-400">{templateType === 'preset' ? (language === 'ko' ? selectedThemeName?.nameKo : selectedThemeName?.nameEn) : tr('사용자 지정 색상', 'Custom Color')}</p>
           </div>
         </div>
         

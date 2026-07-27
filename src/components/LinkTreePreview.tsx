@@ -8,24 +8,17 @@ import {
   type DesignSettings,
   type ReservationScheduleItem,
 } from "../store/useStore";
-import {
-  FaInstagram,
-  FaTwitter,
-  FaYoutube,
-  FaGithub,
-  FaLinkedin,
-  FaEnvelope,
-  FaGlobe,
-  FaFigma,
-} from "react-icons/fa";
 import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, MapPin } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
+import { getSocialUrl, normalizeSocialPlatform } from "../lib/social";
 import { DonationVisitorModal } from "./DonationVisitorModal";
+import { DonationFeed } from "./DonationFeed";
 import { CustomerInfoVisitorCard } from "./CustomerInfoVisitorCard";
 import { SalesVisitorModal } from "./SalesVisitorModal";
 import clsx from "clsx";
 import { recordPublicLinkClick } from "../services/analyticsService";
 import { MapIllustration } from "./MapIllustration";
+import { getThemeDesignPreset, getThemeWallpaperStyle } from "../domain/themePresets";
 
 interface LinkTreePreviewProps {
   profile?: UserProfile;
@@ -36,56 +29,8 @@ interface LinkTreePreviewProps {
   isPublic?: boolean;
   ownerUid?: string;
   design?: Partial<DesignSettings>;
+  stickerEditable?: boolean;
 }
-
-const getSocialIcon = (platform: string) => {
-  switch (platform) {
-    case "instagram":
-      return FaInstagram;
-    case "twitter":
-      return FaTwitter;
-    case "youtube":
-      return FaYoutube;
-    case "github":
-      return FaGithub;
-    case "linkedin":
-      return FaLinkedin;
-    case "mail":
-      return FaEnvelope;
-    case "globe":
-      return FaGlobe;
-    case "figma":
-      return FaFigma;
-    default:
-      return null;
-  }
-};
-
-const getSocialUrl = (platform: string, id: string) => {
-  const cleanId = id.trim();
-  switch (platform) {
-    case "instagram":
-      return `https://instagram.com/${cleanId}`;
-    case "twitter":
-      return `https://twitter.com/${cleanId}`;
-    case "youtube":
-      return `https://youtube.com/${
-        cleanId.startsWith("@") ? cleanId : `@${cleanId}`
-      }`;
-    case "github":
-      return `https://github.com/${cleanId}`;
-    case "linkedin":
-      return `https://linkedin.com/in/${cleanId}`;
-    case "mail":
-      return `mailto:${cleanId}`;
-    case "globe":
-      return cleanId.match(/^https?:\/\//) ? cleanId : `https://${cleanId}`;
-    case "figma":
-      return `https://figma.com/@${cleanId}`;
-    default:
-      return "#";
-  }
-};
 
 const getScheduleDate = (value: string | undefined, fallbackYear: number) => {
   const match = value?.match(/(?:(\d{4})[-./])?(\d{1,2})[-./](\d{1,2})/);
@@ -213,6 +158,12 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     return { href: rawUrl ? `https://${rawUrl}` : '#', isInternal: false };
   };
 
+  const getPreviewLinkIcon = (link: CustomLink) => {
+    if (link.url?.includes('/guestbook') || link.title?.includes('방명록')) return getLinkIcon('book');
+    if (link.type === 'notice' || link.url?.includes('/notice')) return getLinkIcon('megaphone');
+    return getLinkIcon(link.iconName);
+  };
+
   const [activeDonationBlock, setActiveDonationBlock] = useState<CustomLink | null>(null);
   const [activeSalesBlock, setActiveSalesBlock] = useState<CustomLink | null>(null);
   const [activeMapBlock, setActiveMapBlock] = useState<CustomLink | null>(null);
@@ -222,6 +173,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const [calendarViews, setCalendarViews] = useState<Record<string, { year: number; month: number }>>({});
   const collectionCarouselRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [collectionCarouselNavigation, setCollectionCarouselNavigation] = useState<Record<string, { canGoBack: boolean; canGoForward: boolean }>>({});
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const [stickerDragPosition, setStickerDragPosition] = useState<{ x: number; y: number } | null>(null);
   const updateCollectionCarouselNavigation = (collectionId: string) => {
     const carousel = collectionCarouselRefs.current[collectionId];
     if (!carousel) return;
@@ -240,19 +193,57 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     carousel.scrollBy({ left: direction * carousel.clientWidth * 0.45, behavior: 'smooth' });
   };
   const isColor = templateType === "color";
-  const buttonStyle = props.design?.buttonStyle ?? store.buttonStyle;
-  const buttonRoundness = props.design?.buttonRoundness ?? store.buttonRoundness;
-  const buttonShadow = props.design?.buttonShadow ?? store.buttonShadow;
-  const buttonColor = props.design?.buttonColor ?? store.buttonColor;
-  const buttonTextColor = props.design?.buttonTextColor ?? store.buttonTextColor;
-  const buttonOpacity = props.design?.buttonOpacity ?? store.buttonOpacity;
-  const buttonTextOpacity = props.design?.buttonTextOpacity ?? store.buttonTextOpacity;
-  const fontFamily = props.design?.fontFamily ?? store.fontFamily;
-  const titleFontFamily = props.design?.titleFontFamily ?? store.titleFontFamily;
-  const pageTextColor = props.design?.pageTextColor ?? store.pageTextColor;
-  const pageTextOpacity = props.design?.pageTextOpacity ?? store.pageTextOpacity;
-  const backgroundOpacity = props.design?.backgroundOpacity ?? store.backgroundOpacity;
-  const sticker = props.design?.sticker ?? store.sticker;
+  const presetDesign = getThemeDesignPreset(templateValue);
+  const presetWallpaper = getThemeWallpaperStyle(templateValue);
+  const designSource = props.design || store;
+  const usePresetDefaults = !isColor && (!designSource.buttonColor || !designSource.buttonTextColor || !designSource.pageTextColor);
+  const buttonStyle = usePresetDefaults ? presetDesign.buttonStyle : (designSource.buttonStyle ?? store.buttonStyle);
+  const buttonRoundness = usePresetDefaults ? presetDesign.buttonRoundness : (designSource.buttonRoundness ?? store.buttonRoundness);
+  const buttonShadow = usePresetDefaults ? presetDesign.buttonShadow : (designSource.buttonShadow ?? store.buttonShadow);
+  const buttonColor = usePresetDefaults ? presetDesign.buttonColor : designSource.buttonColor;
+  const buttonTextColor = usePresetDefaults ? presetDesign.buttonTextColor : designSource.buttonTextColor;
+  const buttonOpacity = usePresetDefaults ? presetDesign.buttonOpacity : (designSource.buttonOpacity ?? store.buttonOpacity);
+  const buttonTextOpacity = usePresetDefaults ? presetDesign.buttonTextOpacity : (designSource.buttonTextOpacity ?? store.buttonTextOpacity);
+  const fontFamily = usePresetDefaults ? presetDesign.fontFamily : (designSource.fontFamily || store.fontFamily);
+  const titleFontFamily = usePresetDefaults ? presetDesign.titleFontFamily : (designSource.titleFontFamily ?? store.titleFontFamily);
+  const pageTextColor = usePresetDefaults ? presetDesign.pageTextColor : designSource.pageTextColor;
+  const pageTextOpacity = usePresetDefaults ? presetDesign.pageTextOpacity : (designSource.pageTextOpacity ?? store.pageTextOpacity);
+  const backgroundOpacity = usePresetDefaults ? presetDesign.backgroundOpacity : (designSource.backgroundOpacity ?? store.backgroundOpacity);
+  const sticker = usePresetDefaults ? presetDesign.sticker : (designSource.sticker ?? store.sticker);
+  const stickerX = stickerDragPosition?.x ?? designSource.stickerX ?? store.stickerX ?? 62;
+  const stickerY = stickerDragPosition?.y ?? designSource.stickerY ?? store.stickerY ?? 22;
+
+  const getStickerPosition = (clientX: number, clientY: number) => {
+    const bounds = previewContainerRef.current?.getBoundingClientRect();
+    if (!bounds) return null;
+    return {
+      x: Math.max(5, Math.min(95, ((clientX - bounds.left) / bounds.width) * 100)),
+      y: Math.max(3, Math.min(97, ((clientY - bounds.top) / bounds.height) * 100)),
+    };
+  };
+
+  const handleStickerPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!props.stickerEditable || props.design) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const next = getStickerPosition(event.clientX, event.clientY);
+    if (next) setStickerDragPosition(next);
+  };
+
+  const handleStickerPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!props.stickerEditable || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const next = getStickerPosition(event.clientX, event.clientY);
+    if (next) setStickerDragPosition(next);
+  };
+
+  const finishStickerDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!props.stickerEditable || props.design) return;
+    const next = getStickerPosition(event.clientX, event.clientY) || stickerDragPosition;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (next) store.setDesignSettings({ stickerX: next.x, stickerY: next.y });
+    setStickerDragPosition(null);
+  };
 
   let fontClass = "font-sans";
   if (fontFamily === "mono") fontClass = "font-mono";
@@ -275,11 +266,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   let containerClass = `flex flex-col items-center w-full min-h-screen transition-all duration-300 relative`;
   let containerStyle: React.CSSProperties = {
     fontFamily: fontFamily ? `'${fontFamily}', sans-serif` : "sans-serif",
+    ...(!isColor ? presetWallpaper : {}),
   };
 
   let textClass = "text-gray-900";
   if (pageTextColor) {
     containerStyle.color = colorWithOpacity(pageTextColor, pageTextOpacity ?? 100);
+    textClass = "";
   }
 
   let themeDefaultBtnClass = "bg-black text-white hover:bg-gray-800 shadow-sm";
@@ -305,9 +298,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     } else if (templateValue === "soft-gradient") {
       containerClass +=
         " bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400";
-      if (!pageTextColor) textClass = "text-white";
+      if (!pageTextColor) textClass = "text-indigo-950";
       themeDefaultBtnClass =
-        "bg-white/25 backdrop-blur-md border border-white/30 text-white hover:bg-white/35 shadow-lg";
+        "bg-white/80 backdrop-blur-md border border-white/90 text-indigo-950 hover:bg-white/95 shadow-lg";
     } else if (templateValue === "air") {
       containerClass += " bg-gray-100";
       themeDefaultBtnClass =
@@ -321,7 +314,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
       containerClass += " bg-gradient-to-br from-pink-500 to-rose-600";
       if (!pageTextColor) textClass = "text-white";
       themeDefaultBtnClass =
-        "bg-white/20 backdrop-blur-md text-white border border-white/40 hover:bg-white/30 shadow-md";
+        "bg-rose-50/85 backdrop-blur-md text-rose-950 border border-white/70 hover:bg-white/95 shadow-md";
     } else if (templateValue === "sunbloom") {
       containerClass +=
         " bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400";
@@ -336,16 +329,16 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
         "bg-white text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
     } else if (templateValue === "neo-sunshine") {
       containerClass +=
-        " bg-gradient-to-tr from-yellow-300 via-amber-400 to-lime-300";
+        " bg-gradient-to-tr from-yellow-300 via-amber-400 to-orange-500";
       if (!pageTextColor) textClass = "text-black";
       themeDefaultBtnClass =
-        "bg-lime-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+        "bg-[#18120B] text-amber-50 border-2 border-[#18120B] font-bold shadow-[4px_4px_0px_0px_rgba(255,247,214,.75)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
     } else if (templateValue === "neo-cyber") {
       containerClass +=
-        " bg-gradient-to-tr from-cyan-300 via-blue-500 to-pink-500";
-      if (!pageTextColor) textClass = "text-black";
+        " bg-gradient-to-tr from-slate-950 via-cyan-950 to-indigo-950";
+      if (!pageTextColor) textClass = "text-cyan-50";
       themeDefaultBtnClass =
-        "bg-yellow-300 text-black border-3 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
+        "bg-cyan-950 text-cyan-300 border-2 border-cyan-400 font-bold shadow-[4px_4px_0px_0px_rgba(34,211,238,.55)] hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all";
     } else if (templateValue === "neo-mint") {
       containerClass +=
         " bg-gradient-to-tr from-emerald-300 via-teal-400 to-purple-500";
@@ -396,6 +389,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
       ...(style?.fontFamily === 'sans' ? { fontFamily: 'sans-serif' } : {}),
       ...(style?.fontFamily === 'serif' ? { fontFamily: 'serif' } : {}),
       ...(style?.fontFamily === 'mono' ? { fontFamily: 'monospace' } : {}),
+      ...(style?.fontFamily && !['inherit', 'sans', 'serif', 'mono'].includes(style.fontFamily) ? { fontFamily: `'${style.fontFamily}', sans-serif` } : {}),
       ...(style?.fontSize ? { fontSize: `${style.fontSize}px` } : {}),
       ...(style?.fontWeight ? { fontWeight: style.fontWeight } : {}),
       ...(style?.borderColor ? { borderColor: style.borderColor } : {}),
@@ -405,18 +399,26 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     };
   };
 
+  const getFixedRadiusBlockStyle = (link: CustomLink): React.CSSProperties => ({
+    ...getCustomLinkStyle(link),
+    borderRadius: '16px',
+  });
+
   const getCustomLinkIconStyle = (link: CustomLink): React.CSSProperties => {
     const iconColor = link.customStyle?.iconColor;
     if (!iconColor) return {};
     return { color: colorWithOpacity(iconColor, link.customStyle?.iconOpacity ?? 100) };
   };
 
-  const getCustomLinkIconContainerStyle = (link: CustomLink): React.CSSProperties => ({
-    ...getCustomLinkIconStyle(link),
-    ...(link.customStyle?.iconBackgroundColor
-      ? { backgroundColor: colorWithOpacity(link.customStyle.iconBackgroundColor, link.customStyle.iconBackgroundOpacity ?? 100) }
-      : {}),
-  });
+  const getThemedLinkIconContainerStyle = (link: CustomLink): React.CSSProperties => {
+    const style = link.customStyle;
+    const iconColor = style?.iconColor || link.buttonTextColor || buttonTextColor || pageTextColor;
+    const iconBackgroundColor = style?.iconBackgroundColor || link.buttonTextColor || buttonTextColor || pageTextColor;
+    return {
+      ...(iconColor ? { color: colorWithOpacity(iconColor, style?.iconOpacity ?? buttonTextOpacity ?? 100) } : {}),
+      ...(iconBackgroundColor ? { backgroundColor: colorWithOpacity(iconBackgroundColor, style?.iconBackgroundColor ? (style.iconBackgroundOpacity ?? 100) : 12) } : {}),
+    };
+  };
 
   if (buttonStyle === "glass") {
     buttonClass +=
@@ -424,13 +426,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   } else if (buttonStyle === "outline") {
     buttonClass += " bg-transparent border-2 border-current hover:bg-black/5";
   } else {
-    // Solid: use theme default button class if no custom buttonColor
-    if (!buttonColor) {
-      buttonClass += ` ${themeDefaultBtnClass}`;
-    }
+    buttonClass += ` ${themeDefaultBtnClass}`;
   }
 
   let socialIconClass = "w-7 h-7 hover:scale-110 transition-transform";
+  const socialControlStyle: React.CSSProperties = {
+    ...(buttonColor ? { backgroundColor: colorWithOpacity(buttonColor, buttonOpacity ?? 100) } : {}),
+    ...(buttonTextColor ? { color: colorWithOpacity(buttonTextColor, buttonTextOpacity ?? 100) } : {}),
+  };
 
   const [emailCopied, setEmailCopied] = useState(false);
   const [shareModalItem, setShareModalItem] = useState<{ title: string; url?: string } | null>(null);
@@ -464,6 +467,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   return (
     <>
       <div
+        ref={previewContainerRef}
         className={clsx(
           containerClass,
           isPublic
@@ -472,13 +476,35 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
         )}
         style={containerStyle}
       >
+        {sticker && (
+          <div
+            role={props.stickerEditable ? "button" : undefined}
+            tabIndex={props.stickerEditable ? 0 : undefined}
+            aria-label={props.stickerEditable ? "스티커 위치 이동" : undefined}
+            title={props.stickerEditable ? "드래그해서 스티커를 이동하세요" : undefined}
+            onPointerDown={handleStickerPointerDown}
+            onPointerMove={handleStickerPointerMove}
+            onPointerUp={finishStickerDrag}
+            onPointerCancel={finishStickerDrag}
+            className={clsx(
+              "absolute z-40 select-none drop-shadow-lg",
+              props.stickerEditable ? "cursor-grab rounded-2xl ring-2 ring-white/80 active:cursor-grabbing active:scale-105" : "pointer-events-none"
+            )}
+            style={{ left: `${stickerX}%`, top: `${stickerY}%`, transform: 'translate(-50%, -50%)', touchAction: 'none' }}
+          >
+            {/^(?:https?:\/\/|\/)/.test(sticker) ? <img src={sticker} alt="" draggable={false} className="h-20 w-20 object-contain sm:h-24 sm:w-24" /> : <span className="block text-4xl sm:text-5xl">{sticker}</span>}
+          </div>
+        )}
         {/* Banner Header Image (Only for banner layout - flush to top edge) */}
         {profile.profileLayout === "banner" && (
           <div className="w-full h-48 sm:h-52 bg-gray-200 relative shrink-0 overflow-hidden">
             {profile.bannerUrl ? (
               <img
                 src={profile.bannerUrl}
-                alt="Banner"
+                alt="배너 이미지"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -516,7 +542,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           <button
             type="button"
             aria-label="프로필 공유"
-            title="Share profile"
+            title="프로필 공유"
             onClick={(event) => handleOpenShareModal(event, {
               title: profile.name || profile.username || '프로필 공유',
               url: shareUrl,
@@ -540,12 +566,6 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
         <div className="w-full px-6 flex flex-col items-center pb-24 relative z-10">
           {/* Profile Avatar based on Layout */}
           <div className="relative">
-            {sticker && (
-              <div className="absolute -top-2 -right-2 text-3xl z-30 animate-bounce drop-shadow-md">
-                {sticker}
-              </div>
-            )}
-
             {profile.profileLayout === "hero" ? (
               <div className="w-full max-w-[320px] relative overflow-hidden mb-4 shrink-0 flex flex-col items-center">
                 <div
@@ -561,6 +581,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     <img
                       src={profile.avatarUrl}
                       alt={profile.name}
+                      loading="eager"
+                      fetchPriority="high"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -574,6 +597,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   <img
                     src={profile.avatarUrl}
                     alt={profile.name}
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -589,6 +615,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   <img
                     src={profile.avatarUrl}
                     alt={profile.name}
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -603,7 +632,10 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
             <div className="mb-2 max-w-[220px] max-h-16 flex items-center justify-center">
               <img
                 src={profile.logoUrl}
-                alt="Logo"
+                alt="로고"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 className="max-h-14 w-auto object-contain"
               />
             </div>
@@ -620,7 +652,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   : {}),
               }}
             >
-              {profile.name || profile.username || "username"}
+              {profile.name || profile.username || "사용자 이름"}
             </h1>
           )}
 
@@ -633,7 +665,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 "opacity-80"
               )}
             >
-              {profile.bio || "bio goes here"}
+              {profile.bio || "소개를 입력해 주세요"}
             </p>
           )}
 
@@ -650,13 +682,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 textClass,
                 "opacity-90"
               )}
-              title="Click to copy email address"
+              title="이메일 주소 복사"
+              style={socialControlStyle}
             >
               <Mail className="w-3.5 h-3.5 opacity-80" />
               <span>{profile.email}</span>
               {emailCopied ? (
                 <span className="text-[10px] font-bold text-green-500 flex items-center gap-0.5 ml-0.5 animate-in zoom-in-50">
-                  <Check className="w-3.5 h-3.5 text-green-500" /> Copied!
+                  <Check className="w-3.5 h-3.5 text-green-500" /> 복사됨
                 </span>
               ) : (
                 <Copy className="w-3 h-3 opacity-40 group-hover:opacity-100 ml-0.5 transition" />
@@ -688,7 +721,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         : "bg-black/5 hover:bg-black/10 text-gray-900",
                       textClass
                     )}
-                    style={pageTextColor ? { color: colorWithOpacity(pageTextColor, pageTextOpacity ?? 100) } : {}}
+                    style={socialControlStyle}
                     title={link.platform}
                   >
                     <Icon className="w-5 h-5 object-contain" />
@@ -700,10 +733,14 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
 
           {/* Custom Links & Collections */}
           <div className="w-full space-y-4 mb-12">
-            {customLinks.map((block) => {
+            {customLinks.filter((block) => block.isVisible !== false).map((block) => {
               if (block.type === "collection") {
                 const collectionTitle = block.publicTitle ?? block.title;
-                const collectionLinks = (block.links || []).filter((link) => link.type !== 'map' || Boolean(link.mapConfig?.query.trim()));
+                const collectionLinks = (block.links || []).filter((link) =>
+                  link.isVisible !== false &&
+                  (link.type !== 'map' || Boolean(link.mapConfig?.query.trim()))
+                );
+                if (collectionLinks.length === 0) return null;
                 if (block.layout === "carousel") {
                   const carouselNavigation = collectionCarouselNavigation[block.id];
                   const canGoBack = carouselNavigation?.canGoBack ?? false;
@@ -720,7 +757,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           {collectionLinks.map((link) => {
                             const isImage = link.thumbnailType === "image" || (!link.thumbnailType && link.icon);
                             const isNone = link.thumbnailType === "none";
-                            const IconComp = getLinkIcon(link.iconName);
+                            const IconComp = getPreviewLinkIcon(link);
                             const destination = getLinkDestination(link);
                             return (
                               <a
@@ -735,8 +772,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                   ...getCustomLinkStyle(link),
                                 }}
                               >
-                                {!isNone && <div className="mb-3 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/10" style={getCustomLinkIconContainerStyle(link)}>{isImage && link.icon ? <img src={link.icon} alt={link.title} className="h-full w-full object-cover" /> : <IconComp className={clsx("h-6 w-6", !link.customStyle?.iconColor && textClass)} />}</div>}
-                                <span className={clsx("line-clamp-3 text-center text-sm font-bold leading-snug", textClass)}>{link.title || "Link Title"}</span>
+                                {!isNone && <div className="mb-3 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full" style={getThemedLinkIconContainerStyle(link)}>{isImage && link.icon ? <img src={link.icon} alt={link.title} className="h-full w-full object-cover" /> : <IconComp className="h-6 w-6" />}</div>}
+                                <span className={clsx("line-clamp-3 text-center text-sm font-bold leading-snug", textClass)}>{link.title || "링크 제목"}</span>
                               </a>
                             );
                           })}
@@ -773,7 +810,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             link.thumbnailType === "icon" ||
                             (!link.thumbnailType && link.iconName);
                           const isNone = link.thumbnailType === "none";
-                          const IconComp = getLinkIcon(link.iconName);
+                          const IconComp = getPreviewLinkIcon(link);
                           const destination = getLinkDestination(link);
 
                           return (
@@ -798,7 +835,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                               }}
                             >
                               {!isNone && (
-                                <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mb-2 overflow-hidden shrink-0" style={getCustomLinkIconContainerStyle(link)}>
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 overflow-hidden shrink-0" style={getThemedLinkIconContainerStyle(link)}>
                                   {isImage && link.icon ? (
                                     <img
                                       src={link.icon}
@@ -807,7 +844,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                     />
                                   ) : (
                                     <IconComp
-                                      className={clsx("w-5 h-5", !link.customStyle?.iconColor && textClass)}
+                                      className="w-5 h-5"
                                     />
                                   )}
                                 </div>
@@ -818,7 +855,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                   textClass
                                 )}
                               >
-                                {link.title || "Link Title"}
+                                {link.title || "링크 제목"}
                               </span>
                             </a>
                           );
@@ -849,7 +886,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             link.thumbnailType === "icon" ||
                             (!link.thumbnailType && link.iconName);
                           const isNone = link.thumbnailType === "none";
-                          const IconComp = getLinkIcon(link.iconName);
+                          const IconComp = getPreviewLinkIcon(link);
                           const destination = getLinkDestination(link);
 
                           return (
@@ -863,7 +900,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                               style={getCustomLinkStyle(link)}
                             >
                               {!isNone && (
-                                <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden" style={getCustomLinkIconContainerStyle(link)}>
+                                <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={getThemedLinkIconContainerStyle(link)}>
                                   {isImage && link.icon ? (
                                     <img
                                       src={link.icon}
@@ -876,13 +913,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                 </div>
                               )}
                               <span className="flex-1 text-center font-semibold text-[15px]">
-                                {link.title || "Link Title"}
+                                {link.title || "링크 제목"}
                               </span>
                               <button
                                 type="button"
                                 onClick={(e) => handleOpenShareModal(e, link)}
                                 className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
-                                title="Share link"
+                                title="링크 공유"
                               >
                                 <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
                               </button>
@@ -903,49 +940,32 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 block.thumbnailType === "icon" ||
                 (!block.thumbnailType && block.iconName);
               const isNone = block.thumbnailType === "none";
-              const IconComp = getLinkIcon(block.iconName);
+              const IconComp = getPreviewLinkIcon(block);
 
               if (block.type === 'donation') {
                 return (
-                  <button
-                    key={block.id}
-                    type="button"
-                    onClick={() => {
-                      recordLinkClick(block.id);
-                      setActiveDonationBlock(block);
-                    }}
-                    className={buttonClass}
-                    style={getCustomLinkStyle(block)}
-                  >
-                    {!isNone && (
-                      <div
-                        className={clsx(
-                          "w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
-                          templateValue.startsWith("neo-")
-                            ? "bg-[#E54D26] text-white border-2 border-black font-bold"
-                            : "bg-[#E54D26]/10 text-[#E54D26]"
-                        )}
-                        style={getCustomLinkIconContainerStyle(block)}
-                      >
-                        {isImage && block.icon ? (
-                          <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <IconComp className="w-5 h-5" />
-                        )}
-                      </div>
-                    )}
-                    <span className="flex-1 text-center font-bold text-[15px]">
-                      {block.donationConfig?.buttonText || block.donationConfig?.mainText || block.title || "donation"}
-                    </span>
+                  <div key={block.id} className="w-full">
                     <button
                       type="button"
-                      onClick={(e) => handleOpenShareModal(e, block)}
-                      className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
-                      title="Share link"
+                      onClick={() => {
+                        recordLinkClick(block.id);
+                        setActiveDonationBlock(block);
+                      }}
+                      className={buttonClass}
+                      style={getCustomLinkStyle(block)}
                     >
-                      <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
+                      {!isNone && (
+                        <div className={clsx("w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden", templateValue.startsWith("neo-") ? "bg-[#E54D26] text-white border-2 border-black font-bold" : "bg-[#E54D26]/10 text-[#E54D26]")} style={getThemedLinkIconContainerStyle(block)}>
+                          {isImage && block.icon ? <img src={block.icon} alt={block.title} className="w-full h-full object-cover" /> : <IconComp className="w-5 h-5" />}
+                        </div>
+                      )}
+                      <span className="flex-1 text-center font-bold text-[15px]">{block.donationConfig?.buttonText || block.donationConfig?.mainText || block.title || "후원하기"}</span>
+                      <span role="button" tabIndex={0} onClick={(e) => handleOpenShareModal(e, block)} className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10" title="링크 공유">
+                        <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
+                      </span>
                     </button>
-                  </button>
+                    <DonationFeed ownerUid={props.ownerUid} blockId={block.id} style={getCustomLinkStyle(block)} />
+                  </div>
                 );
               }
 
@@ -970,7 +990,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             ? "bg-cyan-500 text-white border-2 border-black font-bold"
                             : "bg-cyan-50 text-cyan-600"
                         )}
-                        style={getCustomLinkIconContainerStyle(block)}
+                        style={getThemedLinkIconContainerStyle(block)}
                       >
                         {isImage && block.icon ? (
                           <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
@@ -985,7 +1005,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       </span>
                       {block.fileConfig?.fileName && (
                         <span className="text-[11px] opacity-70 block truncate">
-                          {block.fileConfig.fileName} ({block.fileConfig.fileSize || 'FILE'})
+                          {block.fileConfig.fileName} ({block.fileConfig.fileSize || '파일'})
                         </span>
                       )}
                     </div>
@@ -993,7 +1013,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       type="button"
                       onClick={(e) => handleOpenShareModal(e, block)}
                       className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
-                      title="Share link"
+                      title="링크 공유"
                     >
                       <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
                     </button>
@@ -1006,7 +1026,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 return (
                   <div key={block.id} className="w-full flex items-center justify-center gap-3.5 py-3 flex-wrap">
                     {items.map((item) => {
-                      const Icon = getSocialIcon(item.platform) || FaGlobe;
+                      const Icon = getLinkIcon(normalizeSocialPlatform(item.platform));
                       const isPhone = item.platform === 'phone';
                       const targetUrl = isPhone 
                         ? `tel:${item.value}`
@@ -1019,7 +1039,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => recordLinkClick(block.id)}
-                          style={{ ...getCustomLinkStyle(block), ...getCustomLinkIconContainerStyle(block) }}
+                          style={{ ...getCustomLinkStyle(block), ...getThemedLinkIconContainerStyle(block) }}
                           className="w-11 h-11 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center shadow-md hover:scale-110 transition cursor-pointer border border-gray-100"
                           title={item.platform}
                         >
@@ -1055,6 +1075,18 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 const firstWeekday = new Date(calendarYear, calendarMonth - 1, 1).getDay();
                 const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
                 const isScheduleListExpanded = expandedReservationIds[block.id] ?? false;
+                const reservationBackgroundColor = block.buttonColor || buttonColor || '#FFFFFF';
+                const reservationTextColor = block.buttonTextColor || buttonTextColor || pageTextColor || '#111827';
+                const reservationControlBackground = block.customStyle?.calendarButtonColor || reservationTextColor;
+                const reservationControlText = block.customStyle?.calendarButtonTextColor || reservationBackgroundColor;
+                const reservationControlStyle: React.CSSProperties = {
+                  backgroundColor: colorWithOpacity(reservationControlBackground, block.customStyle?.calendarButtonOpacity ?? 100),
+                  color: colorWithOpacity(reservationControlText, block.customStyle?.calendarButtonTextOpacity ?? 100),
+                  borderColor: colorWithOpacity(reservationControlText, Math.min(block.customStyle?.calendarButtonTextOpacity ?? 100, 72)),
+                  borderStyle: 'solid',
+                  borderWidth: '1px',
+                  boxShadow: `inset 0 0 0 1px ${colorWithOpacity(reservationControlText, 18)}`,
+                };
                 const schedulesForDay = (day: number) => visibleSchedules.filter((schedule) => isScheduleOnCalendarDay(schedule, calendarYear, calendarMonth, day));
                 const changeCalendarMonth = (offset: number) => {
                   const nextDate = new Date(calendarYear, calendarMonth - 1 + offset, 1);
@@ -1065,26 +1097,33 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   <div
                     key={block.id}
                     className={clsx(
-                      "relative w-full overflow-visible bg-[#D1E7DD]/90 backdrop-blur-xs border border-[#B1D8C7] rounded-3xl p-5 space-y-4 font-sans text-gray-900 shadow-md",
+                      "relative w-full overflow-visible p-5 space-y-4 transition-all",
+                      roundnessClass,
+                      shadowClass,
+                      buttonStyle === 'glass' && "bg-white/20 backdrop-blur-md border border-white/30",
+                      buttonStyle === 'outline' && "bg-transparent border-2 border-current",
+                      buttonStyle === 'solid' && themeDefaultBtnClass,
                       activeCalendarDay?.blockId === block.id ? "z-[200]" : "z-0"
                     )}
-                    style={getCustomLinkStyle(block)}
+                    style={getFixedRadiusBlockStyle(block)}
                   >
                     {/* Calendar Header with Navigation */}
                     <div className="flex items-center justify-center gap-4 px-2">
                       <button
                         type="button"
                         onClick={() => changeCalendarMonth(-1)}
-                        className="p-1 text-gray-700 hover:text-black hover:bg-black/10 rounded-full font-bold cursor-pointer text-xs"
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold opacity-90 transition hover:scale-105 hover:opacity-100 cursor-pointer"
+                        style={reservationControlStyle}
                         aria-label={`${calendarYear}년 ${calendarMonth}월 이전 달`}
                       >
                         &lt;
                       </button>
-                      <span className="font-extrabold text-base tracking-tight text-gray-900">{calendarYear}.{String(calendarMonth).padStart(2, '0')}</span>
+                      <span className="font-extrabold text-base tracking-tight">{calendarYear}.{String(calendarMonth).padStart(2, '0')}</span>
                       <button
                         type="button"
                         onClick={() => changeCalendarMonth(1)}
-                        className="p-1 text-gray-700 hover:text-black hover:bg-black/10 rounded-full font-bold cursor-pointer text-xs"
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold opacity-90 transition hover:scale-105 hover:opacity-100 cursor-pointer"
+                        style={reservationControlStyle}
                         aria-label={`${calendarYear}년 ${calendarMonth}월 다음 달`}
                       >
                         &gt;
@@ -1092,8 +1131,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     </div>
 
                     {/* Weekdays Row */}
-                    <div className="grid grid-cols-7 text-center text-xs font-extrabold text-gray-700">
-                      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    <div className="grid grid-cols-7 text-center text-xs font-extrabold opacity-75">
+                      <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
                     </div>
 
                     {/* Days Grid */}
@@ -1116,15 +1155,16 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                               isSelected ? "z-[220]" : "z-0",
                               isToday ? "font-black text-[13px]" : "font-semibold",
                               isSelected
-                                ? "bg-black text-white shadow-md scale-105"
+                                ? "shadow-md scale-105"
                                 : hasSchedule
-                                  ? "text-gray-900 bg-white/55 hover:bg-black hover:text-white hover:scale-110 hover:shadow-md cursor-pointer"
-                                  : "text-gray-700 cursor-default"
+                                  ? "opacity-90 hover:opacity-100 hover:scale-110 hover:shadow-md cursor-pointer"
+                                  : "opacity-70 cursor-default"
                             )}
+                            style={hasSchedule ? reservationControlStyle : undefined}
                             aria-label={hasSchedule ? `${calendarMonth}월 ${d}일 일정 ${daySchedules.length}개` : `${calendarMonth}월 ${d}일`}
                           >
                             {d}
-                            {hasSchedule && <span className={clsx("absolute bottom-0.5 w-1.5 h-1.5 rounded-full transition-colors", isSelected ? "bg-emerald-300" : "bg-emerald-600 group-hover:bg-emerald-300")} />}
+                            {hasSchedule && <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full border border-current bg-current transition-transform group-hover:scale-125" />}
                             {isSelected && (
                               <span
                                 className={clsx(
@@ -1143,30 +1183,23 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       })}
                     </div>
 
-                    {/* Header Text if specified */}
-                    {config.headerText && (
-                      <div className="p-2 bg-white/60 rounded-xl text-center text-xs font-semibold text-gray-700 border border-black/5">
-                        {config.headerText}
-                      </div>
-                    )}
-
                     {/* Scheduled Events: stacked when collapsed */}
                     <div className="pt-1">
-                      <button type="button" disabled={visibleSchedules.length === 0} onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: !isScheduleListExpanded }))} className="w-full flex items-center justify-between px-1 pb-2 text-xs font-black text-gray-800 enabled:cursor-pointer group">
+                      <button type="button" disabled={visibleSchedules.length === 0} onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: !isScheduleListExpanded }))} className="w-full flex items-center justify-between px-1 pb-2 text-xs font-black enabled:cursor-pointer group">
                         <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> 예정 일정 {visibleSchedules.length}개</span>
-                        {visibleSchedules.length > 0 && <span className="flex items-center gap-1 text-[10px] text-gray-600 group-hover:text-black">{isScheduleListExpanded ? '접기' : '펼치기'}<ChevronDown className={clsx("w-3.5 h-3.5 transition-transform", isScheduleListExpanded && "rotate-180")} /></span>}
+                        {visibleSchedules.length > 0 && <span className="flex items-center gap-1 text-[10px] opacity-70 group-hover:opacity-100">{isScheduleListExpanded ? '접기' : '펼치기'}<ChevronDown className={clsx("w-3.5 h-3.5 transition-transform", isScheduleListExpanded && "rotate-180")} /></span>}
                       </button>
-                      {visibleSchedules.length === 0 ? <div className="py-3 text-center text-xs text-gray-600">예정된 일정이 없습니다.</div> : isScheduleListExpanded ? (
+                      {visibleSchedules.length === 0 ? <div className="py-3 text-center text-xs opacity-65">예정된 일정이 없습니다.</div> : isScheduleListExpanded ? (
                         <div className="space-y-2">{visibleSchedules.map((sched) => (
-                          <div key={sched.id} className="p-3 bg-[#B1D8C7]/80 rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-2xs animate-in fade-in slide-in-from-top-1">
-                            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2"><div className="truncate text-xs font-extrabold text-gray-900">{sched.title}</div><div className="shrink-0 text-[10px] font-bold text-gray-600">{formatCompactScheduleDate(sched)}</div></div>
+                          <div key={sched.id} className="p-3 rounded-2xl flex items-center gap-3 border border-current/20 shadow-2xs animate-in fade-in slide-in-from-top-1" style={reservationControlStyle}>
+                            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2"><div className="truncate text-xs font-extrabold">{sched.title}</div><div className="shrink-0 text-[10px] font-bold opacity-65">{formatCompactScheduleDate(sched)}</div></div>
                           </div>
                         ))}</div>
                       ) : (
                         <button type="button" onClick={() => setExpandedReservationIds((current) => ({ ...current, [block.id]: true }))} className="relative block w-full h-[78px] cursor-pointer group" aria-label={`예정 일정 ${visibleSchedules.length}개 펼치기`}>
                           {visibleSchedules.slice(0, 3).reverse().map((sched, reverseIndex, visible) => {
                             const depth = visible.length - reverseIndex - 1;
-                            return <span key={sched.id} className="absolute inset-x-0 top-0 p-3 bg-[#B1D8C7] rounded-2xl flex items-center gap-3 border border-[#9FCDBA] shadow-sm text-left transition-transform group-hover:-translate-y-1" style={{ transform: `translateY(${depth * 7}px) scale(${1 - depth * 0.025})`, zIndex: 10 - depth }}><span className="flex min-w-0 flex-1 items-baseline justify-between gap-2"><span className="truncate text-xs font-extrabold text-gray-900">{sched.title}</span><span className="shrink-0 text-[10px] font-bold text-gray-600">{formatCompactScheduleDate(sched)}</span></span><ChevronDown className="w-4 h-4 text-gray-600 shrink-0" /></span>;
+                            return <span key={sched.id} className="absolute inset-x-0 top-0 p-3 rounded-2xl flex items-center gap-3 border border-current/20 shadow-sm text-left transition-transform group-hover:-translate-y-1" style={{ ...reservationControlStyle, transform: `translateY(${depth * 7}px) scale(${1 - depth * 0.025})`, zIndex: 10 - depth }}><span className="flex min-w-0 flex-1 items-baseline justify-between gap-2"><span className="truncate text-xs font-extrabold">{sched.title}</span><span className="shrink-0 text-[10px] font-bold opacity-65">{formatCompactScheduleDate(sched)}</span></span><ChevronDown className="w-4 h-4 opacity-65 shrink-0" /></span>;
                           })}
                         </button>
                       )}
@@ -1176,22 +1209,24 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
               }
 
               if (block.type === 'customer_info') {
-                const config = block.customerInfoConfig || {
-                  mainText: 'subscribe to our letter',
-                  detailText: 'sent every monday',
-                  receiveEmail: true,
-                  receivePhone: false,
-                  receiveName: false
+                const storedConfig = block.customerInfoConfig;
+                const config = {
+                  ...(storedConfig || { receiveEmail: true, receivePhone: false, receiveName: false }),
+                  mainText: !storedConfig?.mainText || storedConfig.mainText === 'subscribe to our letter' ? '소식을 받아보세요' : storedConfig.mainText,
+                  detailText: storedConfig?.detailText === 'sent every monday' ? '새 소식을 정기적으로 보내드려요' : (storedConfig?.detailText || ''),
+                  submitButtonText: !storedConfig?.submitButtonText || storedConfig.submitButtonText === 'Submit' ? '제출하기' : storedConfig.submitButtonText,
                 };
 
                 return (
-                  <div key={block.id} style={getCustomLinkStyle(block)}>
-                    <CustomerInfoVisitorCard
-                      block={block}
-                      config={config}
-                      ownerUid={props.ownerUid}
-                    />
-                  </div>
+                  <CustomerInfoVisitorCard
+                    key={block.id}
+                    block={block}
+                    config={config}
+                    ownerUid={props.ownerUid}
+                    style={getCustomLinkStyle(block)}
+                    themeActionColor={block.buttonTextColor || buttonTextColor || pageTextColor || '#111827'}
+                    themeActionTextColor={block.buttonColor || buttonColor || '#FFFFFF'}
+                  />
                 );
               }
 
@@ -1199,7 +1234,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 const MessageIcon = getLinkIcon(block.iconName || 'message-circle');
                 return (
                   <a key={block.id} href={`/${profile.username || 'preview'}/message`} onClick={() => recordLinkClick(block.id)} className={buttonClass} style={getCustomLinkStyle(block)}>
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black/5" style={getCustomLinkIconContainerStyle(block)}><MessageIcon className="h-5 w-5" /></span>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full" style={getThemedLinkIconContainerStyle(block)}><MessageIcon className="h-5 w-5" /></span>
                     <span className="flex-1 text-center text-[15px] font-bold">{block.title || '익명 메시지 보내기'}</span>
                     <MoreHorizontal className="h-5 w-5 shrink-0 opacity-60" />
                   </a>
@@ -1224,7 +1259,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   );
                 }
                 return (
-                  <a key={block.id} href={productUrl} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordLinkClick(block.id)} className={clsx(buttonClass, "group !block overflow-hidden !p-0 text-left")} style={getCustomLinkStyle(block)}>
+                  <a key={block.id} href={productUrl} target="_blank" rel="noopener noreferrer sponsored" onClick={() => recordLinkClick(block.id)} className={clsx(buttonClass, "group !block overflow-hidden !p-0 text-left")} style={getFixedRadiusBlockStyle(block)}>
                     <div className="aspect-[16/10] w-full overflow-hidden bg-black/5">{affiliateImageUrl ? <img src={affiliateImageUrl} alt={block.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><ShoppingBag className="h-10 w-10 opacity-30" /></div>}</div>
                     <div className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><p className="truncate text-[15px] font-extrabold">{block.title || (store.language === 'ko' ? '추천 상품' : 'Recommended product')}</p>{formattedPrice && <p className="mt-1 text-sm font-bold opacity-70">{formattedPrice}</p>}</div><ExternalLink className="h-5 w-5 shrink-0 opacity-50 transition group-hover:opacity-100" /></div>
                   </a>
@@ -1236,7 +1271,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 if (!mapQuery) return null;
                 if (block.mapConfig?.displayMode === 'classic') {
                   return (
-                    <button key={block.id} type="button" onClick={(event) => handleOpenMap(event, block)} className={buttonClass} style={getCustomLinkStyle(block)}>
+                    <button key={block.id} type="button" onClick={(event) => handleOpenMap(event, block)} className={buttonClass} style={getFixedRadiusBlockStyle(block)}>
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/5"><MapPin className="h-5 w-5" /></span>
                       <span className="min-w-0 flex-1 text-center"><span className="block truncate text-[15px] font-bold">{block.title || (store.language === 'ko' ? '오시는 길' : 'Location')}</span><span className="mt-0.5 block truncate text-xs font-medium opacity-65">{mapQuery}</span></span>
                       <MapPin className="h-4 w-4 shrink-0 opacity-45" />
@@ -1244,7 +1279,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                   );
                 }
                 return (
-                  <button key={block.id} type="button" onClick={(event) => handleOpenMap(event, block)} className={clsx(buttonClass, "group !block overflow-hidden !p-0 text-left")} style={getCustomLinkStyle(block)}>
+                  <button key={block.id} type="button" onClick={(event) => handleOpenMap(event, block)} className={clsx(buttonClass, "group !block overflow-hidden !p-0 text-left")} style={getFixedRadiusBlockStyle(block)}>
                     <MapIllustration className="h-36 w-full transition duration-300 group-hover:scale-[1.02]" />
                     <span className="flex items-center gap-3 p-4"><MapPin className="h-5 w-5 shrink-0" /><span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-bold">{block.title || (store.language === 'ko' ? '지도에서 보기' : 'View map')}</span><span className="mt-0.5 block truncate text-xs font-medium opacity-65">{mapQuery}</span></span><MapPin className="h-4 w-4 shrink-0 opacity-50" /></span>
                   </button>
@@ -1264,7 +1299,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     style={getCustomLinkStyle(block)}
                   >
                     {!isNone && (
-                      <div className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center shrink-0 overflow-hidden" style={getCustomLinkIconContainerStyle(block)}>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={getThemedLinkIconContainerStyle(block)}>
                         {isImage && block.icon ? (
                           <img src={block.icon} alt={block.title} className="w-full h-full object-cover" />
                         ) : (
@@ -1279,7 +1314,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       type="button"
                       onClick={(e) => handleOpenShareModal(e, block)}
                       className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
-                      title="Share link"
+                      title="링크 공유"
                     >
                       <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
                     </button>
@@ -1301,13 +1336,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 >
                   {!isNone && (
                     <div
-                      className={clsx(
-                        "w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden",
-                        templateValue.startsWith("neo-")
-                          ? "bg-amber-300 border-2 border-black text-black shadow-xs font-bold"
-                          : "bg-black/5"
-                      )}
-                      style={getCustomLinkIconContainerStyle(block)}
+                      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+                      style={getThemedLinkIconContainerStyle(block)}
                     >
                       {isImage && block.icon ? (
                         <img
@@ -1316,32 +1346,25 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <IconComp
-                          className={clsx(
-                            "w-5 h-5",
-                            templateValue.startsWith("neo-") && !block.customStyle?.iconColor
-                              ? "text-black"
-                              : undefined
-                          )}
-                        />
+                        <IconComp className="w-5 h-5" />
                       )}
                     </div>
                   )}
                   <span className="flex-1 text-center font-bold text-[15px]">
-                    {block.title || "Link Title"}
+                    {block.title || "링크 제목"}
                   </span>
                   <button
                     type="button"
                     onClick={(e) => handleOpenShareModal(e, block)}
                     className="w-8 h-8 flex items-center justify-center shrink-0 hover:bg-black/10 rounded-full transition cursor-pointer z-10"
-                    title="Share link"
+                    title="링크 공유"
                   >
                     <MoreHorizontal className="w-5 h-5 opacity-60 hover:opacity-100" />
                   </button>
                 </a>
               );
             })}
-            {customLinks.length === 0 && (
+            {customLinks.filter((block) => block.isVisible !== false).length === 0 && (
               <div
                 className={clsx(
                   "text-center py-4 opacity-50 text-sm font-medium",
@@ -1369,8 +1392,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 <span className="cursor-pointer hover:underline">
                   Cookie Preferences
                 </span>{" "}
-                •<span className="cursor-pointer hover:underline">Report</span> •
-                <span className="cursor-pointer hover:underline">Privacy</span>
+                •<span className="cursor-pointer hover:underline">신고</span> •
+                <span className="cursor-pointer hover:underline">개인정보 처리방침</span>
               </div>
             </div>
           )}
@@ -1474,6 +1497,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           onClose={() => setActiveDonationBlock(null)}
           donationConfig={activeDonationBlock.donationConfig}
           creatorName={profile.name || profile.username || '크리에이터'}
+          ownerUid={props.ownerUid}
+          blockId={activeDonationBlock.id}
+          targetUsername={profile.username}
         />
       )}
 
@@ -1484,6 +1510,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           onClose={() => setActiveSalesBlock(null)}
           block={activeSalesBlock}
           profile={profile}
+          ownerUid={props.ownerUid}
         />
       )}
     </>

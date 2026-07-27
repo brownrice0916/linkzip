@@ -30,6 +30,7 @@ import { logout } from "../lib/firebase";
 import clsx from "clsx";
 import { t } from "../lib/i18n";
 import { saveUserProfilesData } from "../services/userService";
+import { deleteOwnedProfileImage } from "../services/storageService";
 import AdminProfilesHome from "../components/admin/AdminProfilesHome";
 
 const LinksEditor = lazy(() => import("../components/admin/LinksEditor"));
@@ -124,6 +125,7 @@ const Admin = () => {
     if (!state.isDirty || isSaving) return false;
     setIsSaving(true);
     setSaveError('');
+    const previousProfile = state.savedSnapshot?.profile;
     try {
       state.syncActiveProfileWorkspace();
       const latestState = useStore.getState();
@@ -135,6 +137,12 @@ const Admin = () => {
           instagramAccount: latestState.instagramAccount,
           pageViews: latestState.pageViews,
         });
+        const usedProfileImages = new Set(latestState.profileWorkspaces.flatMap((workspace) => [workspace.profile.avatarUrl, workspace.profile.bannerUrl, workspace.profile.logoUrl].filter(Boolean) as string[]));
+        await Promise.all([
+          deleteOwnedProfileImage(previousProfile?.avatarUrl, state.user.uid, usedProfileImages),
+          deleteOwnedProfileImage(previousProfile?.bannerUrl, state.user.uid, usedProfileImages),
+          deleteOwnedProfileImage(previousProfile?.logoUrl, state.user.uid, usedProfileImages),
+        ]);
       }
 
       // Backup save to localStorage
@@ -582,7 +590,7 @@ const Admin = () => {
         {/* Sleek Borderless Mobile Device Container */}
         <div data-map-popup-container className="w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-[0_18px_48px_rgba(15,23,42,0.14)] relative flex flex-col overflow-hidden border border-gray-200">
           <div className="w-full h-full overflow-y-auto scrollbar-none">
-            <LinkTreePreview />
+            <LinkTreePreview stickerEditable={activeTab === 'appearance'} />
           </div>
         </div>
       </div>

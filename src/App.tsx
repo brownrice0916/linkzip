@@ -77,6 +77,8 @@ function App() {
                 pageTextOpacity: data.design?.pageTextOpacity ?? 100,
                 backgroundOpacity: data.design?.backgroundOpacity ?? 100,
                 sticker: data.design?.sticker || '',
+                stickerX: data.design?.stickerX ?? 62,
+                stickerY: data.design?.stickerY ?? 22,
               },
             };
             const profileWorkspaces = Array.isArray(data.profileWorkspaces) && data.profileWorkspaces.length > 0
@@ -103,6 +105,8 @@ function App() {
               pageTextOpacity: data.design?.pageTextOpacity ?? 100,
               backgroundOpacity: data.design?.backgroundOpacity ?? 100,
               sticker: data.design?.sticker || '',
+              stickerX: data.design?.stickerX ?? 62,
+              stickerY: data.design?.stickerY ?? 22,
               teamMembers: data.teamMembers || [],
               dmRules: data.dmRules || localBackup?.dmRules || [],
               alimtalkSettings: data.alimtalkSettings,

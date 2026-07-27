@@ -2,24 +2,32 @@ import React, { useState } from 'react';
 import { X, CreditCard, Check, CheckCircle2 } from 'lucide-react';
 import clsx from 'clsx';
 import type { DonationConfig } from '../store/useStore';
+import { recordDonation } from '../services/commerceService';
 
 interface DonationVisitorModalProps {
   isOpen: boolean;
   onClose: () => void;
   donationConfig?: DonationConfig;
   creatorName: string;
+  ownerUid?: string;
+  blockId: string;
+  targetUsername: string;
 }
 
 export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
   isOpen,
   onClose,
   donationConfig,
-  creatorName
+  creatorName,
+  ownerUid,
+  blockId,
+  targetUsername,
 }) => {
   const minAmount = donationConfig?.minAmount || 1000;
   const [step, setStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState<number>(minAmount);
   const [message, setMessage] = useState('');
+  const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'app_card' | 'direct_card' | 'naver' | 'kakao' | 'toss'>('toss');
   const [isConsentChecked, setIsConsentChecked] = useState(true);
@@ -27,7 +35,7 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
   const [paying, setPaying] = useState(false);
   const [paidSuccess, setPaidSuccess] = useState(false);
 
-  const mainText = donationConfig?.mainText || '후원하기 (Donation)';
+  const mainText = donationConfig?.mainText || '도네이션';
   const detailText = donationConfig?.detailText || "If you'd like to make an additional donation, please adjust the amount!";
 
   const handleDirectInicisPayment = () => {
@@ -52,9 +60,23 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
         amount: amount,
         buyer_email: 'donor@linkzip.kr',
         buyer_name: '후원자'
-      }, (rsp: any) => {
+      }, async (rsp: any) => {
         setPaying(false);
         if (rsp && rsp.success) {
+          try {
+            if (ownerUid) {
+              await recordDonation(ownerUid, {
+                blockId,
+                targetUsername,
+                nickname: nickname.trim() || '익명 후원자',
+                message: message.trim(),
+                amount,
+                paymentId: rsp.imp_uid || rsp.merchant_uid || `don_${Date.now()}`,
+              });
+            }
+          } catch (error) {
+            console.error('Failed to save donation record:', error);
+          }
           setPaidSuccess(true);
           setTimeout(() => {
             setPaidSuccess(false);
@@ -138,11 +160,20 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
             </div>
 
             {/* Leave a message (optional) */}
-            <div>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="후원자 닉네임 (미입력 시 익명 후원자)"
+                maxLength={50}
+                className="w-full rounded-2xl border border-gray-200 p-3.5 text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black"
+              />
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Leave a message (optional)"
+                placeholder="응원글을 남겨주세요 (선택)"
+                maxLength={300}
                 rows={2}
                 className="w-full p-3.5 border border-gray-200 rounded-2xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black resize-none"
               />

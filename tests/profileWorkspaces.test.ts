@@ -10,7 +10,10 @@ test('resets link overrides recursively when applying a theme', () => {
       type: 'collection',
       buttonColor: '#ff0000',
       customStyle: { borderRadius: 12, opacity: 50 },
-      links: [{ id: 'nested', title: '내부 링크', type: 'link', buttonTextColor: '#00ff00', customStyle: { fontSize: 18 } }],
+      links: [
+        { id: 'nested', title: '내부 링크', type: 'link', buttonTextColor: '#00ff00', customStyle: { fontSize: 18 } },
+        { id: 'form', title: '정보 수집', type: 'customer_info', customerInfoConfig: { mainText: '소식 받기', submitButtonText: '제출하기', submitButtonColor: '#ff0000', submitButtonTextColor: '#ffffff' } },
+      ],
     },
   ]);
 
@@ -22,6 +25,9 @@ test('resets link overrides recursively when applying a theme', () => {
   assert.equal(Object.hasOwn(links[0], 'customStyle'), false);
   assert.equal(Object.hasOwn(links[0].links?.[0] || {}, 'buttonTextColor'), false);
   assert.equal(Object.hasOwn(links[0].links?.[0] || {}, 'customStyle'), false);
+  assert.equal(links[0].links?.[1].customerInfoConfig?.submitButtonText, '제출하기');
+  assert.equal(Object.hasOwn(links[0].links?.[1].customerInfoConfig || {}, 'submitButtonColor'), false);
+  assert.equal(Object.hasOwn(links[0].links?.[1].customerInfoConfig || {}, 'submitButtonTextColor'), false);
 });
 
 test('applies global button design over individual link overrides', () => {

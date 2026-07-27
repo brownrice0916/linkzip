@@ -38,7 +38,9 @@ import {
   Store,
   Briefcase,
   Tag,
-  Paperclip
+  Paperclip,
+  Megaphone,
+  ClipboardList
 } from 'lucide-react';
 
 import {
@@ -179,7 +181,9 @@ export const iconRegistry: Record<string, IconComponent> = {
   store: Store,
   briefcase: Briefcase,
   tag: Tag,
-  paperclip: Paperclip
+  paperclip: Paperclip,
+  megaphone: Megaphone,
+  'clipboard-list': ClipboardList
 };
 
 export const availableIcons: IconItem[] = [

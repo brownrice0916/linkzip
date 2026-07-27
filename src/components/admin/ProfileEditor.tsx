@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore';
 import { User, FileText, UploadCloud, Image as ImageIcon, Type, Palette, Plus, Check } from 'lucide-react';
 import { uploadPublicImage } from '../../services/storageService';
 import clsx from 'clsx';
+import { GiphyPicker } from './GiphyPicker';
 
 const layouts = [
   { id: 'classic', label: 'Classic', desc: 'Standard circular avatar' },
@@ -25,6 +26,7 @@ const ProfileEditor = () => {
   const { profile, setProfile, user, language } = useStore();
   const isKo = language === 'ko';
   const [uploadingField, setUploadingField] = useState<'avatar' | 'banner' | 'logo' | null>(null);
+  const [showBannerGifPicker, setShowBannerGifPicker] = useState(false);
 
   const activeLayout = profile.profileLayout || 'classic';
   const activeTitleStyle = profile.titleStyle || 'text';
@@ -156,10 +158,11 @@ const ProfileEditor = () => {
 
           {/* Banner Upload Option if layout === 'banner' */}
           {activeLayout === 'banner' && (
-            <div className="flex items-center justify-between pt-2">
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">{isKo ? '배너 커버 이미지' : 'Banner cover image'}</h3>
-                <p className="text-xs text-gray-400">{isKo ? '프로필 뒤에 표시할 배경 이미지입니다' : 'Background photo behind profile'}</p>
+                <p className="text-xs text-gray-400">{isKo ? '내 파일 또는 움직이는 GIF를 사용할 수 있습니다' : 'Use your own file or an animated GIF'}</p>
               </div>
 
               <div className="relative w-24 h-14 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
@@ -176,6 +179,9 @@ const ProfileEditor = () => {
                   disabled={uploadingField === 'banner'}
                 />
               </div>
+              </div>
+              <button type="button" onClick={() => setShowBannerGifPicker((open) => !open)} className={clsx("w-full rounded-2xl border py-3 text-xs font-black transition", showBannerGifPicker ? "border-black bg-black text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400")}>{showBannerGifPicker ? 'GIF 검색 닫기' : 'GIPHY GIF 검색'}</button>
+              {showBannerGifPicker && <GiphyPicker kind="gifs" onSelect={(url) => { setProfile({ ...useStore.getState().profile, bannerUrl: url }); setShowBannerGifPicker(false); }} />}
             </div>
           )}
         </div>

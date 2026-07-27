@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { X, ShoppingBag, Download, CheckCircle2, Copy, Check, CreditCard, ShieldCheck } from 'lucide-react';
 import type { CustomLink, UserProfile } from '../store/useStore';
+import { createSalesOrder } from '../services/commerceService';
 
 interface SalesVisitorModalProps {
   isOpen: boolean;
   onClose: () => void;
   block: CustomLink;
   profile: UserProfile;
+  ownerUid?: string;
 }
 
 export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({
   isOpen,
   onClose,
   block,
-  profile
+  profile,
+  ownerUid,
 }) => {
   const config = block.salesConfig || {
-    mainText: block.title || '디지털 상품 판매',
+    mainText: block.title || '실물 상품 판매',
     description: '상품 설명을 확인해주세요.',
     products: []
   };
@@ -24,6 +27,11 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({
   const [selectedProductIndex, setSelectedProductIndex] = useState(0);
   const [copiedAccount, setCopiedAccount] = useState(false);
   const [purchased, setPurchased] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerContact, setBuyerContact] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
 
   const activeProduct = config.products?.[selectedProductIndex] || {
     id: 'prod-1',
@@ -49,6 +57,45 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({
     setTimeout(() => setCopiedAccount(false), 2000);
   };
 
+  const handlePurchaseRequest = async () => {
+    if (!buyerName.trim() || !buyerContact.trim()) {
+      alert('구매자 이름과 연락처를 입력해주세요.');
+      return;
+    }
+    if (config.salesType === 'digital_file' && !buyerEmail.trim()) {
+      alert('파일을 받을 이메일을 입력해주세요.');
+      return;
+    }
+    if (config.salesType === 'product' && !shippingAddress.trim()) {
+      alert('상품을 받을 배송지를 입력해주세요.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      if (ownerUid) {
+        await createSalesOrder(ownerUid, {
+          blockId: block.id,
+          targetUsername: profile.username,
+          productId: activeProduct.id,
+          productName: activeProduct.name,
+          amount: activeProduct.discountPrice ?? activeProduct.price,
+          salesType: config.salesType || 'product',
+          buyerName: buyerName.trim(),
+          buyerContact: buyerContact.trim(),
+          buyerEmail: buyerEmail.trim(),
+          shippingAddress: shippingAddress.trim(),
+        });
+      }
+      setPurchased(true);
+    } catch (error) {
+      console.error('Failed to create sales order:', error);
+      alert('구매 신청을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -62,7 +109,7 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-900 tracking-tight">{config.mainText || '디지털 상품 판매'}</h2>
+              <h2 className="text-lg font-black text-gray-900 tracking-tight">{config.mainText || (config.salesType === 'digital_file' ? '디지털 파일 판매' : '실물 상품 판매')}</h2>
               <p className="text-xs text-gray-500 font-semibold">{profile.name || profile.username} 님의 상품 스토어</p>
             </div>
           </div>
@@ -167,13 +214,21 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({
               </div>
             )}
 
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <input type="text" value={buyerName} onChange={(event) => setBuyerName(event.target.value)} placeholder="구매자 이름" className="w-full rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black focus:ring-2 focus:ring-black/10" />
+              <input type="tel" value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="연락처" className="w-full rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black focus:ring-2 focus:ring-black/10" />
+              <input type="email" value={buyerEmail} onChange={(event) => setBuyerEmail(event.target.value)} placeholder={config.salesType === 'digital_file' ? '파일을 받을 이메일' : '이메일 (선택)'} className="w-full rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black focus:ring-2 focus:ring-black/10 sm:col-span-2" />
+              {config.salesType === 'product' && <textarea value={shippingAddress} onChange={(event) => setShippingAddress(event.target.value)} placeholder="배송지 주소" rows={2} className="w-full resize-none rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black focus:ring-2 focus:ring-black/10 sm:col-span-2" />}
+            </div>
+
             {/* Action Button */}
             <button
               type="button"
-              onClick={() => setPurchased(true)}
+              onClick={() => void handlePurchaseRequest()}
+              disabled={submitting}
               className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
             >
-              <span>{activeProduct.price.toLocaleString()} KRW 구매하기 / 입금 안내</span>
+              <span>{submitting ? '구매 신청 저장 중...' : `${(activeProduct.discountPrice ?? activeProduct.price).toLocaleString()}원 구매 신청 / 입금 안내`}</span>
             </button>
 
           </div>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User } from 'firebase/auth';
 import { applyLinkClicks } from '../domain/profileData.ts';
+import { getThemeDesignPreset } from '../domain/themePresets.ts';
 
 export interface SocialLink {
   id: string;
@@ -52,6 +53,7 @@ export interface CustomerInfoConfig {
   receiveName?: boolean;
   submitButtonText?: string;
   submitButtonColor?: string;
+  submitButtonTextColor?: string;
 }
 
 export interface CollectedCustomerData {
@@ -152,7 +154,7 @@ export interface CustomLink {
 }
 
 export interface LinkButtonStyle {
-  fontFamily?: 'inherit' | 'sans' | 'serif' | 'mono';
+  fontFamily?: string;
   fontSize?: number;
   fontWeight?: 400 | 500 | 600 | 700 | 800 | 900;
   borderColor?: string;
@@ -164,6 +166,10 @@ export interface LinkButtonStyle {
   iconOpacity?: number;
   iconBackgroundColor?: string;
   iconBackgroundOpacity?: number;
+  calendarButtonColor?: string;
+  calendarButtonOpacity?: number;
+  calendarButtonTextColor?: string;
+  calendarButtonTextOpacity?: number;
   shadow?: 'inherit' | 'none' | 'soft' | 'medium' | 'strong';
 }
 
@@ -187,6 +193,8 @@ export interface DesignSettings {
   pageTextOpacity?: number;
   backgroundOpacity?: number;
   sticker?: string;
+  stickerX?: number;
+  stickerY?: number;
 }
 
 export interface VerifiedAccountInfo {
@@ -261,6 +269,8 @@ export interface AppStateSnapshot {
   pageTextOpacity?: number;
   backgroundOpacity?: number;
   sticker?: string;
+  stickerX?: number;
+  stickerY?: number;
   teamMembers?: TeamMember[];
   dmRules?: DMAutomationRule[];
   alimtalkSettings?: AlimtalkSettings;
@@ -308,6 +318,8 @@ interface AppState {
   pageTextOpacity?: number;
   backgroundOpacity?: number;
   sticker?: string;
+  stickerX?: number;
+  stickerY?: number;
 
   // Growth & Enterprise Data
   teamMembers: TeamMember[];
@@ -399,6 +411,8 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   pageTextOpacity: state.pageTextOpacity,
   backgroundOpacity: state.backgroundOpacity,
   sticker: state.sticker,
+  stickerX: state.stickerX,
+  stickerY: state.stickerY,
   teamMembers: JSON.parse(JSON.stringify(state.teamMembers || [])),
   dmRules: JSON.parse(JSON.stringify(state.dmRules || [])),
   alimtalkSettings: JSON.parse(JSON.stringify(state.alimtalkSettings || {})),
@@ -427,31 +441,41 @@ const getWorkspaceFromState = (state: any, id = state.activeProfileId || 'primar
     pageTextOpacity: state.pageTextOpacity,
     backgroundOpacity: state.backgroundOpacity,
     sticker: state.sticker,
+    stickerX: state.stickerX,
+    stickerY: state.stickerY,
   },
   createdAt: state.profileWorkspaces?.find((workspace: ProfileWorkspace) => workspace.id === id)?.createdAt || new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
 
-const getStateFromWorkspace = (workspace: ProfileWorkspace) => ({
+const getStateFromWorkspace = (workspace: ProfileWorkspace) => {
+  const preset = getThemeDesignPreset(workspace.templateValue || 'minimalist');
+  const usePresetDefaults = (workspace.templateType || 'preset') === 'preset' && (
+    !workspace.design?.buttonColor || !workspace.design?.buttonTextColor || !workspace.design?.pageTextColor
+  );
+  return ({
   profile: JSON.parse(JSON.stringify(workspace.profile)),
   templateType: workspace.templateType || 'preset',
   templateValue: workspace.templateValue || 'minimalist',
   socialLinks: JSON.parse(JSON.stringify(workspace.socialLinks || [])),
   customLinks: JSON.parse(JSON.stringify(workspace.customLinks || [])),
-  buttonStyle: workspace.design?.buttonStyle || 'solid',
-  buttonRoundness: workspace.design?.buttonRoundness || 'full',
-  buttonShadow: workspace.design?.buttonShadow || 'soft',
-  buttonColor: workspace.design?.buttonColor,
-  buttonTextColor: workspace.design?.buttonTextColor,
-  buttonOpacity: workspace.design?.buttonOpacity ?? 100,
-  buttonTextOpacity: workspace.design?.buttonTextOpacity ?? 100,
-  fontFamily: workspace.design?.fontFamily || 'Inter',
-  titleFontFamily: workspace.design?.titleFontFamily || '',
-  pageTextColor: workspace.design?.pageTextColor,
-  pageTextOpacity: workspace.design?.pageTextOpacity ?? 100,
-  backgroundOpacity: workspace.design?.backgroundOpacity ?? 100,
-  sticker: workspace.design?.sticker || '',
-});
+  buttonStyle: usePresetDefaults ? preset.buttonStyle : (workspace.design?.buttonStyle ?? preset.buttonStyle),
+  buttonRoundness: usePresetDefaults ? preset.buttonRoundness : (workspace.design?.buttonRoundness ?? preset.buttonRoundness),
+  buttonShadow: usePresetDefaults ? preset.buttonShadow : (workspace.design?.buttonShadow ?? preset.buttonShadow),
+  buttonColor: usePresetDefaults ? preset.buttonColor : (workspace.design?.buttonColor || preset.buttonColor),
+  buttonTextColor: usePresetDefaults ? preset.buttonTextColor : (workspace.design?.buttonTextColor || preset.buttonTextColor),
+  buttonOpacity: usePresetDefaults ? preset.buttonOpacity : (workspace.design?.buttonOpacity ?? preset.buttonOpacity),
+  buttonTextOpacity: usePresetDefaults ? preset.buttonTextOpacity : (workspace.design?.buttonTextOpacity ?? preset.buttonTextOpacity),
+  fontFamily: usePresetDefaults ? preset.fontFamily : (workspace.design?.fontFamily || preset.fontFamily),
+  titleFontFamily: usePresetDefaults ? preset.titleFontFamily : (workspace.design?.titleFontFamily ?? preset.titleFontFamily),
+  pageTextColor: usePresetDefaults ? preset.pageTextColor : (workspace.design?.pageTextColor || preset.pageTextColor),
+  pageTextOpacity: usePresetDefaults ? preset.pageTextOpacity : (workspace.design?.pageTextOpacity ?? preset.pageTextOpacity),
+  backgroundOpacity: usePresetDefaults ? preset.backgroundOpacity : (workspace.design?.backgroundOpacity ?? preset.backgroundOpacity),
+  sticker: usePresetDefaults ? preset.sticker : (workspace.design?.sticker ?? preset.sticker),
+  stickerX: workspace.design?.stickerX ?? 62,
+  stickerY: workspace.design?.stickerY ?? 22,
+  });
+};
 
 const recursivelyUpdateLink = (links: CustomLink[], id: string, updates: Partial<CustomLink>): CustomLink[] => {
   return links.map(link => {
@@ -472,8 +496,19 @@ export const resetLinkThemeOverrides = (links: CustomLink[]): CustomLink[] => li
     customStyle: _customStyle,
     ...rest
   } = link;
+  const customerInfoConfig = link.customerInfoConfig
+    ? (() => {
+        const {
+          submitButtonColor: _submitButtonColor,
+          submitButtonTextColor: _submitButtonTextColor,
+          ...config
+        } = link.customerInfoConfig;
+        return config;
+      })()
+    : undefined;
   return {
     ...rest,
+    ...(customerInfoConfig ? { customerInfoConfig } : {}),
     ...(link.links ? { links: resetLinkThemeOverrides(link.links) } : {}),
   };
 });
@@ -485,23 +520,6 @@ const recursivelyRemoveLink = (links: CustomLink[], id: string): CustomLink[] =>
     }
     return link;
   });
-};
-
-const themeFontMap: Record<string, string> = {
-  'minimalist': 'Inter',
-  'neon-dark': 'Space Grotesk',
-  'soft-gradient': 'Outfit',
-  'air': 'DM Sans',
-  'blocks': 'Syne',
-  'bloom': 'Lora',
-  'sunbloom': 'Albert Sans',
-  'neo-pop': 'Bricolage Grotesque',
-  'neo-sunshine': 'Black Han Sans',
-  'neo-cyber': 'Space Mono',
-  'neo-mint': 'Pretendard',
-  'groove': 'Epilogue',
-  'lake': 'IBM Plex Sans',
-  'nourish': 'Bitter',
 };
 
 export const useStore = create<AppState>((set) => ({
@@ -526,6 +544,8 @@ export const useStore = create<AppState>((set) => ({
   fontFamily: 'Inter',
   titleFontFamily: '',
   sticker: '',
+  stickerX: 62,
+  stickerY: 22,
 
   teamMembers: [],
   dmRules: [],
@@ -558,24 +578,14 @@ export const useStore = create<AppState>((set) => ({
 
   setTemplate: (type, value) => set((state) => {
     const snap = getSnapshotFromState(state);
+    const preset = getThemeDesignPreset(value);
+    const { backgroundColor: _backgroundColor, ...presetDesign } = preset;
     return {
       templateType: type, 
       templateValue: value,
       ...(type === 'preset' ? {
-        buttonStyle: 'solid',
-        buttonRoundness: 'full',
-        buttonShadow: 'soft',
-        buttonColor: '',
-        buttonTextColor: '',
-        buttonOpacity: 100,
-        buttonTextOpacity: 100,
-        pageTextColor: '',
-        pageTextOpacity: 100,
-        backgroundOpacity: 100,
-        fontFamily: themeFontMap[value] || state.fontFamily,
-        titleFontFamily: '',
-        sticker: '',
-        profile: { ...state.profile, titleColor: '' },
+        ...presetDesign,
+        profile: { ...state.profile, titleColor: preset.pageTextColor },
         customLinks: resetLinkThemeOverrides(state.customLinks),
       } : {}),
       undoStack: [...state.undoStack, snap],

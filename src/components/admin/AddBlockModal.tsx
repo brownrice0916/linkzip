@@ -2,8 +2,8 @@ import {
   X, 
   Link2, 
   Megaphone, 
-  PenTool, 
-  CreditCard, 
+  BookOpen,
+  ClipboardList,
   ShoppingBag, 
   Heart, 
   CalendarCheck, 
@@ -68,7 +68,7 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           id: 'guestbook', 
           label: tr('방명록', 'Guestbook'),
           desc: tr('방문자가 응원 메시지나 댓글을 남길 수 있습니다.', 'Let visitors leave messages and comments.'),
-          icon: PenTool, 
+          icon: BookOpen,
           bgColor: 'bg-rose-500', 
           iconColor: 'text-white' 
         },
@@ -84,7 +84,7 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           id: 'customer_info', 
           label: tr('고객 정보 수집', 'Customer information'),
           desc: tr('방문자의 이메일이나 연락처를 수집합니다.', 'Collect visitor email addresses or contact details.'),
-          icon: CreditCard, 
+          icon: ClipboardList,
           bgColor: 'bg-blue-500', 
           iconColor: 'text-white' 
         },
@@ -94,9 +94,17 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
       title: tr('3. 수익화 및 비즈니스', '3. Monetization & business'),
       blocks: [
         { 
-          id: 'sales', 
-          label: tr('판매', 'Sales'),
-          desc: tr('디지털 파일이나 상품을 등록하고 판매합니다.', 'List and sell digital files or products.'),
+          id: 'digital_file_sales',
+          label: tr('디지털 파일 판매', 'Digital file sales'),
+          desc: tr('전자책, 이미지, 문서 등의 디지털 파일을 판매합니다.', 'Sell ebooks, images, documents, and other digital files.'),
+          icon: Download,
+          bgColor: 'bg-blue-600',
+          iconColor: 'text-white'
+        },
+        {
+          id: 'product_sales',
+          label: tr('실물 상품 판매', 'Physical product sales'),
+          desc: tr('배송이 필요한 실물 상품을 등록하고 판매합니다.', 'List and sell physical products that require delivery.'),
           icon: ShoppingBag, 
           bgColor: 'bg-indigo-500', 
           iconColor: 'text-white' 
@@ -111,7 +119,7 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
         },
         {
           id: 'map',
-          label: tr('지도', 'Map'),
+          label: tr('거주지', 'Location'),
           desc: tr('한글 장소명이나 주소를 검색해 지도를 표시합니다.', 'Search a place or address and display a map.'),
           icon: MapPinned,
           bgColor: 'bg-sky-600',
@@ -127,7 +135,7 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
         },
         { 
           id: 'reservation', 
-          label: tr('일정 달력 및 예약', 'Appointments'),
+          label: tr('캘린더', 'Calendar'),
           desc: tr('달력에 일정을 등록하고 예약을 받습니다.', 'Publish a calendar and accept appointments.'),
           icon: CalendarCheck, 
           bgColor: 'bg-emerald-600', 

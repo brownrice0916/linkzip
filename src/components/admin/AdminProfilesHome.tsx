@@ -46,6 +46,8 @@ const workspaceFromCurrentState = (state: ReturnType<typeof useStore.getState>):
     pageTextOpacity: state.pageTextOpacity,
     backgroundOpacity: state.backgroundOpacity,
     sticker: state.sticker,
+    stickerX: state.stickerX,
+    stickerY: state.stickerY,
   },
 });
 
@@ -60,7 +62,7 @@ const AdminProfilesHome: React.FC = () => {
 
   const workspaces = useMemo(
     () => state.profileWorkspaces.length > 0 ? state.profileWorkspaces : [workspaceFromCurrentState(state)],
-    [state.profileWorkspaces, state.activeProfileId, state.profile, state.templateType, state.templateValue, state.socialLinks, state.customLinks, state.buttonStyle, state.buttonRoundness, state.buttonShadow, state.buttonColor, state.buttonTextColor, state.buttonOpacity, state.buttonTextOpacity, state.fontFamily, state.titleFontFamily, state.pageTextColor, state.pageTextOpacity, state.backgroundOpacity, state.sticker],
+    [state.profileWorkspaces, state.activeProfileId, state.profile, state.templateType, state.templateValue, state.socialLinks, state.customLinks, state.buttonStyle, state.buttonRoundness, state.buttonShadow, state.buttonColor, state.buttonTextColor, state.buttonOpacity, state.buttonTextOpacity, state.fontFamily, state.titleFontFamily, state.pageTextColor, state.pageTextOpacity, state.backgroundOpacity, state.sticker, state.stickerX, state.stickerY],
   );
 
   const openWorkspace = (workspace: ProfileWorkspace) => {
