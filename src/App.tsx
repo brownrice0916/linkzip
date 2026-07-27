@@ -5,6 +5,7 @@ import { auth } from "./lib/firebase";
 import { useStore } from "./store/useStore";
 import { getUserByUid, saveUserData } from "./services/userService";
 import type { ProfileWorkspace } from "./store/useStore";
+import { normalizeMembershipPlan } from "./domain/membershipPlans";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const TemplateSelection = lazy(() => import("./pages/onboarding/TemplateSelection"));
@@ -112,6 +113,7 @@ function App() {
               alimtalkSettings: data.alimtalkSettings,
               instagramAccount: data.instagramAccount || localBackup?.instagramAccount || '',
               pageViews: data.pageViews || 0,
+              membershipPlan: normalizeMembershipPlan(data.membershipPlan),
             });
           } else if (localBackup) {
             loadData(localBackup);

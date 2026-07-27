@@ -579,7 +579,7 @@ const Admin = () => {
             <div className="admin-desktop-account-menu">
               <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
                 <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-gray-100">{state.profile.avatarUrl ? <img src={state.profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : <UserIcon className="h-full w-full p-2 text-gray-400" />}</div>
-                <div className="min-w-0"><p className="truncate text-sm font-black">{state.profile.name || state.profile.username}</p><p className="truncate text-[11px] font-semibold text-gray-400">linkzip.kr/{state.profile.username}</p></div>
+                <div className="min-w-0"><div className="flex items-center gap-1.5"><p className="truncate text-sm font-black">{state.profile.name || state.profile.username}</p><span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[8px] font-black uppercase text-gray-500">{state.membershipPlan}</span></div><p className="truncate text-[11px] font-semibold text-gray-400">linkzip.kr/{state.profile.username}</p></div>
               </div>
               <button type="button" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('home'); }}><LayoutGrid /><span>{state.language === 'ko' ? '프로필 목록' : 'All profiles'}</span></button>
               <button type="button" onClick={() => { setIsAccountMenuOpen(false); requestNavigation('plan'); }}><Crown /><span>{state.language === 'ko' ? '플랜 관리' : 'Plan management'}</span></button>

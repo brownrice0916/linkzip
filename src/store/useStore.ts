@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { User } from 'firebase/auth';
 import { applyLinkClicks } from '../domain/profileData.ts';
 import { getThemeDesignPreset } from '../domain/themePresets.ts';
+import type { MembershipPlan } from '../domain/membershipPlans.ts';
 
 export interface SocialLink {
   id: string;
@@ -294,6 +295,7 @@ interface AppState {
   // Authentication
   user: User | null;
   setUser: (user: User | null) => void;
+  membershipPlan: MembershipPlan;
 
   // Onboarding & Profile Data
   templateType: 'color' | 'preset';
@@ -525,6 +527,7 @@ const recursivelyRemoveLink = (links: CustomLink[], id: string): CustomLink[] =>
 export const useStore = create<AppState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
+  membershipPlan: 'basic',
 
   templateType: 'preset',
   templateValue: 'minimalist',
