@@ -528,15 +528,7 @@ export const useStore = create<AppState>((set) => ({
   sticker: '',
 
   teamMembers: [],
-  dmRules: [
-    {
-      id: 'rule-1',
-      keyword: '링크',
-      responseMessage: '안녕하세요! 요청하신 대표 링크 모음집 URL입니다: https://linkzip.kr/preview',
-      targetLinkUrl: 'https://linkzip.kr/preview',
-      isActive: true
-    }
-  ],
+  dmRules: [],
   alimtalkSettings: {
     apiKey: '',
     apiSecret: '',

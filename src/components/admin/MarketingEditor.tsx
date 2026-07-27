@@ -1,28 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useStore, type DMAutomationRule } from '../../store/useStore';
 import { 
   Send, 
-  MessageSquare, 
-  Sparkles, 
   Plus, 
   Trash2, 
-  Check, 
-  Settings, 
   Zap, 
   Bell, 
-  Phone, 
-  ShieldCheck, 
   ExternalLink,
-  ChevronRight,
   Bot,
-  HelpCircle,
   RotateCcw
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
-import { InstagramDmWizardModal } from './InstagramDmWizardModal';
-import { InstagramDmRuleCreateWizardModal } from './InstagramDmRuleCreateWizardModal';
 import { KakaoAlimtalkWizardModal } from './KakaoAlimtalkWizardModal';
 import clsx from 'clsx';
+import {
+  disconnectInstagramConnection,
+  getInstagramConnection,
+  saveInstagramRules,
+  startInstagramConnection,
+} from '../../services/instagramService';
 
 export const MarketingEditor: React.FC = () => {
   const state = useStore();
@@ -36,14 +32,104 @@ export const MarketingEditor: React.FC = () => {
     setAlimtalkSettings 
   } = state;
 
-  const [isDmWizardOpen, setIsDmWizardOpen] = useState(false);
-  const [isRuleCreateModalOpen, setIsRuleCreateModalOpen] = useState(false);
   const [isKakaoWizardOpen, setIsKakaoWizardOpen] = useState(false);
   const [showAdvancedKakaoInput, setShowAdvancedKakaoInput] = useState(false);
   const [testKakaoSent, setTestKakaoSent] = useState(false);
   const [isSyncingTemplates, setIsSyncingTemplates] = useState(false);
+  const [isInstagramLoading, setIsInstagramLoading] = useState(true);
+  const [instagramError, setInstagramError] = useState('');
+  const [rulesSaveState, setRulesSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const instagramStatusLoaded = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    const loadConnection = async () => {
+      setIsInstagramLoading(true);
+      setInstagramError('');
+      useStore.setState((current) => ({
+        instagramAccount: '',
+        dmRules: current.dmRules.filter((rule) => !(
+          rule.id === 'rule-1'
+          && rule.keyword === '링크'
+          && rule.targetLinkUrl === 'https://linkzip.kr/preview'
+        )),
+      }));
+      try {
+        const status = await getInstagramConnection();
+        if (!active) return;
+        useStore.setState({
+          instagramAccount: status.connected ? status.username || '연결된 계정' : '',
+          dmRules: status.connected ? status.rules || [] : [],
+        });
+        instagramStatusLoaded.current = true;
+
+        const result = new URLSearchParams(window.location.search).get('instagram');
+        if (result === 'connected') {
+          window.history.replaceState({}, '', window.location.pathname);
+        } else if (result === 'error') {
+          setInstagramError('인스타그램 연결을 완료하지 못했습니다. 앱 역할과 권한 설정을 확인해주세요.');
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      } catch (error) {
+        if (!active) return;
+        setInstagramError(
+          error instanceof Error && error.message !== 'internal'
+            ? error.message
+            : '인스타그램 연결 서버를 확인하지 못했습니다.',
+        );
+      } finally {
+        if (active) setIsInstagramLoading(false);
+      }
+    };
+    void loadConnection();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!instagramStatusLoaded.current || !instagramAccount) return;
+    const timeout = window.setTimeout(async () => {
+      setRulesSaveState('saving');
+      try {
+        await saveInstagramRules(dmRules);
+        setRulesSaveState('idle');
+      } catch (error) {
+        console.error('Failed to save Instagram automation rules', error);
+        setRulesSaveState('error');
+      }
+    }, 650);
+    return () => window.clearTimeout(timeout);
+  }, [dmRules, instagramAccount]);
+
+  const handleInstagramConnect = async () => {
+    setIsInstagramLoading(true);
+    setInstagramError('');
+    try {
+      await startInstagramConnection();
+    } catch (error) {
+      setInstagramError(
+        error instanceof Error && error.message !== 'internal'
+          ? error.message
+          : '인스타그램 로그인을 시작하지 못했습니다.',
+      );
+      setIsInstagramLoading(false);
+    }
+  };
+
+  const handleInstagramDisconnect = async () => {
+    if (!confirm('인스타그램 계정 연동을 해제하시겠습니까?')) return;
+    setIsInstagramLoading(true);
+    setInstagramError('');
+    try {
+      await disconnectInstagramConnection();
+      useStore.setState({ instagramAccount: '' });
+    } catch (error) {
+      setInstagramError(error instanceof Error ? error.message : '연동을 해제하지 못했습니다.');
+    } finally {
+      setIsInstagramLoading(false);
+    }
+  };
   
-  const [syncedTemplates, setSyncedTemplates] = useState([
+  const [syncedTemplates] = useState([
     { code: 'TP_LINKZIP_WELCOME_01', name: '👋 [기본] 회원가입 & 정보 등록 웰컴 알림톡', msg: '[LinkZip] 안녕하세요! 회원가입 및 정보 등록이 정상적으로 완료되었습니다.' },
     { code: 'TP_LINKZIP_DONATION_02', name: '🎁 [후원] 삼천원 후원 감사 알림톡', msg: '[LinkZip] 소중한 후원에 진심으로 감사드립니다! 따뜻한 마음 잊지 않겠습니다.' },
     { code: 'TP_LINKZIP_ORDER_03', name: '🛍️ [결제/다운로드] 디지털 파일 전송 알림톡', msg: '[LinkZip] 주문하신 상품 다운로드 링크입니다: https://linkzip.kr/preview' },
@@ -70,12 +156,21 @@ export const MarketingEditor: React.FC = () => {
       alert('키워드와 답장 문구를 입력해주세요.');
       return;
     }
+    if (newTargetLink.trim()) {
+      try {
+        const url = new URL(newTargetLink.trim());
+        if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error();
+      } catch {
+        alert('목표 URL은 http:// 또는 https://로 시작하는 올바른 주소를 입력해주세요.');
+        return;
+      }
+    }
 
     const newRule: DMAutomationRule = {
       id: `rule-${Date.now()}`,
       keyword: newKeyword.trim(),
       responseMessage: newResponseMessage.trim(),
-      targetLinkUrl: newTargetLink.trim() || 'https://linkzip.kr/preview',
+      targetLinkUrl: newTargetLink.trim(),
       isActive: true,
     };
 
@@ -114,34 +209,39 @@ export const MarketingEditor: React.FC = () => {
           <div className="flex items-center gap-2">
             {instagramAccount ? (
               <button
-                onClick={() => {
-                  if (confirm('인스타그램 계정 연동을 해제하시겠습니까?')) {
-                    state.setInstagramAccount(null);
-                  }
-                }}
+                onClick={() => void handleInstagramDisconnect()}
+                disabled={isInstagramLoading}
                 className="px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 text-xs font-bold rounded-xl transition cursor-pointer"
               >
                 연동 해제
               </button>
             ) : (
               <button
-                onClick={() => setIsDmWizardOpen(true)}
+                onClick={() => void handleInstagramConnect()}
+                disabled={isInstagramLoading}
                 className="px-4 py-2.5 bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
               >
                 <FaInstagram className="w-4 h-4" />
-                <span>1클릭 계정 연동</span>
+                <span>{isInstagramLoading ? '확인 중...' : '인스타그램 계정 연동'}</span>
               </button>
             )}
 
             <button
-              onClick={() => setIsRuleCreateModalOpen(true)}
-              className="px-4 py-2.5 bg-black hover:bg-gray-800 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+              onClick={() => setIsAddingRule(true)}
+              disabled={!instagramAccount || isInstagramLoading}
+              className="px-4 py-2.5 bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>DM 규칙 생성</span>
             </button>
           </div>
         </div>
+
+        {instagramError && (
+          <div role="alert" className="px-4 py-3 rounded-xl border border-red-200 bg-red-50 text-xs font-bold text-red-700">
+            {instagramError}
+          </div>
+        )}
 
         {/* Not Connected State Banner (Only when !instagramAccount) */}
         {!instagramAccount && (
@@ -157,12 +257,16 @@ export const MarketingEditor: React.FC = () => {
             </div>
 
             <button
-              onClick={() => setIsDmWizardOpen(true)}
+              onClick={() => void handleInstagramConnect()}
+              disabled={isInstagramLoading}
               className="px-4 py-2.5 bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs rounded-xl transition cursor-pointer shrink-0 flex items-center gap-1.5"
             >
               <FaInstagram className="w-4 h-4" />
-              <span>1클릭 인스타그램 연동하기</span>
+              <span>{isInstagramLoading ? '연결 상태 확인 중...' : '인스타그램으로 안전하게 연동'}</span>
             </button>
+            <p className="text-[10px] text-gray-400 font-medium sm:max-w-44">
+              게시 전에는 Meta 앱 역할에 등록된 계정만 테스트할 수 있습니다.
+            </p>
           </div>
         )}
 
@@ -189,6 +293,7 @@ export const MarketingEditor: React.FC = () => {
                   type="text"
                   value={newKeyword}
                   onChange={(e) => setNewKeyword(e.target.value)}
+                  maxLength={100}
                   placeholder="예: 링크, 구매, 굿즈"
                   className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 bg-white"
                 />
@@ -200,6 +305,7 @@ export const MarketingEditor: React.FC = () => {
                   type="text"
                   value={newResponseMessage}
                   onChange={(e) => setNewResponseMessage(e.target.value)}
+                  maxLength={900}
                   placeholder="요청하신 상품 구매 링크입니다!"
                   className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 bg-white"
                 />
@@ -211,6 +317,7 @@ export const MarketingEditor: React.FC = () => {
                   type="text"
                   value={newTargetLink}
                   onChange={(e) => setNewTargetLink(e.target.value)}
+                  maxLength={500}
                   placeholder="https://linkzip.kr/..."
                   className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 bg-white"
                 />
@@ -236,10 +343,15 @@ export const MarketingEditor: React.FC = () => {
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-gray-700">활성화된 DM 자동 발송 규칙 ({dmRules.length}개)</span>
+            <span className="text-xs font-extrabold text-gray-700 flex items-center gap-2">
+              활성화된 DM 자동 발송 규칙 ({dmRules.length}개)
+              {instagramAccount && rulesSaveState === 'saving' && <span className="text-gray-400">서버 저장 중</span>}
+              {instagramAccount && rulesSaveState === 'error' && <span className="text-red-600">서버 저장 실패</span>}
+            </span>
             <button
               onClick={() => setIsAddingRule(true)}
-              className="text-xs font-bold text-purple-600 hover:text-purple-800 underline flex items-center gap-1 cursor-pointer"
+              disabled={!instagramAccount || isInstagramLoading}
+              className="text-xs font-bold text-purple-600 hover:text-purple-800 disabled:text-gray-300 disabled:cursor-not-allowed underline flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>간편 규칙 추가</span>
@@ -556,18 +668,6 @@ export const MarketingEditor: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* DM Wizard Fullscreen Modal Mount */}
-      <InstagramDmWizardModal
-        isOpen={isDmWizardOpen}
-        onClose={() => setIsDmWizardOpen(false)}
-      />
-
-      {/* DM Rule Create Wizard Modal Mount */}
-      <InstagramDmRuleCreateWizardModal
-        isOpen={isRuleCreateModalOpen}
-        onClose={() => setIsRuleCreateModalOpen(false)}
-      />
 
       {/* Kakao Alimtalk 1-Click Auto Connection Wizard Modal Mount */}
       <KakaoAlimtalkWizardModal
