@@ -5,6 +5,7 @@ import { useStore } from "../store/useStore";
 import { Link2, Sparkles, ArrowRight, LayoutDashboard, Clock3, X } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 import { getUserByUid } from "../services/userService";
+import BusinessFooter from "../components/BusinessFooter";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -120,6 +121,8 @@ const Landing = () => {
           Free forever. No credit card required.
         </p>
       </main>
+
+      <BusinessFooter dark />
 
       {isComingSoonOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setIsComingSoonOpen(false)}>

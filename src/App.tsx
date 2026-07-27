@@ -21,6 +21,7 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentFail = lazy(() => import("./pages/PaymentFail"));
 const DonationPaymentSuccess = lazy(() => import("./pages/DonationPaymentSuccess"));
 const DonationPaymentFail = lazy(() => import("./pages/DonationPaymentFail"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -211,6 +212,9 @@ function App() {
         <Route path="/payment/fail" element={<PaymentFail />} />
         <Route path="/payment/donation/success" element={<DonationPaymentSuccess />} />
         <Route path="/payment/donation/fail" element={<DonationPaymentFail />} />
+        <Route path="/terms" element={<LegalPage />} />
+        <Route path="/privacy" element={<LegalPage />} />
+        <Route path="/refund-policy" element={<LegalPage />} />
 
         {/* Public Profile - Matches anything not defined above */}
         <Route path="/:username" element={<PublicProfile />} />

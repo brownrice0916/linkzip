@@ -19,6 +19,7 @@ import clsx from "clsx";
 import { recordPublicLinkClick } from "../services/analyticsService";
 import { MapIllustration } from "./MapIllustration";
 import { getThemeDesignPreset, getThemeWallpaperStyle } from "../domain/themePresets";
+import BusinessFooter from "./BusinessFooter";
 
 interface LinkTreePreviewProps {
   profile?: UserProfile;
@@ -1378,9 +1379,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
             )}
           </div>
 
-          {/* Bottom Logo Pill (Hidden if hideWatermark is true) */}
-          {!profile.hideWatermark && (
-            <div className="mt-auto pt-8 flex flex-col items-center">
+          <div className="mt-auto pt-8 flex flex-col items-center">
+            {!profile.hideWatermark && (
               <a
                 href="/"
                 target="_blank"
@@ -1390,15 +1390,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 <Link2 className="w-3.5 h-3.5" />
                 <span>{store.language === "ko" ? "나만의 링크집 만들기" : "Create my LinkZip"}</span>
               </a>
-              <div className="mt-4 flex gap-3 text-[11px] font-medium opacity-60 text-center flex-wrap justify-center max-w-[80%]">
-                <span className="cursor-pointer hover:underline">
-                  Cookie Preferences
-                </span>{" "}
-                •<span className="cursor-pointer hover:underline">신고</span> •
-                <span className="cursor-pointer hover:underline">개인정보 처리방침</span>
-              </div>
-            </div>
-          )}
+            )}
+            <BusinessFooter compact />
+          </div>
         </div>
 
       </div>
