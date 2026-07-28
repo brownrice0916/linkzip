@@ -35,6 +35,7 @@ import {
   FileDown,
   Newspaper,
   HandHeart,
+  Pencil,
 } from "lucide-react";
 import { getLinkIcon } from "../../lib/icons";
 import { ThumbnailModal } from "./ThumbnailModal";
@@ -2095,6 +2096,8 @@ const LinksEditor = () => {
 
   const [activeProductRegisterLink, setActiveProductRegisterLink] =
     useState<CustomLink | null>(null);
+  const [activeProductToEdit, setActiveProductToEdit] =
+    useState<ProductItem | null>(null);
 
   const renderSalesCard = (link: CustomLink) => {
     const isBeingDragged = draggedId === link.id;
@@ -2522,17 +2525,33 @@ const LinksEditor = () => {
                           ({prod.price.toLocaleString()} KRW)
                         </span>
                       </div>
-                      <button
-                        onClick={() => {
-                          const newProds = config.products.filter(
-                            (p) => p.id !== prod.id
-                          );
-                          updateConfig({ products: newProds });
-                        }}
-                        className="p-1 text-gray-400 hover:text-red-500"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveProductToEdit(prod);
+                            setActiveProductRegisterLink(link);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-black hover:bg-white rounded-lg transition cursor-pointer"
+                          aria-label={`${prod.name} 수정`}
+                          title={isKo ? "상품 수정" : "Edit product"}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newProds = config.products.filter(
+                              (p) => p.id !== prod.id
+                            );
+                            updateConfig({ products: newProds });
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition cursor-pointer"
+                          aria-label={`${prod.name} 삭제`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2540,7 +2559,10 @@ const LinksEditor = () => {
 
               <button
                 type="button"
-                onClick={() => setActiveProductRegisterLink(link)}
+                onClick={() => {
+                  setActiveProductToEdit(null);
+                  setActiveProductRegisterLink(link);
+                }}
                 className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
               >
                 <span>{isKo ? '상품 등록' : 'Register product'}</span>
@@ -2873,7 +2895,11 @@ const LinksEditor = () => {
         <ProductRegistrationModal
           isOpen={!!activeProductRegisterLink}
           salesType={activeProductRegisterLink.salesConfig?.salesType}
-          onClose={() => setActiveProductRegisterLink(null)}
+          initialProduct={activeProductToEdit || undefined}
+          onClose={() => {
+            setActiveProductRegisterLink(null);
+            setActiveProductToEdit(null);
+          }}
           onRegister={(product) => {
             const currentSalesConfig =
               activeProductRegisterLink.salesConfig || {
@@ -2881,10 +2907,15 @@ const LinksEditor = () => {
                 description: "",
                 products: [],
               };
-            const updatedProducts = [
-              ...(currentSalesConfig.products || []),
-              product,
-            ];
+            const currentProducts = currentSalesConfig.products || [];
+            const productExists = currentProducts.some(
+              (item) => item.id === product.id
+            );
+            const updatedProducts = productExists
+              ? currentProducts.map((item) =>
+                  item.id === product.id ? product : item
+                )
+              : [...currentProducts, product];
             updateCustomLink(activeProductRegisterLink.id, {
               salesConfig: {
                 ...currentSalesConfig,
@@ -2892,6 +2923,7 @@ const LinksEditor = () => {
               },
             });
             setActiveProductRegisterLink(null);
+            setActiveProductToEdit(null);
           }}
         />
       )}

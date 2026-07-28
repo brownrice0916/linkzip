@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Plus, FileText } from 'lucide-react';
 import { useStore, type ProductItem } from '../../store/useStore';
 import { uploadPrivateDigitalProductFile } from '../../services/storageService';
@@ -21,21 +21,36 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
   const language = useStore((state) => state.language);
   const user = useStore((state) => state.user);
   const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
-  const [name, setName] = useState(initialProduct?.name || '전자책');
-  const [price, setPrice] = useState<number>(initialProduct?.price || 50000);
+  const [name, setName] = useState(initialProduct?.name || (salesType === 'digital_file' ? '전자책' : '상품'));
+  const [price, setPrice] = useState<number>(initialProduct?.price ?? 50000);
   const [fileName, setFileName] = useState(initialProduct?.fileName || '');
   const [filePath, setFilePath] = useState(initialProduct?.filePath || '');
   const [isUploading, setIsUploading] = useState(false);
 
   // Optional checkbox states matching Screenshot 3
   const [showDiscount, setShowDiscount] = useState(!!initialProduct?.discountPrice);
-  const [discountPrice, setDiscountPrice] = useState<number>(initialProduct?.discountPrice || 0);
+  const [discountPrice, setDiscountPrice] = useState<number>(initialProduct?.discountPrice ?? 0);
 
   const [showStock, setShowStock] = useState(!!initialProduct?.stock);
-  const [stock, setStock] = useState<number>(initialProduct?.stock || 100);
+  const [stock, setStock] = useState<number>(initialProduct?.stock ?? 100);
 
   const [showOrderNotes, setShowOrderNotes] = useState(!!initialProduct?.orderNote);
   const [orderNote, setOrderNote] = useState(initialProduct?.orderNote || '');
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setName(initialProduct?.name || (salesType === 'digital_file' ? '전자책' : '상품'));
+    setPrice(initialProduct?.price ?? 50000);
+    setFileName(initialProduct?.fileName || '');
+    setFilePath(initialProduct?.filePath || '');
+    setShowDiscount(initialProduct?.discountPrice != null);
+    setDiscountPrice(initialProduct?.discountPrice ?? 0);
+    setShowStock(initialProduct?.stock != null);
+    setStock(initialProduct?.stock ?? 100);
+    setShowOrderNotes(!!initialProduct?.orderNote);
+    setOrderNote(initialProduct?.orderNote || '');
+  }, [initialProduct, isOpen, salesType]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,7 +107,9 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
         
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <h2 className="text-xl font-black text-gray-900 tracking-tight">{tr('상품 등록', 'Product registration')}</h2>
+          <h2 className="text-xl font-black text-gray-900 tracking-tight">
+            {initialProduct ? tr('상품 수정', 'Edit product') : tr('상품 등록', 'Product registration')}
+          </h2>
           <button
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-black rounded-full hover:bg-gray-100 transition cursor-pointer"
@@ -257,7 +274,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
             disabled={isUploading}
             className="flex-1 py-3.5 bg-[#3B82F6] hover:bg-blue-600 disabled:cursor-wait disabled:opacity-60 text-white rounded-2xl font-bold text-xs transition cursor-pointer shadow-md"
           >
-            {tr('등록', 'Register')}
+            {initialProduct ? tr('수정 완료', 'Save changes') : tr('등록', 'Register')}
           </button>
         </div>
 
