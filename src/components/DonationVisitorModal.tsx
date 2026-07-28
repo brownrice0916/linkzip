@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { HandHeart, LoaderCircle, X } from 'lucide-react';
 import clsx from 'clsx';
 import type { DonationConfig } from '../store/useStore';
-import { createDonationPaymentOrder } from '../services/commerceService';
+import { createDonationPaymentOrder, type TossDonationOrder } from '../services/commerceService';
 import { requestTossPayment } from '../services/tossPaymentService';
+import BankTransferInstructions from './BankTransferInstructions';
 
 interface DonationVisitorModalProps {
   isOpen: boolean;
@@ -27,6 +28,9 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
   const [amount, setAmount] = useState<number>(minAmount);
   const [message, setMessage] = useState('');
   const [nickname, setNickname] = useState('');
+  const [buyerContact, setBuyerContact] = useState('');
+  const [paymentProvider, setPaymentProvider] = useState<'toss' | 'bank_transfer'>('toss');
+  const [bankOrder, setBankOrder] = useState<TossDonationOrder | null>(null);
   const [paying, setPaying] = useState(false);
 
   const mainText = donationConfig?.mainText || '도네이션';
@@ -41,6 +45,10 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
       alert('후원받을 프로필 정보를 확인하지 못했습니다.');
       return;
     }
+    if (paymentProvider === 'bank_transfer' && !/^\d{9,15}$/.test(buyerContact.replace(/\D/g, ''))) {
+      alert('입금 확인 알림을 받을 휴대폰 번호를 입력해주세요.');
+      return;
+    }
 
     setPaying(true);
     try {
@@ -51,7 +59,14 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
         nickname: donorName,
         message: message.trim(),
         amount,
+        paymentProvider,
+        depositorName: donorName,
+        buyerContact,
       });
+      if (order.paymentProvider === 'bank_transfer' && order.bankTransfer) {
+        setBankOrder(order);
+        return;
+      }
       await requestTossPayment({
         orderId: order.orderNumber,
         orderName: order.orderName,
@@ -82,7 +97,9 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <div className="space-y-6 text-center pt-2">
+        {bankOrder?.bankTransfer ? (
+          <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} onDone={onClose} />
+        ) : <div className="space-y-6 text-center pt-2">
             <div className="space-y-2">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-800">
                 <HandHeart className="h-6 w-6" />
@@ -143,6 +160,12 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
                 rows={2}
                 className="w-full p-3.5 border border-gray-200 rounded-2xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black resize-none"
               />
+              {paymentProvider === 'bank_transfer' && <input type="tel" inputMode="tel" value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="입금 확인 알림을 받을 휴대폰 번호" className="w-full rounded-2xl border border-gray-200 p-3.5 text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black" />}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+              <button type="button" onClick={() => setPaymentProvider('toss')} className={clsx('cursor-pointer rounded-xl py-2.5 text-xs font-black transition', paymentProvider === 'toss' ? 'bg-white text-black shadow-sm' : 'text-gray-500')}>토스페이먼츠</button>
+              <button type="button" onClick={() => setPaymentProvider('bank_transfer')} className={clsx('cursor-pointer rounded-xl py-2.5 text-xs font-black transition', paymentProvider === 'bank_transfer' ? 'bg-white text-black shadow-sm' : 'text-gray-500')}>계좌이체</button>
             </div>
 
             {/* Toss Payments Trigger Button */}
@@ -152,9 +175,9 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
               className="w-full py-4 bg-[#333333] hover:bg-black disabled:cursor-wait disabled:opacity-60 text-white rounded-2xl font-bold text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
             >
               {paying && <LoaderCircle className="h-4 w-4 animate-spin" />}
-              {paying ? '토스페이먼츠 연결 중...' : `${amount.toLocaleString()}원 후원하기`}
+              {paying ? '주문 생성 중...' : `${amount.toLocaleString()}원 후원하기`}
             </button>
-          </div>
+          </div>}
 
       </div>
     </div>

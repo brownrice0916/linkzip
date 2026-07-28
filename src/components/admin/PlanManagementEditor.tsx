@@ -4,6 +4,8 @@ import { MEMBERSHIP_PLANS, membershipCheckoutAmount, type MembershipPlan, type M
 import { useStore } from '../../store/useStore';
 import { createMembershipPaymentOrder } from '../../services/membershipService';
 import { requestTossPayment } from '../../services/tossPaymentService';
+import type { MembershipPaymentOrder } from '../../services/membershipService';
+import BankTransferInstructions from '../BankTransferInstructions';
 
 const accentStyles: Record<MembershipPlanDefinition['accent'], {
   card: string;
@@ -35,6 +37,10 @@ const PlanManagementEditor: React.FC = () => {
   const [annualBilling, setAnnualBilling] = useState(false);
   const [processingPlan, setProcessingPlan] = useState<MembershipPlan | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
+  const [paymentProvider, setPaymentProvider] = useState<'toss' | 'bank_transfer'>('toss');
+  const [depositorName, setDepositorName] = useState('');
+  const [buyerContact, setBuyerContact] = useState('');
+  const [bankOrder, setBankOrder] = useState<MembershipPaymentOrder | null>(null);
   const language = useStore((state) => state.language);
   const membershipPlan = useStore((state) => state.membershipPlan);
   const user = useStore((state) => state.user);
@@ -54,7 +60,19 @@ const PlanManagementEditor: React.FC = () => {
     setProcessingPlan(plan.id);
     try {
       const billingCycle = annualBilling ? 'annual' : 'monthly';
-      const order = await createMembershipPaymentOrder(plan.id, billingCycle);
+      if (paymentProvider === 'bank_transfer' && (!depositorName.trim() || !/^\d{9,15}$/.test(buyerContact.replace(/\D/g, '')))) {
+        throw new Error(isKo ? '입금자명과 휴대폰 번호를 확인해주세요.' : 'Check the depositor name and phone number.');
+      }
+      const order = await createMembershipPaymentOrder(plan.id, billingCycle, {
+        paymentProvider,
+        depositorName: depositorName.trim(),
+        buyerContact,
+      });
+      if (order.paymentProvider === 'bank_transfer' && order.bankTransfer) {
+        setBankOrder(order);
+        setProcessingPlan(null);
+        return;
+      }
       await requestTossPayment({
         orderId: order.orderNumber,
         orderName: order.orderName,
@@ -87,6 +105,17 @@ const PlanManagementEditor: React.FC = () => {
         <p className="mt-5 max-w-xl text-xs font-medium leading-relaxed text-gray-300">
           {isKo ? '결제가 승인되면 계정에 플랜이 바로 적용됩니다. 월간·연간 이용권은 자동 갱신되지 않습니다.' : 'Your plan activates immediately after payment. Monthly and annual passes do not renew automatically.'}
         </p>
+      </section>
+
+      {bankOrder?.bankTransfer && <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} onDone={() => setBankOrder(null)} />}
+
+      <section className="rounded-[24px] border border-gray-200 bg-white p-4 sm:p-5">
+        <p className="text-xs font-black text-gray-900">결제 방법</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+          <button type="button" onClick={() => setPaymentProvider('toss')} className={`cursor-pointer rounded-xl py-2.5 text-xs font-black ${paymentProvider === 'toss' ? 'bg-white shadow-sm' : 'text-gray-500'}`}>토스페이먼츠</button>
+          <button type="button" onClick={() => setPaymentProvider('bank_transfer')} className={`cursor-pointer rounded-xl py-2.5 text-xs font-black ${paymentProvider === 'bank_transfer' ? 'bg-white shadow-sm' : 'text-gray-500'}`}>계좌이체</button>
+        </div>
+        {paymentProvider === 'bank_transfer' && <div className="mt-3 grid gap-2 sm:grid-cols-2"><input value={depositorName} onChange={(event) => setDepositorName(event.target.value)} placeholder="입금자명" className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black" /><input type="tel" inputMode="tel" value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="입금 확인 알림을 받을 휴대폰 번호" className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black" /></div>}
       </section>
 
       <div className="flex items-center justify-center gap-3 py-1">

@@ -1,5 +1,6 @@
 import { auth } from '../lib/firebase';
 import type { MembershipBillingCycle, MembershipPlan } from '../domain/membershipPlans';
+import type { BankTransferInstructions } from './commerceService';
 
 const CREATE_MEMBERSHIP_ORDER_URL = import.meta.env.VITE_TOSS_MEMBERSHIP_CREATE_URL
   || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/createTossMembershipOrder';
@@ -10,6 +11,8 @@ export interface MembershipPaymentOrder {
   orderNumber: string;
   orderName: string;
   amount: number;
+  paymentProvider: 'toss' | 'bank_transfer';
+  bankTransfer?: BankTransferInstructions;
 }
 
 export interface MembershipPaymentConfirmation {
@@ -40,11 +43,12 @@ async function parseResponse<T>(response: Response): Promise<T> {
 export async function createMembershipPaymentOrder(
   planId: Exclude<MembershipPlan, 'basic'>,
   billingCycle: MembershipBillingCycle,
+  options: { paymentProvider?: 'toss' | 'bank_transfer'; depositorName?: string; buyerContact?: string } = {},
 ): Promise<MembershipPaymentOrder> {
   const response = await fetch(CREATE_MEMBERSHIP_ORDER_URL, {
     method: 'POST',
     headers: await authenticatedHeaders(),
-    body: JSON.stringify({ planId, billingCycle }),
+    body: JSON.stringify({ planId, billingCycle, ...options }),
   });
   return parseResponse(response);
 }

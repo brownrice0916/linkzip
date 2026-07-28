@@ -16,6 +16,11 @@ import {
   type BetaMember,
   type SiteAdminMetrics,
 } from '../services/betaAccessService';
+import {
+  listBankTransferOrders,
+  manageBankTransferOrder,
+  type BankTransferOrderSummary,
+} from '../services/commerceService';
 
 type AdminTab = 'overview' | 'members' | 'beta';
 type PlanFilter = 'all' | 'basic' | 'standard' | 'premium';
@@ -77,16 +82,21 @@ const SiteAdmin: React.FC = () => {
   const [expiresAt, setExpiresAt] = useState('');
   const [createdCode, setCreatedCode] = useState('');
   const [workingId, setWorkingId] = useState('');
+  const [membershipTransfers, setMembershipTransfers] = useState<BankTransferOrderSummary[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await getSiteAdminDashboard();
+      const [data, transfers] = await Promise.all([
+        getSiteAdminDashboard(),
+        listBankTransferOrders(true),
+      ]);
       const nextMembers = data.members || [];
       setMembers(nextMembers);
       setInvites(data.invites || []);
       setMetrics({ ...EMPTY_METRICS, ...(data.metrics || {}) });
+      setMembershipTransfers(transfers.filter((order) => order.kind === 'membership'));
       setSelectedMember((current) => current ? nextMembers.find((member) => member.uid === current.uid) || null : null);
     } catch (loadError) {
       setError(betaErrorMessage(loadError));
@@ -152,6 +162,18 @@ const SiteAdmin: React.FC = () => {
     setWorkingId(member.uid);
     try { await setBetaMemberStatus(member.uid, isMemberDisabled(member) ? 'active' : 'disabled'); await load(); }
     catch (toggleError) { setError(betaErrorMessage(toggleError)); } finally { setWorkingId(''); }
+  };
+
+  const handleMembershipTransfer = async (order: BankTransferOrderSummary, action: 'confirm' | 'cancel') => {
+    setWorkingId(order.orderNumber);
+    try {
+      await manageBankTransferOrder(order.orderNumber, action);
+      await load();
+    } catch (paymentError) {
+      setError(paymentError instanceof Error ? paymentError.message : '플랜 입금 상태를 변경하지 못했습니다.');
+    } finally {
+      setWorkingId('');
+    }
   };
 
   const navItems: Array<{ id: AdminTab; label: string; icon: React.ElementType; count?: number }> = [
@@ -220,6 +242,8 @@ const SiteAdmin: React.FC = () => {
               ] as Array<[string, number, string, React.ElementType, boolean]>).map(([itemLabel, value, caption, Icon, attention]) => <div key={itemLabel} className={`rounded-2xl border p-4 ${attention ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-slate-50'}`}><div className="flex items-center justify-between"><Icon className={`h-4 w-4 ${attention ? 'text-amber-700' : 'text-slate-400'}`} /><strong>{value}</strong></div><p className="mt-3 text-xs font-black">{itemLabel}</p><p className="mt-1 text-[10px] font-semibold text-slate-400">{caption}</p></div>)}
             </div>
           </section>
+
+          {membershipTransfers.filter((order) => order.status === 'WAITING_DEPOSIT').length > 0 && <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm"><div className="flex items-center gap-3"><CalendarClock className="h-5 w-5 text-amber-700" /><div><h3 className="font-black">플랜 입금 확인 대기</h3><p className="text-[11px] font-semibold text-amber-800">실제 입금 내역과 입금자명을 확인한 뒤 처리해주세요.</p></div></div><div className="mt-4 space-y-2">{membershipTransfers.filter((order) => order.status === 'WAITING_DEPOSIT').map((order) => <div key={order.orderNumber} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4"><div><p className="text-sm font-black">{order.planName || order.productName} · {formatMoney(order.amount)}</p><p className="mt-1 text-[10px] font-bold text-slate-500">입금자 {order.depositorName} · {order.buyerContact} · {order.orderNumber}</p></div><div className="flex gap-2"><button type="button" disabled={workingId === order.orderNumber} onClick={() => void handleMembershipTransfer(order, 'confirm')} className="cursor-pointer rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white disabled:opacity-50">입금 확인</button><button type="button" disabled={workingId === order.orderNumber} onClick={() => void handleMembershipTransfer(order, 'cancel')} className="cursor-pointer rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-500 disabled:opacity-50">취소</button></div></div>)}</div></section>}
         </>}
 
         {tab === 'members' && <>

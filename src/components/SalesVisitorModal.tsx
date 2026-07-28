@@ -7,10 +7,12 @@ import type { CustomLink, UserProfile } from '../store/useStore';
 import {
   createSalesOrder,
   lookupSalesOrders,
+  type PaymentOrderResult,
   type PublicOrderLookupResult,
 } from '../services/commerceService';
 import { openKakaoPostcode } from '../lib/kakaoPostcode';
 import { requestTossPayment } from '../services/tossPaymentService';
+import BankTransferInstructions from './BankTransferInstructions';
 
 interface SalesVisitorModalProps {
   isOpen: boolean;
@@ -42,12 +44,15 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
   const [lookupValue, setLookupValue] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupResults, setLookupResults] = useState<PublicOrderLookupResult[] | null>(null);
+  const [paymentProvider, setPaymentProvider] = useState<'toss' | 'bank_transfer'>('toss');
+  const [bankOrder, setBankOrder] = useState<PaymentOrderResult | null>(null);
   const detailAddressRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setTab('order');
     setLookupResults(null);
+    setBankOrder(null);
   }, [isOpen, block.id]);
 
   const activeProduct = config.products?.[selectedProductIndex] || {
@@ -86,7 +91,13 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
         buyerEmail: buyerEmail.trim(),
         shippingAddress: isPhysical ? `[${postalCode}] ${baseAddress.trim()} ${detailAddress.trim()}` : '',
         postalCode: isPhysical ? postalCode : '',
+        paymentProvider,
+        depositorName: buyerName.trim(),
       });
+      if (result.paymentProvider === 'bank_transfer' && result.bankTransfer) {
+        setBankOrder(result);
+        return;
+      }
       await requestTossPayment({
         orderId: result.orderNumber,
         orderName: result.orderName,
@@ -147,16 +158,24 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
                 <div className="flex items-start justify-between gap-3"><div><p className="font-black text-gray-900">{order.productName}</p><p className="mt-1 font-mono text-[11px] text-gray-500">{order.orderNumber}</p></div><span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 font-black">{order.amount.toLocaleString()}원</span></div>
                 <div className="mt-3 flex flex-wrap gap-2"><span className="rounded-lg bg-blue-50 px-2 py-1 font-bold text-blue-700">{paymentLabel[order.status]}</span><span className="rounded-lg bg-emerald-50 px-2 py-1 font-bold text-emerald-700">{fulfillmentLabel[order.fulfillmentStatus]}</span></div>
                 {order.trackingNumber && <p className="mt-3 rounded-xl bg-gray-50 p-2.5 font-semibold">{order.carrier || '택배'} · {order.trackingNumber}</p>}
+                {order.downloadUrl && <a href={order.downloadUrl} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-3 py-2.5 font-black text-white"><Download className="h-4 w-4" />{order.downloadFileName || '파일 다운로드'}</a>}
+                {order.downloadError && <p className="mt-3 rounded-xl bg-red-50 p-2.5 font-bold text-red-600">{order.downloadError}</p>}
               </div>)}
             </div>
           </div>
         ) : (
-          <div className="space-y-5">
+          bankOrder?.bankTransfer ? (
+            <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} onDone={() => setTab('lookup')} />
+          ) : <div className="space-y-5">
             {config.image && <img src={config.image} alt="상품" className="h-48 w-full rounded-2xl border border-gray-200 object-cover" />}
             {config.description && <div className="whitespace-pre-wrap rounded-2xl border border-gray-100 bg-gray-50 p-4 text-xs font-medium leading-relaxed text-gray-700">{config.description}</div>}
             {!!config.products?.length && <div className="space-y-2"><label className="text-xs font-bold text-gray-600">상품 선택</label><div className="max-h-48 space-y-2 overflow-y-auto">{config.products.map((prod, idx) => <button key={prod.id} onClick={() => setSelectedProductIndex(idx)} className={`flex w-full cursor-pointer items-center justify-between rounded-2xl border-2 p-3.5 text-left transition ${selectedProductIndex === idx ? 'border-black bg-gray-900 text-white' : 'border-gray-200 bg-white hover:border-gray-400'}`}><div><p className="text-xs font-bold">{prod.name}</p>{prod.fileName && <p className="mt-0.5 text-[10px] opacity-70">{prod.fileName}</p>}</div><span className="text-xs font-black">{(prod.discountPrice ?? prod.price).toLocaleString()}원</span></button>)}</div></div>}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="구매자 이름" className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black" /><input type="tel" inputMode="tel" value={buyerContact} onChange={(e) => setBuyerContact(e.target.value)} placeholder="휴대폰 번호" className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black" /><input type="email" value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} placeholder={isPhysical ? '이메일 (선택)' : '파일을 받을 이메일'} className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black sm:col-span-2" />
               {isPhysical && <><div className="flex gap-2 sm:col-span-2"><div className="relative min-w-0 flex-1"><MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" /><input readOnly value={baseAddress ? `[${postalCode}] ${baseAddress}` : ''} placeholder="배송지 주소를 검색해주세요" className="w-full cursor-pointer rounded-xl border border-gray-200 py-3 pl-9 pr-3 text-xs font-semibold outline-none" onClick={() => void handleAddressSearch()} /></div><button onClick={() => void handleAddressSearch()} className="cursor-pointer rounded-xl border border-black px-4 text-xs font-black transition hover:bg-black hover:text-white">주소 검색</button></div><input ref={detailAddressRef} value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} placeholder="상세주소" className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs font-semibold outline-none focus:border-black sm:col-span-2" /></>}
+            </div>
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+              <button type="button" onClick={() => setPaymentProvider('toss')} className={`cursor-pointer rounded-xl py-2.5 text-xs font-black transition ${paymentProvider === 'toss' ? 'bg-white shadow-sm' : 'text-gray-500'}`}>토스페이먼츠</button>
+              <button type="button" onClick={() => setPaymentProvider('bank_transfer')} className={`cursor-pointer rounded-xl py-2.5 text-xs font-black transition ${paymentProvider === 'bank_transfer' ? 'bg-white shadow-sm' : 'text-gray-500'}`}>계좌이체</button>
             </div>
             <button onClick={() => void handlePurchaseRequest()} disabled={submitting} className="w-full cursor-pointer rounded-2xl bg-black py-4 text-sm font-black text-white shadow-md transition hover:bg-gray-800 disabled:opacity-50">{submitting ? '결제창 여는 중...' : `${amount.toLocaleString()}원 결제하기`}</button>
           </div>

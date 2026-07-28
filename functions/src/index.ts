@@ -163,6 +163,61 @@ const findPrivateProfileLinks = (
   return workspace?.customLinks || userData.customLinks || [];
 };
 
+interface BankTransferAccount {
+  bankName: string;
+  accountNumber: string;
+  accountOwnerName: string;
+}
+
+const findVerifiedAccount = (
+  userData: FirebaseFirestore.DocumentData | undefined,
+  username?: string,
+): BankTransferAccount | null => {
+  if (!userData) return null;
+  const workspaces = Array.isArray(userData.profileWorkspaces) ? userData.profileWorkspaces : [];
+  const workspace = username ? workspaces.find((candidate: unknown) => {
+    if (!candidate || typeof candidate !== "object") return false;
+    const profile = (candidate as {profile?: {username?: unknown}}).profile;
+    return typeof profile?.username === "string" && profile.username.trim().toLowerCase() === username;
+  }) as {profile?: {verifiedAccount?: Record<string, unknown>}} | undefined : undefined;
+  const account = workspace?.profile?.verifiedAccount || userData.profile?.verifiedAccount;
+  const bankName = cleanString(account?.bankName, 50);
+  const accountNumber = cleanString(account?.accountNumber, 40).replace(/[^0-9-]/g, "");
+  const accountOwnerName = cleanString(account?.accountOwnerName, 50);
+  if (!bankName || !accountNumber || !accountOwnerName || account?.accountConnected !== true) return null;
+  return {bankName, accountNumber, accountOwnerName};
+};
+
+const getPlatformBankAccount = async (): Promise<BankTransferAccount | null> => {
+  const settings = await db.collection("platformSettings").doc("payment").get();
+  const configured = settings.data()?.bankTransfer;
+  const configuredAccount = findVerifiedAccount({profile: {verifiedAccount: configured}});
+  if (configuredAccount) return configuredAccount;
+  try {
+    const administrator = await getAuth().getUserByEmail("brownrice0916@gmail.com");
+    const user = await db.collection("users").doc(administrator.uid).get();
+    return findVerifiedAccount(user.data());
+  } catch (error) {
+    logger.warn("Platform bank account is not configured", {error});
+    return null;
+  }
+};
+
+const bankTransferExpiresAt = () => Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000);
+
+const bankTransferResponse = (
+  account: BankTransferAccount,
+  depositorName: string,
+  expiresAt: Timestamp,
+) => ({
+  paymentProvider: "bank_transfer",
+  bankTransfer: {
+    ...account,
+    depositorName,
+    expiresAt: expiresAt.toDate().toISOString(),
+  },
+});
+
 const createDigitalDownload = async (
   orderData: FirebaseFirestore.DocumentData,
   orderRef: FirebaseFirestore.DocumentReference,
@@ -224,6 +279,13 @@ const requireAuthenticatedUid = async (request: Request) => {
   return (await getAuth().verifyIdToken(match[1])).uid;
 };
 
+const requireAuthenticatedUser = async (request: Request) => {
+  const authorization = request.get("authorization") || "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) throw new Error("UNAUTHENTICATED");
+  return getAuth().verifyIdToken(match[1]);
+};
+
 const membershipPeriodEnd = (billingCycle: MembershipBillingCycle) => {
   const end = new Date();
   if (billingCycle === "annual") end.setUTCFullYear(end.getUTCFullYear() + 1);
@@ -251,15 +313,29 @@ export const createTossMembershipOrder = onRequest(
 
     const planId = cleanString(request.body?.planId, 20) as PaidMembershipPlan;
     const billingCycle = cleanString(request.body?.billingCycle, 20) as MembershipBillingCycle;
+    const paymentProvider = request.body?.paymentProvider === "bank_transfer" ? "bank_transfer" : "toss";
+    const depositorName = cleanString(request.body?.depositorName, 50);
+    const buyerContact = cleanString(request.body?.buyerContact, 50);
     const plan = paidMembershipPlans[planId];
     if (!plan || (billingCycle !== "monthly" && billingCycle !== "annual")) {
       response.status(400).json({message: "플랜 또는 결제 기간을 확인해주세요."});
+      return;
+    }
+    if (paymentProvider === "bank_transfer" && (!depositorName || !/^\d{9,15}$/.test(buyerContact.replace(/\D/g, "")))) {
+      response.status(400).json({message: "입금자명과 알림을 받을 휴대폰 번호를 확인해주세요."});
+      return;
+    }
+
+    const bankAccount = paymentProvider === "bank_transfer" ? await getPlatformBankAccount() : null;
+    if (paymentProvider === "bank_transfer" && !bankAccount) {
+      response.status(503).json({message: "사이트 정산 계좌가 아직 설정되지 않았습니다. 관리자에게 문의해주세요."});
       return;
     }
 
     const amount = billingCycle === "annual" ? plan.monthlyPrice * 6 : plan.monthlyPrice;
     const orderNumber = createMembershipOrderNumber();
     const orderName = `LinkZip ${plan.name} ${billingCycle === "annual" ? "연간" : "월간"} 이용권`;
+    const expiresAt = bankTransferExpiresAt();
     await db.collection("tossPaymentOrders").doc(orderNumber).create({
       kind: "membership",
       ownerUid: uid,
@@ -268,13 +344,23 @@ export const createTossMembershipOrder = onRequest(
       billingCycle,
       productName: orderName,
       amount,
-      status: "READY",
+      paymentProvider,
+      depositorName: paymentProvider === "bank_transfer" ? depositorName : "",
+      buyerContact: paymentProvider === "bank_transfer" ? buyerContact : "",
+      status: paymentProvider === "bank_transfer" ? "WAITING_DEPOSIT" : "READY",
       idempotencyKey: randomUUID(),
       createdAt: FieldValue.serverTimestamp(),
-      expiresAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+      expiresAt,
     });
 
-    response.status(201).json({orderNumber, orderName, amount});
+    response.status(201).json({
+      orderNumber,
+      orderName,
+      amount,
+      ...(paymentProvider === "bank_transfer" && bankAccount
+        ? bankTransferResponse(bankAccount, depositorName, expiresAt)
+        : {paymentProvider: "toss"}),
+    });
   },
 );
 
@@ -441,6 +527,8 @@ export const createTossSalesOrder = onRequest(
     const buyerEmail = cleanString(request.body?.buyerEmail, 100);
     const shippingAddress = cleanString(request.body?.shippingAddress, 300);
     const postalCode = cleanString(request.body?.postalCode, 10);
+    const paymentProvider = request.body?.paymentProvider === "bank_transfer" ? "bank_transfer" : "toss";
+    const depositorName = cleanString(request.body?.depositorName, 50) || buyerName;
     const normalizedPhone = buyerContact.replace(/\D/g, "");
 
     if (!/^[A-Za-z0-9_-]{6,128}$/.test(ownerUid) || !/^[\p{L}\p{N}._-]{3,30}$/u.test(targetUsername) || !blockId || !productId) {
@@ -493,10 +581,18 @@ export const createTossSalesOrder = onRequest(
       return;
     }
 
+    const privateUserSnapshot = await db.collection("users").doc(ownerUid).get();
+    const bankAccount = paymentProvider === "bank_transfer"
+      ? findVerifiedAccount(privateUserSnapshot.data(), targetUsername)
+      : null;
+    if (paymentProvider === "bank_transfer" && !bankAccount) {
+      response.status(503).json({message: "판매자의 입금 계좌가 아직 설정되지 않았습니다."});
+      return;
+    }
+
     let filePath = "";
     let fileName = "";
     if (salesType === "digital_file") {
-      const privateUserSnapshot = await db.collection("users").doc(ownerUid).get();
       const privateBlock = findPublicLink(
         findPrivateProfileLinks(privateUserSnapshot.data(), targetUsername),
         blockId,
@@ -518,6 +614,7 @@ export const createTossSalesOrder = onRequest(
     const paymentOrderRef = db.collection("tossPaymentOrders").doc(orderNumber);
     const idempotencyKey = randomUUID();
     const orderName = productName.slice(0, 100);
+    const expiresAt = bankTransferExpiresAt();
     await db.runTransaction(async (transaction) => {
       transaction.create(salesOrderRef, {
         blockId,
@@ -537,7 +634,8 @@ export const createTossSalesOrder = onRequest(
         fulfillmentStatus: "payment_pending",
         carrier: "",
         trackingNumber: "",
-        paymentProvider: "toss",
+        paymentProvider,
+        depositorName: paymentProvider === "bank_transfer" ? depositorName : "",
         ...(salesType === "digital_file" ? {fileName} : {}),
         createdAt: FieldValue.serverTimestamp(),
       });
@@ -548,15 +646,28 @@ export const createTossSalesOrder = onRequest(
         productName,
         amount,
         salesType,
+        kind: "sales",
+        paymentProvider,
+        depositorName: paymentProvider === "bank_transfer" ? depositorName : "",
+        buyerContact,
+        buyerEmail,
         ...(salesType === "digital_file" ? {filePath, fileName} : {}),
-        status: "READY",
+        status: paymentProvider === "bank_transfer" ? "WAITING_DEPOSIT" : "READY",
         idempotencyKey,
         createdAt: FieldValue.serverTimestamp(),
-        expiresAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+        expiresAt,
       });
     });
 
-    response.status(201).json({id: salesOrderRef.id, orderNumber, amount, orderName});
+    response.status(201).json({
+      id: salesOrderRef.id,
+      orderNumber,
+      amount,
+      orderName,
+      ...(paymentProvider === "bank_transfer" && bankAccount
+        ? bankTransferResponse(bankAccount, depositorName, expiresAt)
+        : {paymentProvider: "toss"}),
+    });
   },
 );
 
@@ -575,6 +686,9 @@ export const createTossDonationOrder = onRequest(
     const blockId = cleanString(request.body?.blockId, 128);
     const nickname = cleanString(request.body?.nickname, 50) || "익명 후원자";
     const message = cleanString(request.body?.message, 300);
+    const buyerContact = cleanString(request.body?.buyerContact, 50);
+    const paymentProvider = request.body?.paymentProvider === "bank_transfer" ? "bank_transfer" : "toss";
+    const depositorName = cleanString(request.body?.depositorName, 50) || nickname;
     const requestedAmount = request.body?.amount;
 
     if (!/^[A-Za-z0-9_-]{6,128}$/.test(ownerUid) || !/^[\p{L}\p{N}._-]{3,30}$/u.test(targetUsername) || !blockId) {
@@ -583,6 +697,10 @@ export const createTossDonationOrder = onRequest(
     }
     if (!Number.isSafeInteger(requestedAmount) || requestedAmount > 10000000) {
       response.status(400).json({message: "후원 금액을 확인해주세요."});
+      return;
+    }
+    if (paymentProvider === "bank_transfer" && !/^\d{9,15}$/.test(buyerContact.replace(/\D/g, ""))) {
+      response.status(400).json({message: "입금 확인 알림을 받을 휴대폰 번호를 입력해주세요."});
       return;
     }
 
@@ -620,6 +738,15 @@ export const createTossDonationOrder = onRequest(
     const idempotencyKey = randomUUID();
     const configuredName = cleanString(block.donationConfig?.mainText, 100);
     const orderName = configuredName || "도네이션";
+    const privateUserSnapshot = await db.collection("users").doc(ownerUid).get();
+    const bankAccount = paymentProvider === "bank_transfer"
+      ? findVerifiedAccount(privateUserSnapshot.data(), targetUsername)
+      : null;
+    if (paymentProvider === "bank_transfer" && !bankAccount) {
+      response.status(503).json({message: "후원받을 계좌가 아직 설정되지 않았습니다."});
+      return;
+    }
+    const expiresAt = bankTransferExpiresAt();
     await paymentOrderRef.create({
       kind: "donation",
       ownerUid,
@@ -630,13 +757,23 @@ export const createTossDonationOrder = onRequest(
       message,
       productName: orderName,
       amount: requestedAmount,
-      status: "READY",
+      paymentProvider,
+      depositorName: paymentProvider === "bank_transfer" ? depositorName : "",
+      buyerContact: paymentProvider === "bank_transfer" ? buyerContact : "",
+      status: paymentProvider === "bank_transfer" ? "WAITING_DEPOSIT" : "READY",
       idempotencyKey,
       createdAt: FieldValue.serverTimestamp(),
-      expiresAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+      expiresAt,
     });
 
-    response.status(201).json({orderNumber, amount: requestedAmount, orderName});
+    response.status(201).json({
+      orderNumber,
+      amount: requestedAmount,
+      orderName,
+      ...(paymentProvider === "bank_transfer" && bankAccount
+        ? bankTransferResponse(bankAccount, depositorName, expiresAt)
+        : {paymentProvider: "toss"}),
+    });
   },
 );
 
@@ -803,6 +940,233 @@ export const confirmTossSalesPayment = onRequest(
   },
 );
 
+const enqueueBankTransferNotification = async (
+  orderNumber: string,
+  orderData: FirebaseFirestore.DocumentData,
+) => {
+  const phone = cleanString(orderData.buyerContact, 50).replace(/\D/g, "");
+  if (!phone) return;
+  await db.collection("paymentNotifications").doc(`${orderNumber}-paid`).set({
+    event: "bank_transfer_confirmed",
+    channel: "alimtalk",
+    orderNumber,
+    kind: orderData.kind || "sales",
+    recipientPhone: phone,
+    templateVariables: {
+      orderNumber,
+      productName: cleanString(orderData.productName, 100),
+      amount: Number(orderData.amount) || 0,
+    },
+    status: "pending_configuration",
+    createdAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+};
+
+export const manageBankTransferOrder = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    invoker: "public",
+  },
+  async (request, response) => {
+    if (!setPublicPostCors(request, response)) return;
+    let caller: Awaited<ReturnType<typeof requireAuthenticatedUser>>;
+    try {
+      caller = await requireAuthenticatedUser(request);
+    } catch {
+      response.status(401).json({message: "로그인이 필요합니다."});
+      return;
+    }
+
+    const orderNumber = cleanString(request.body?.orderNumber, 64).toUpperCase();
+    const action = request.body?.action === "cancel" ? "cancel" : "confirm";
+    if (!/^(?:LZ|DN|MB)-\d{8}-[A-F0-9]{10}$/.test(orderNumber)) {
+      response.status(400).json({message: "주문번호를 확인해주세요."});
+      return;
+    }
+    const orderRef = db.collection("tossPaymentOrders").doc(orderNumber);
+    const snapshot = await orderRef.get();
+    const orderData = snapshot.data();
+    if (!snapshot.exists || !orderData || orderData.paymentProvider !== "bank_transfer") {
+      response.status(404).json({message: "계좌이체 주문을 찾을 수 없습니다."});
+      return;
+    }
+    const canManage = orderData.kind === "membership"
+      ? isSiteAdmin(caller as unknown as Record<string, unknown>)
+      : orderData.ownerUid === caller.uid;
+    if (!canManage) {
+      response.status(403).json({message: "이 주문을 처리할 권한이 없습니다."});
+      return;
+    }
+    if (orderData.status === "PAID" && action === "confirm") {
+      response.status(200).json({orderNumber, status: "PAID", alreadyProcessed: true});
+      return;
+    }
+    if (orderData.status !== "WAITING_DEPOSIT") {
+      response.status(400).json({message: "처리할 수 없는 주문 상태입니다."});
+      return;
+    }
+    const expiresAt = orderData.expiresAt instanceof Timestamp ? orderData.expiresAt.toMillis() : 0;
+    if (action === "confirm" && expiresAt > 0 && expiresAt <= Date.now()) {
+      await orderRef.update({status: "EXPIRED", expiredAt: FieldValue.serverTimestamp()});
+      response.status(400).json({message: "입금 기한이 지난 주문입니다."});
+      return;
+    }
+
+    const ownerUid = cleanString(orderData.ownerUid, 128);
+    const salesOrderRef = orderData.salesOrderId
+      ? db.collection("users").doc(ownerUid).collection("sales_orders").doc(String(orderData.salesOrderId))
+      : null;
+    if (action === "cancel") {
+      try {
+        await db.runTransaction(async (transaction) => {
+          const current = await transaction.get(orderRef);
+          if (current.data()?.status !== "WAITING_DEPOSIT") throw new Error("ORDER_ALREADY_PROCESSED");
+          transaction.update(orderRef, {status: "CANCELLED", cancelledAt: FieldValue.serverTimestamp()});
+          if (salesOrderRef) transaction.update(salesOrderRef, {status: "cancelled"});
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === "ORDER_ALREADY_PROCESSED") {
+          response.status(409).json({message: "이미 처리된 주문입니다."});
+          return;
+        }
+        throw error;
+      }
+      response.status(200).json({orderNumber, status: "CANCELLED"});
+      return;
+    }
+
+    const paidAt = Timestamp.now();
+    try {
+      await db.runTransaction(async (transaction) => {
+        const current = await transaction.get(orderRef);
+        if (current.data()?.status !== "WAITING_DEPOSIT") throw new Error("ORDER_ALREADY_PROCESSED");
+        transaction.update(orderRef, {
+          status: "PAID",
+          paymentMethod: "계좌이체",
+          approvedAt: paidAt.toDate().toISOString(),
+          paidAt,
+          confirmedBy: caller.uid,
+        });
+        if (orderData.kind === "membership") {
+          const billingCycle = orderData.billingCycle as MembershipBillingCycle;
+          const periodStartedAt = new Date();
+          const periodEndsAt = membershipPeriodEnd(billingCycle);
+          transaction.update(orderRef, {
+            periodStartedAt: Timestamp.fromDate(periodStartedAt),
+            periodEndsAt: Timestamp.fromDate(periodEndsAt),
+          });
+          transaction.set(db.collection("users").doc(ownerUid), {
+            membershipPlan: orderData.planId,
+            membershipBillingCycle: billingCycle,
+            membershipPeriodStartedAt: Timestamp.fromDate(periodStartedAt),
+            membershipPeriodEndsAt: Timestamp.fromDate(periodEndsAt),
+            membershipPaymentProvider: "bank_transfer",
+            membershipUpdatedAt: FieldValue.serverTimestamp(),
+          }, {merge: true});
+        } else if (orderData.kind === "donation") {
+          const donationRef = db.collection("users").doc(ownerUid).collection("donations")
+            .doc(String(orderData.donationRecordId));
+          transaction.set(donationRef, {
+            blockId: orderData.blockId,
+            targetUsername: orderData.targetUsername,
+            nickname: orderData.nickname,
+            message: orderData.message,
+            amount: orderData.amount,
+            paymentId: orderNumber,
+            paymentProvider: "bank_transfer",
+            createdAt: paidAt,
+          });
+        } else if (salesOrderRef) {
+          transaction.update(salesOrderRef, {
+            status: "paid",
+            fulfillmentStatus: "preparing",
+            paymentProvider: "bank_transfer",
+            paymentMethod: "계좌이체",
+            paidAt: paidAt.toDate().toISOString(),
+          });
+        }
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "ORDER_ALREADY_PROCESSED") {
+        response.status(409).json({message: "이미 처리된 주문입니다."});
+        return;
+      }
+      throw error;
+    }
+    const download = await createDigitalDownload({...orderData, status: "PAID"}, orderRef, orderNumber);
+    await enqueueBankTransferNotification(orderNumber, orderData);
+    response.status(200).json({orderNumber, status: "PAID", ...download});
+  },
+);
+
+export const listBankTransferOrders = onRequest(
+  {region: "asia-northeast3", memory: "256MiB", timeoutSeconds: 20, invoker: "public"},
+  async (request, response) => {
+    if (!setPublicPostCors(request, response)) return;
+    let caller: Awaited<ReturnType<typeof requireAuthenticatedUser>>;
+    try {
+      caller = await requireAuthenticatedUser(request);
+    } catch {
+      response.status(401).json({message: "로그인이 필요합니다."});
+      return;
+    }
+    const includeMemberships = request.body?.includeMemberships === true && isSiteAdmin(caller as unknown as Record<string, unknown>);
+    const snapshot = includeMemberships
+      ? await db.collection("tossPaymentOrders").where("kind", "==", "membership").limit(300).get()
+      : await db.collection("tossPaymentOrders").where("ownerUid", "==", caller.uid).limit(300).get();
+    const orders = snapshot.docs
+      .map((document): Record<string, unknown> => ({id: document.id, ...document.data()}))
+      .filter((order) => order.paymentProvider === "bank_transfer")
+      .map((order) => ({
+        orderNumber: cleanString(order.id, 128),
+        kind: cleanString(order.kind, 30) || "sales",
+        productName: cleanString(order.productName, 100),
+        amount: Number(order.amount) || 0,
+        status: cleanString(order.status, 30),
+        depositorName: cleanString(order.depositorName, 50),
+        buyerContact: cleanString(order.buyerContact, 50),
+        nickname: cleanString(order.nickname, 50),
+        message: cleanString(order.message, 300),
+        planName: cleanString(order.planName, 50),
+        ownerUid: cleanString(order.ownerUid, 128),
+        expiresAt: order.expiresAt instanceof Timestamp ? order.expiresAt.toDate().toISOString() : null,
+        createdAt: order.createdAt instanceof Timestamp ? order.createdAt.toDate().toISOString() : null,
+      }))
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+    response.status(200).json({orders});
+  },
+);
+
+export const expireBankTransferOrders = onSchedule(
+  {region: "asia-northeast3", schedule: "every 60 minutes", timeZone: "Asia/Seoul"},
+  async () => {
+    const snapshot = await db.collection("tossPaymentOrders")
+      .where("status", "==", "WAITING_DEPOSIT")
+      .limit(500)
+      .get();
+    const now = Date.now();
+    const expired = snapshot.docs.filter((document) => {
+      const value = document.data().expiresAt;
+      return value instanceof Timestamp && value.toMillis() <= now;
+    });
+    if (!expired.length) return;
+    const batch = db.batch();
+    expired.forEach((document) => {
+      const data = document.data();
+      batch.update(document.ref, {status: "EXPIRED", expiredAt: FieldValue.serverTimestamp()});
+      if (data.salesOrderId && data.ownerUid) {
+        batch.update(
+          db.collection("users").doc(String(data.ownerUid)).collection("sales_orders").doc(String(data.salesOrderId)),
+          {status: "cancelled"},
+        );
+      }
+    });
+    await batch.commit();
+  },
+);
+
 export const downloadDigitalOrder = onRequest(
   {
     region: "asia-northeast3",
@@ -912,9 +1276,17 @@ export const lookupSalesOrder = onRequest(
       : ordersRef.where("buyerContactNormalized", "==", normalizedPhone).limit(10)
     ).get();
 
-    const orders = snapshot.docs.map((document) => {
+    const orders = await Promise.all(snapshot.docs.map(async (document) => {
       const data = document.data();
       const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : null;
+      let digitalDownload = {};
+      if (data.status === "paid" && data.salesType === "digital_file" && typeof data.orderNumber === "string") {
+        const paymentRef = db.collection("tossPaymentOrders").doc(data.orderNumber);
+        const payment = await paymentRef.get();
+        if (payment.exists && payment.data()?.status === "PAID") {
+          digitalDownload = await createDigitalDownload(payment.data() || {}, paymentRef, data.orderNumber);
+        }
+      }
       return {
         orderNumber: typeof data.orderNumber === "string" ? data.orderNumber : "",
         productName: typeof data.productName === "string" ? data.productName : "상품",
@@ -925,8 +1297,9 @@ export const lookupSalesOrder = onRequest(
         carrier: typeof data.carrier === "string" ? data.carrier : "",
         trackingNumber: typeof data.trackingNumber === "string" ? data.trackingNumber : "",
         createdAt,
+        ...digitalDownload,
       };
-    });
+    }));
     response.status(200).json({orders});
   },
 );

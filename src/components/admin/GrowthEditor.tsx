@@ -22,9 +22,12 @@ import { listCustomerData, removeCustomerData } from "../../services/customerDat
 import { subscribeToGuestbook } from "../../services/guestbookService";
 import {
   subscribeToSalesOrders,
+  manageBankTransferOrder,
+  listBankTransferOrders,
   updateSalesOrderFulfillment,
   updateSalesOrderStatus,
   type SalesOrder,
+  type BankTransferOrderSummary,
 } from "../../services/commerceService";
 import {
   deleteAnonymousMessage,
@@ -48,6 +51,7 @@ export const GrowthEditor: React.FC = () => {
   const [guestbookCountLoading, setGuestbookCountLoading] = useState(true);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [salesExpanded, setSalesExpanded] = useState(false);
+  const [bankTransferOrders, setBankTransferOrders] = useState<BankTransferOrderSummary[]>([]);
 
   // Fetch collected customer data from Firestore
   useEffect(() => {
@@ -78,6 +82,16 @@ export const GrowthEditor: React.FC = () => {
       console.error('Error fetching anonymous messages:', error);
     });
   }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setBankTransferOrders([]);
+      return;
+    }
+    void listBankTransferOrders().then(setBankTransferOrders).catch((error) => {
+      console.error('Error fetching bank transfer orders:', error);
+    });
+  }, [user?.uid, profile.username]);
 
   useEffect(() => {
     const targetUsername = profile.username?.trim();
@@ -142,13 +156,27 @@ export const GrowthEditor: React.FC = () => {
     return summary;
   }, new Map<string, { key: string; productName: string; paidAmount: number; buyerKeys: Set<string>; pendingCount: number }>()).values());
 
-  const handleOrderStatus = async (orderId: string, status: SalesOrder['status']) => {
+  const handleOrderStatus = async (order: SalesOrder, status: SalesOrder['status']) => {
     if (!user?.uid) return;
     try {
-      await updateSalesOrderStatus(user.uid, orderId, status);
+      if (order.paymentProvider === 'bank_transfer') {
+        await manageBankTransferOrder(order.orderNumber, status === 'paid' ? 'confirm' : 'cancel');
+        setBankTransferOrders(await listBankTransferOrders());
+      } else {
+        await updateSalesOrderStatus(user.uid, order.id, status);
+      }
     } catch (error) {
       console.error('Error updating sales order:', error);
       alert(tr('구매 상태를 변경하지 못했습니다.', 'Unable to update the order status.'));
+    }
+  };
+
+  const handleDonationTransfer = async (order: BankTransferOrderSummary, action: 'confirm' | 'cancel') => {
+    try {
+      await manageBankTransferOrder(order.orderNumber, action);
+      setBankTransferOrders(await listBankTransferOrders());
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '후원 입금 상태를 변경하지 못했습니다.');
     }
   };
 
@@ -356,7 +384,7 @@ export const GrowthEditor: React.FC = () => {
                   <strong className="shrink-0 text-xs font-black text-gray-900">{item.paidAmount.toLocaleString()}원</strong>
                 </div>
               ))}
-              {pendingSalesOrders.length > 0 && <div className="space-y-2 border-t border-gray-200 pt-3"><p className="text-[10px] font-black text-gray-500">{tr('입금 확인 대기', 'Pending payment confirmation')}</p>{pendingSalesOrders.map((order) => <div key={order.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5"><div className="min-w-0"><p className="truncate text-xs font-black text-gray-900">{order.productName} · {order.buyerName}</p><p className="text-[10px] font-bold text-gray-500">{order.amount.toLocaleString()}원 · {order.buyerContact}</p></div><div className="flex gap-1.5"><button type="button" onClick={() => void handleOrderStatus(order.id, 'paid')} className="cursor-pointer rounded-lg bg-black px-2.5 py-1.5 text-[10px] font-black text-white hover:bg-gray-800">{tr('입금 확인', 'Mark paid')}</button><button type="button" onClick={() => void handleOrderStatus(order.id, 'cancelled')} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-gray-500 hover:text-red-500">{tr('취소', 'Cancel')}</button></div></div>)}</div>}
+              {pendingSalesOrders.length > 0 && <div className="space-y-2 border-t border-gray-200 pt-3"><p className="text-[10px] font-black text-gray-500">{tr('입금 확인 대기', 'Pending payment confirmation')}</p>{pendingSalesOrders.map((order) => <div key={order.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5"><div className="min-w-0"><p className="truncate text-xs font-black text-gray-900">{order.productName} · {order.buyerName}</p><p className="text-[10px] font-bold text-gray-500">{order.amount.toLocaleString()}원 · {order.buyerContact}{order.depositorName ? ` · 입금자 ${order.depositorName}` : ''}</p></div><div className="flex gap-1.5"><button type="button" onClick={() => void handleOrderStatus(order, 'paid')} className="cursor-pointer rounded-lg bg-black px-2.5 py-1.5 text-[10px] font-black text-white hover:bg-gray-800">{tr('입금 확인', 'Mark paid')}</button><button type="button" onClick={() => void handleOrderStatus(order, 'cancelled')} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-gray-500 hover:text-red-500">{tr('취소', 'Cancel')}</button></div></div>)}</div>}
               {paidSalesOrders.filter((order) => order.salesType === 'product').length > 0 && <div className="space-y-2 border-t border-gray-200 pt-3"><p className="text-[10px] font-black text-gray-500">{tr('실물 상품 배송 관리', 'Physical product delivery')}</p>{paidSalesOrders.filter((order) => order.salesType === 'product').map((order) => <div key={order.id} className="rounded-xl border border-gray-200 bg-white px-3 py-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-xs font-black text-gray-900">{order.productName} · {order.buyerName}</p><p className="mt-0.5 font-mono text-[10px] text-gray-500">{order.orderNumber || order.id}</p><p className="mt-1 text-[10px] font-semibold text-gray-500">{order.shippingAddress}</p>{order.trackingNumber && <p className="mt-1 text-[10px] font-black text-blue-700">{order.carrier} · {order.trackingNumber}</p>}</div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">{order.fulfillmentStatus === 'delivered' ? tr('배송 완료', 'Delivered') : order.fulfillmentStatus === 'shipping' ? tr('배송 중', 'Shipping') : tr('상품 준비 중', 'Preparing')}</span></div><div className="mt-2 flex justify-end gap-1.5"><button type="button" onClick={() => void handleShippingUpdate(order, 'shipping')} className="cursor-pointer rounded-lg bg-blue-600 px-2.5 py-1.5 text-[10px] font-black text-white hover:bg-blue-700">{tr(order.trackingNumber ? '송장 수정' : '배송 시작', order.trackingNumber ? 'Edit tracking' : 'Start shipping')}</button><button type="button" onClick={() => void handleShippingUpdate(order, 'delivered')} className="cursor-pointer rounded-lg border border-gray-200 px-2.5 py-1.5 text-[10px] font-black text-gray-600 hover:bg-gray-50">{tr('배송 완료', 'Delivered')}</button></div></div>)}</div>}
             </div>
           )}
@@ -370,6 +398,12 @@ export const GrowthEditor: React.FC = () => {
             </div>
             <span className="text-gray-400 font-extrabold">0KRW</span>
           </div>
+          {bankTransferOrders.filter((order) => order.kind === 'donation' && order.status === 'WAITING_DEPOSIT').map((order) => (
+            <div key={order.orderNumber} className="mx-2 mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-pink-200 bg-pink-50 px-3 py-2.5">
+              <div className="min-w-0"><p className="truncate text-xs font-black text-gray-900">{order.nickname || '익명 후원자'} · {order.amount.toLocaleString()}원</p><p className="mt-0.5 text-[10px] font-bold text-gray-500">입금자 {order.depositorName} · {order.buyerContact}</p></div>
+              <div className="flex gap-1.5"><button type="button" onClick={() => void handleDonationTransfer(order, 'confirm')} className="cursor-pointer rounded-lg bg-black px-2.5 py-1.5 text-[10px] font-black text-white">입금 확인</button><button type="button" onClick={() => void handleDonationTransfer(order, 'cancel')} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-gray-500">취소</button></div>
+            </div>
+          ))}
 
         </div>
       </div>

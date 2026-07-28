@@ -7,7 +7,24 @@ import {
   where,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+
+export interface BankTransferInstructions {
+  bankName: string;
+  accountNumber: string;
+  accountOwnerName: string;
+  depositorName: string;
+  expiresAt: string;
+}
+
+export interface PaymentOrderResult {
+  id?: string;
+  orderNumber: string;
+  amount: number;
+  orderName: string;
+  paymentProvider: 'toss' | 'bank_transfer';
+  bankTransfer?: BankTransferInstructions;
+}
 
 export interface SalesOrder {
   id: string;
@@ -28,7 +45,8 @@ export interface SalesOrder {
   fulfillmentStatus: 'payment_pending' | 'preparing' | 'shipping' | 'delivered';
   carrier: string;
   trackingNumber: string;
-  paymentProvider?: 'toss';
+  paymentProvider?: 'toss' | 'bank_transfer';
+  depositorName?: string;
   paymentMethod?: string;
   paidAt?: string | null;
   createdAt: { seconds?: number } | null;
@@ -49,6 +67,8 @@ export interface TossDonationOrder {
   orderNumber: string;
   amount: number;
   orderName: string;
+  paymentProvider?: 'toss' | 'bank_transfer';
+  bankTransfer?: BankTransferInstructions;
 }
 
 export interface TossDonationConfirmation {
@@ -64,7 +84,7 @@ const donationsCollection = (ownerUid: string) => collection(db, 'users', ownerU
 export async function createSalesOrder(
   ownerUid: string,
   order: Omit<SalesOrder, 'id' | 'orderNumber' | 'buyerContactNormalized' | 'status' | 'fulfillmentStatus' | 'carrier' | 'trackingNumber' | 'createdAt'>,
-): Promise<{ id: string; orderNumber: string; amount: number; orderName: string }> {
+): Promise<PaymentOrderResult> {
   const endpoint = import.meta.env.VITE_TOSS_ORDER_CREATE_URL
     || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/createTossSalesOrder';
   const response = await fetch(endpoint, {
@@ -79,6 +99,8 @@ export async function createSalesOrder(
     orderNumber: String(payload.orderNumber || ''),
     amount: Number(payload.amount || 0),
     orderName: String(payload.orderName || order.productName),
+    paymentProvider: payload.paymentProvider === 'bank_transfer' ? 'bank_transfer' : 'toss',
+    bankTransfer: payload.bankTransfer as BankTransferInstructions | undefined,
   };
 }
 
@@ -91,6 +113,10 @@ export interface PublicOrderLookupResult {
   carrier: string;
   trackingNumber: string;
   createdAt: string | null;
+  downloadUrl?: string;
+  downloadFileName?: string;
+  downloadExpiresAt?: string;
+  downloadError?: string;
 }
 
 export async function lookupSalesOrders(ownerUid: string, lookupValue: string): Promise<PublicOrderLookupResult[]> {
@@ -172,7 +198,11 @@ export async function updateSalesOrderFulfillment(
 
 export async function createDonationPaymentOrder(
   ownerUid: string,
-  donation: Pick<DonationRecord, 'blockId' | 'targetUsername' | 'nickname' | 'message' | 'amount'>,
+  donation: Pick<DonationRecord, 'blockId' | 'targetUsername' | 'nickname' | 'message' | 'amount'> & {
+    paymentProvider?: 'toss' | 'bank_transfer';
+    depositorName?: string;
+    buyerContact?: string;
+  },
 ): Promise<TossDonationOrder> {
   const endpoint = import.meta.env.VITE_TOSS_DONATION_CREATE_URL
     || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/createTossDonationOrder';
@@ -218,4 +248,59 @@ export function subscribeToPublicDonations(
     donations.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     onDonations(donations);
   }, onError);
+}
+
+export async function manageBankTransferOrder(
+  orderNumber: string,
+  action: 'confirm' | 'cancel',
+): Promise<{ orderNumber: string; status: string; downloadUrl?: string }> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('로그인이 필요합니다.');
+  const endpoint = import.meta.env.VITE_BANK_TRANSFER_MANAGE_URL
+    || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/manageBankTransferOrder';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${await user.getIdToken()}`,
+    },
+    body: JSON.stringify({ orderNumber, action }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '계좌이체 주문을 처리하지 못했습니다.');
+  return payload;
+}
+
+export interface BankTransferOrderSummary {
+  orderNumber: string;
+  kind: 'sales' | 'donation' | 'membership';
+  productName: string;
+  amount: number;
+  status: 'WAITING_DEPOSIT' | 'PAID' | 'CANCELLED' | 'EXPIRED';
+  depositorName: string;
+  buyerContact: string;
+  nickname: string;
+  message: string;
+  planName: string;
+  ownerUid: string;
+  expiresAt: string | null;
+  createdAt: string | null;
+}
+
+export async function listBankTransferOrders(includeMemberships = false): Promise<BankTransferOrderSummary[]> {
+  const user = auth.currentUser;
+  if (!user) return [];
+  const endpoint = import.meta.env.VITE_BANK_TRANSFER_LIST_URL
+    || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/listBankTransferOrders';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${await user.getIdToken()}`,
+    },
+    body: JSON.stringify({ includeMemberships }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '계좌이체 주문을 불러오지 못했습니다.');
+  return Array.isArray(payload.orders) ? payload.orders as BankTransferOrderSummary[] : [];
 }
