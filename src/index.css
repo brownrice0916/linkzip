@@ -19,7 +19,11 @@
 .admin-link-editor [data-testid^="affiliate-card-"],
 .admin-link-editor [data-testid^="map-card-"] {
   cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, margin 160ms ease;
+}
+
+.admin-link-editor [data-testid^="link-card-"] {
+  cursor: default;
 }
 
 .admin-link-editor [data-testid^="link-card-"]:hover,
@@ -42,6 +46,66 @@
 .admin-link-editor [data-collapsed="true"] > div:first-child {
   padding-bottom: 0 !important;
   border-bottom-width: 0 !important;
+}
+
+/* Dragging shows the exact insertion result before the user drops the block. */
+.admin-link-editor [data-drop-preview] {
+  position: relative;
+  isolation: isolate;
+}
+
+.admin-link-editor [data-drop-preview="before"] {
+  margin-top: 76px;
+}
+
+.admin-link-editor [data-drop-preview="after"] {
+  margin-bottom: 76px;
+}
+
+.admin-link-editor [data-drop-preview="before"]::before,
+.admin-link-editor [data-drop-preview="after"]::after,
+.admin-link-editor [data-drop-preview="inside"]::after {
+  content: attr(data-drop-label);
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px dashed rgb(139 92 246 / 0.72);
+  border-radius: 18px;
+  background: rgb(245 243 255 / 0.96);
+  color: rgb(109 40 217);
+  box-shadow: 0 10px 30px rgb(76 29 149 / 0.12);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  pointer-events: none;
+}
+
+.admin-link-editor [data-drop-preview="before"]::before,
+.admin-link-editor [data-drop-preview="after"]::after {
+  left: 0;
+  right: 0;
+  height: 60px;
+}
+
+.admin-link-editor [data-drop-preview="before"]::before {
+  top: -68px;
+}
+
+.admin-link-editor [data-drop-preview="after"]::after {
+  bottom: -68px;
+}
+
+.admin-link-editor [data-drop-preview="inside"]::after {
+  inset: 8px;
+  min-height: 64px;
+  background: rgb(237 233 254 / 0.94);
+}
+
+.admin-link-editor [data-drop-preview="inside"] > * {
+  opacity: 0.28;
 }
 
 .color-hue-slider {

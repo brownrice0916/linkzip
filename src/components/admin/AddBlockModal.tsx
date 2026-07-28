@@ -12,7 +12,8 @@ import {
   FileDown,
   MessageSquareText,
   BadgeDollarSign,
-  MapPinned
+  MapPinned,
+  Image
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { useStore } from '../../store/useStore';
@@ -44,6 +45,14 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           icon: Link2, 
           bgColor: 'bg-emerald-500', 
           iconColor: 'text-white' 
+        },
+        {
+          id: 'image',
+          label: tr('이미지 링크', 'Image link'),
+          desc: tr('큰 이미지를 올리고 원하는 주소로 연결합니다.', 'Upload a large image and link it to a URL.'),
+          icon: Image,
+          bgColor: 'bg-cyan-500',
+          iconColor: 'text-white'
         },
         { 
           id: 'sns', 

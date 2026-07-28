@@ -129,7 +129,7 @@ export interface MapConfig {
 
 export interface CustomLink {
   id: string;
-  type?: 'link' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'anonymous_message' | 'sales' | 'reservation' | 'affiliate_product' | 'map';
+  type?: 'link' | 'image' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'anonymous_message' | 'sales' | 'reservation' | 'affiliate_product' | 'map';
   title: string;
   publicTitle?: string;
   url?: string;

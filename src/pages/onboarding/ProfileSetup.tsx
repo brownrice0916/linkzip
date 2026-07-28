@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore';
 import { User, FileText, CheckCircle2, UploadCloud } from 'lucide-react';
 import { saveUserData } from '../../services/userService';
 import { uploadPublicImage } from '../../services/storageService';
+import { clearOnboardingSurvey, readOnboardingSurvey } from '../../domain/onboardingSurvey';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
@@ -46,7 +47,9 @@ const ProfileSetup = () => {
           template: { type: templateType, value: templateValue },
           socialLinks,
           customLinks,
+          onboardingSurvey: readOnboardingSurvey(),
         });
+        clearOnboardingSurvey();
       }
       navigate('/admin');
     } catch (error) {

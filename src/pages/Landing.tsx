@@ -39,7 +39,7 @@ const Landing = () => {
       if (await getUserByUid(user.uid)) {
         navigate("/admin");
       } else {
-        navigate("/onboarding/template");
+        navigate("/onboarding/survey");
       }
     } catch (error: any) {
       // Ignore normal user cancellations (closing popup or double clicking)
@@ -75,7 +75,7 @@ const Landing = () => {
       sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
       setIsInviteOpen(false);
       if (await getUserByUid(signedInUser.uid)) navigate('/admin');
-      else navigate('/onboarding/template');
+      else navigate('/onboarding/survey');
     } catch (error: any) {
       sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
       if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {

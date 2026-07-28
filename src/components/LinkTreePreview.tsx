@@ -763,6 +763,28 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             const isNone = link.thumbnailType === "none";
                             const IconComp = getPreviewLinkIcon(link);
                             const destination = getLinkDestination(link);
+                            if (link.type === 'image') {
+                              return (
+                                <a
+                                  key={link.id}
+                                  href={destination.href}
+                                  target={destination.isInternal ? '_self' : '_blank'}
+                                  rel="noopener noreferrer"
+                                  onClick={() => recordLinkClick(link.id)}
+                                  className="flex aspect-[3/4] w-[43%] min-w-[43%] snap-start flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/80 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                                  style={{ ...getCustomLinkStyle(link), padding: 0 }}
+                                >
+                                  {link.icon ? (
+                                    <img src={link.icon} alt={link.title || '이미지 링크'} className="min-h-0 w-full flex-1 object-cover" />
+                                  ) : (
+                                    <div className="flex min-h-0 w-full flex-1 items-center justify-center bg-black/5 text-xs font-bold opacity-60">이미지 추가</div>
+                                  )}
+                                  {link.title && link.title !== '이미지 링크' && (
+                                    <div className="flex min-h-14 items-center justify-center px-3 py-2 text-center text-xs font-bold">{link.title}</div>
+                                  )}
+                                </a>
+                              );
+                            }
                             return (
                               <a
                                 key={link.id}
@@ -816,6 +838,29 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           const isNone = link.thumbnailType === "none";
                           const IconComp = getPreviewLinkIcon(link);
                           const destination = getLinkDestination(link);
+
+                          if (link.type === 'image') {
+                            return (
+                              <a
+                                key={link.id}
+                                href={destination.href}
+                                target={destination.isInternal ? '_self' : '_blank'}
+                                rel="noopener noreferrer"
+                                onClick={() => recordLinkClick(link.id)}
+                                className="flex aspect-[3/4] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/30 bg-white/80 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-lg"
+                                style={{ ...getCustomLinkStyle(link), padding: 0 }}
+                              >
+                                {link.icon ? (
+                                  <img src={link.icon} alt={link.title || '이미지 링크'} className="min-h-0 w-full flex-1 object-cover" />
+                                ) : (
+                                  <div className="flex min-h-0 w-full flex-1 items-center justify-center bg-black/5 px-2 text-center text-[10px] font-bold opacity-60">이미지 추가</div>
+                                )}
+                                {link.title && link.title !== '이미지 링크' && (
+                                  <div className="flex min-h-14 items-center justify-center px-2 py-2 text-center text-[11px] font-bold leading-tight">{link.title}</div>
+                                )}
+                              </a>
+                            );
+                          }
 
                           return (
                             <a
@@ -893,6 +938,29 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           const IconComp = getPreviewLinkIcon(link);
                           const destination = getLinkDestination(link);
 
+                          if (link.type === 'image') {
+                            return (
+                              <a
+                                key={link.id}
+                                href={destination.href}
+                                target={destination.isInternal ? '_self' : '_blank'}
+                                rel="noopener noreferrer"
+                                onClick={() => recordLinkClick(link.id)}
+                                className={clsx('block w-full overflow-hidden bg-white transition-transform hover:-translate-y-0.5', shadowClass, roundnessClass)}
+                                style={{ ...getCustomLinkStyle(link), padding: 0, height: 'auto' }}
+                              >
+                                {link.icon ? (
+                                  <img src={link.icon} alt={link.title || '이미지 링크'} className="block h-auto w-full object-cover" />
+                                ) : (
+                                  <div className="flex aspect-[4/3] w-full items-center justify-center bg-black/5 text-sm font-bold opacity-60">이미지 추가</div>
+                                )}
+                                {link.title && link.title !== '이미지 링크' && (
+                                  <div className="flex min-h-14 items-center justify-center px-5 py-3 text-center text-sm font-bold">{link.title}</div>
+                                )}
+                              </a>
+                            );
+                          }
+
                           return (
                             <a
                               key={link.id}
@@ -945,6 +1013,48 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 (!block.thumbnailType && block.iconName);
               const isNone = block.thumbnailType === "none";
               const IconComp = getPreviewLinkIcon(block);
+
+              if (block.type === 'image') {
+                const destination = getLinkDestination(block);
+                const hasCaption = Boolean(block.title && block.title !== '이미지 링크');
+                return (
+                  <a
+                    key={block.id}
+                    href={destination.href}
+                    target={destination.isInternal ? '_self' : '_blank'}
+                    rel="noopener noreferrer"
+                    onClick={() => recordLinkClick(block.id)}
+                    className={clsx(
+                      'group block w-full overflow-hidden bg-white transition-transform hover:-translate-y-0.5',
+                      shadowClass,
+                      roundnessClass,
+                    )}
+                    style={{
+                      ...getCustomLinkStyle(block),
+                      padding: 0,
+                      height: 'auto',
+                    }}
+                  >
+                    {block.icon ? (
+                      <img
+                        src={block.icon}
+                        alt={block.title || '이미지 링크'}
+                        className="block h-auto w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex aspect-[4/3] w-full items-center justify-center bg-black/5 px-6 text-center text-sm font-bold opacity-60">
+                        관리 화면에서 이미지를 추가해주세요
+                      </div>
+                    )}
+                    {hasCaption && (
+                      <div className="flex min-h-14 items-center justify-between gap-3 px-5 py-3">
+                        <span className="min-w-0 flex-1 truncate text-center text-[15px] font-bold">{block.title}</span>
+                        <MoreHorizontal className="h-5 w-5 shrink-0 opacity-55" />
+                      </div>
+                    )}
+                  </a>
+                );
+              }
 
               if (block.type === 'donation') {
                 return (

@@ -15,6 +15,8 @@ import {
 } from "./services/betaAccessService";
 
 const Landing = lazy(() => import("./pages/Landing"));
+const OnboardingSurvey = lazy(() => import("./pages/onboarding/OnboardingSurvey"));
+const LayoutRecommendation = lazy(() => import("./pages/onboarding/LayoutRecommendation"));
 const TemplateSelection = lazy(() => import("./pages/onboarding/TemplateSelection"));
 const SNSSelection = lazy(() => import("./pages/onboarding/SNSSelection"));
 const LinkSetup = lazy(() => import("./pages/onboarding/LinkSetup"));
@@ -205,6 +207,22 @@ function App() {
         <Route path="/site-admin" element={<ProtectedRoute><SiteAdmin /></ProtectedRoute>} />
 
         {/* Onboarding Flow */}
+        <Route
+          path="/onboarding/survey"
+          element={
+            <ProtectedRoute>
+              <OnboardingSurvey />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/onboarding/layout"
+          element={
+            <ProtectedRoute>
+              <LayoutRecommendation />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/onboarding/template"
           element={
