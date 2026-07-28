@@ -309,7 +309,6 @@ const LinksEditor = () => {
           bankName: profile.verifiedAccount?.bankName || "",
           accountNumber: profile.verifiedAccount?.accountNumber || "",
           accountOwnerName: profile.verifiedAccount?.accountOwnerName || "",
-          idNumber: profile.verifiedAccount?.idNumber || "",
           accountConnected: !!profile.verifiedAccount?.accountConnected,
         },
       });
@@ -1027,8 +1026,7 @@ const LinksEditor = () => {
             {(() => {
               const isConnected =
                 config.accountConnected ||
-                !!profile.verifiedAccount?.accountConnected ||
-                (!!config.accountNumber && !!config.bankName);
+                !!profile.verifiedAccount?.accountConnected;
               const bank =
                 config.bankName ||
                 profile.verifiedAccount?.bankName ||
@@ -2588,8 +2586,7 @@ const LinksEditor = () => {
             {/* 6. Account Connect* */}
             {(() => {
               const isConnected =
-                !!profile.verifiedAccount?.accountConnected ||
-                (!!config.accountNumber && !!config.bankName);
+                !!profile.verifiedAccount?.accountConnected;
               const bank =
                 config.bankName ||
                 profile.verifiedAccount?.bankName ||
@@ -2976,9 +2973,11 @@ const LinksEditor = () => {
                 minAmount: 3000,
                 buttonText: "후원하기",
               };
+              const safeCurrentConfig = {...currentConfig};
+              delete safeCurrentConfig.idNumber;
               updateCustomLink(activeProfitAccountLink.id, {
                 donationConfig: {
-                  ...currentConfig,
+                  ...safeCurrentConfig,
                   ...accountData,
                 },
               });

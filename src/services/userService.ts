@@ -7,7 +7,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { isValidUsername, normalizeUsername, sanitizePublicLinks } from '../domain/profileData';
-import type { ProfileWorkspace } from '../store/useStore';
+import type { CustomLink, ProfileWorkspace, VerifiedAccountInfo } from '../store/useStore';
 
 export interface ResolvedUser {
   uid: string;
@@ -61,6 +61,30 @@ const workspaceToDocumentData = (workspace: ProfileWorkspace) => ({
   customLinks: workspace.customLinks,
 });
 
+const removeLegacyAccountIdentifiers = (workspace: ProfileWorkspace): ProfileWorkspace => {
+  const cleanLinks = (links: CustomLink[]): CustomLink[] => links.map((link) => {
+    const donationConfig = link.donationConfig ? {...link.donationConfig} : undefined;
+    if (donationConfig) delete donationConfig.idNumber;
+    return {
+      ...link,
+      ...(donationConfig ? {donationConfig} : {}),
+      ...(link.links ? {links: cleanLinks(link.links)} : {}),
+    };
+  });
+  const verifiedAccount = workspace.profile.verifiedAccount
+    ? {...workspace.profile.verifiedAccount} as VerifiedAccountInfo & {idNumber?: string}
+    : undefined;
+  if (verifiedAccount) delete verifiedAccount.idNumber;
+  return {
+    ...workspace,
+    profile: {
+      ...workspace.profile,
+      ...(verifiedAccount ? {verifiedAccount} : {}),
+    },
+    customLinks: cleanLinks(workspace.customLinks),
+  };
+};
+
 export async function saveUserProfilesData(
   uid: string,
   workspaces: ProfileWorkspace[],
@@ -69,10 +93,16 @@ export async function saveUserProfilesData(
 ): Promise<void> {
   if (workspaces.length === 0) throw new Error('저장할 프로필이 없습니다.');
 
-  const normalizedWorkspaces = workspaces.map((workspace) => ({
-    ...workspace,
-    profile: { ...workspace.profile, username: normalizeUsername(workspace.profile.username) },
-  }));
+  const normalizedWorkspaces = workspaces.map((workspace) => {
+    const sanitizedWorkspace = removeLegacyAccountIdentifiers(workspace);
+    return {
+      ...sanitizedWorkspace,
+      profile: {
+        ...sanitizedWorkspace.profile,
+        username: normalizeUsername(sanitizedWorkspace.profile.username),
+      },
+    };
+  });
   const usernames = normalizedWorkspaces.map((workspace) => workspace.profile.username);
   if (usernames.some((username) => !isValidUsername(username))) {
     throw new Error('사용자명은 3~30자의 문자, 숫자, 마침표, 밑줄, 하이픈만 사용할 수 있습니다.');

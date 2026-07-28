@@ -47,6 +47,20 @@ const metaInstagramAppId = defineSecret("META_INSTAGRAM_APP_ID");
 const metaTokenEncryptionKey = defineSecret("META_TOKEN_ENCRYPTION_KEY");
 const tossSecretKey = defineSecret("TOSS_SECRET_KEY");
 
+const tossBankCodes: Record<string, string> = {
+  "KB국민은행": "06",
+  "신한은행": "88",
+  "NH농협은행": "11",
+  "카카오뱅크": "90",
+  "토스뱅크": "92",
+  "우리은행": "20",
+  "하나은행": "81",
+  "IBK기업은행": "03",
+  "새마을금고": "45",
+  "우체국": "71",
+  "SC제일은행": "23",
+};
+
 const betaCallableOptions = {
   region: "asia-northeast3" as const,
   memory: "256MiB" as const,
@@ -217,6 +231,89 @@ const bankTransferResponse = (
     expiresAt: expiresAt.toDate().toISOString(),
   },
 });
+
+interface TossBankVerificationResponse {
+  holderName?: unknown;
+  isValid?: unknown;
+  code?: unknown;
+  message?: unknown;
+}
+
+const requestTossBankVerification = async (
+  path: string,
+  body: Record<string, string>,
+): Promise<TossBankVerificationResponse> => {
+  const secretKey = tossSecretKey.value();
+  if (!secretKey) throw new HttpsError("failed-precondition", "토스 계좌인증 키가 설정되지 않았습니다.");
+  const authorization = Buffer.from(`${secretKey}:`, "utf8").toString("base64");
+  const tossResponse = await fetch(`https://api.tosspayments.com${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${authorization}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await tossResponse.json().catch(() => ({})) as TossBankVerificationResponse;
+  if (tossResponse.ok) return payload;
+
+  const errorCode = cleanString(payload.code, 100);
+  logger.warn("Toss bank account verification failed", {
+    status: tossResponse.status,
+    code: errorCode,
+  });
+  if (errorCode === "NOT_AVAILABLE_BANK_ACCOUNT_VERIFICATION") {
+    throw new HttpsError("unavailable", "은행 점검 시간입니다. 잠시 후 다시 시도해주세요.");
+  }
+  if (tossResponse.status === 401 || tossResponse.status === 403) {
+    throw new HttpsError("failed-precondition", "토스페이먼츠 계좌인증 서비스 계약 또는 API 키를 확인해주세요.");
+  }
+  throw new HttpsError(
+    "failed-precondition",
+    cleanString(payload.message, 200) || "계좌 정보가 일치하지 않습니다.",
+  );
+};
+
+export const verifyTossBankAccount = onCall(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 20,
+    secrets: [tossSecretKey],
+  },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+
+    const bankName = cleanString(request.data?.bankName, 50);
+    const bankCode = tossBankCodes[bankName];
+    const accountNumber = cleanString(request.data?.accountNumber, 30).replace(/\D/g, "");
+    const identityNumber = cleanString(request.data?.identityNumber, 20).replace(/\D/g, "");
+    if (!bankCode || accountNumber.length < 8 || accountNumber.length > 14) {
+      throw new HttpsError("invalid-argument", "은행과 계좌번호를 확인해주세요.");
+    }
+    if (identityNumber.length !== 6 && identityNumber.length !== 10) {
+      throw new HttpsError("invalid-argument", "생년월일 6자리 또는 사업자등록번호 10자리를 입력해주세요.");
+    }
+
+    const holder = await requestTossBankVerification("/v2/bank-accounts/lookup-holder-name", {
+      bankCode,
+      accountNumber,
+    });
+    const holderName = cleanString(holder.holderName, 50);
+    if (!holderName) throw new HttpsError("failed-precondition", "예금주 정보를 확인할 수 없습니다.");
+
+    const verification = await requestTossBankVerification("/v2/bank-accounts/verify-identifier", {
+      bankCode,
+      accountNumber,
+      identityNumber,
+    });
+    if (verification.isValid !== true) {
+      throw new HttpsError("failed-precondition", "계좌번호와 소유자 정보가 일치하지 않습니다.");
+    }
+
+    return {holderName};
+  },
+);
 
 const createDigitalDownload = async (
   orderData: FirebaseFirestore.DocumentData,

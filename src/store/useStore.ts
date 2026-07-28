@@ -201,7 +201,6 @@ export interface DesignSettings {
 
 export interface VerifiedAccountInfo {
   accountType: 'personal' | 'corporate';
-  idNumber: string;
   bankName: string;
   accountOwnerName: string;
   accountNumber: string;

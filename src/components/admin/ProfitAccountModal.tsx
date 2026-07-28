@@ -10,7 +10,6 @@ interface ProfitAccountModalProps {
   initialData?: Partial<DonationConfig>;
   onSave: (accountData: {
     accountType: 'personal' | 'corporate';
-    idNumber: string;
     bankName: string;
     accountOwnerName: string;
     accountNumber: string;
@@ -31,23 +30,6 @@ const banks = [
   '우체국',
   'SC제일은행'
 ];
-
-// Checksum validation for Korean Resident Registration Number (RRN)
-const isValidRRN = (rrn: string): boolean => {
-  if (rrn.length === 6) {
-    const month = parseInt(rrn.substring(2, 4), 10);
-    const day = parseInt(rrn.substring(4, 6), 10);
-    return month >= 1 && month <= 12 && day >= 1 && day <= 31;
-  }
-  if (rrn.length !== 13) return false;
-  const weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
-  let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    sum += parseInt(rrn[i], 10) * weights[i];
-  }
-  const check = (11 - (sum % 11)) % 10;
-  return check === parseInt(rrn[12], 10);
-};
 
 // Checksum validation for Korean Business Registration Number (BRN)
 const isValidBRN = (brn: string): boolean => {
@@ -71,28 +53,24 @@ const validateIdentityNumber = (idNum: string, type: 'personal' | 'corporate'): 
 
   if (type === 'personal') {
     if (cleanId.length === 6) {
-      if (!isValidRRN(cleanId)) {
+      const month = parseInt(cleanId.substring(2, 4), 10);
+      const day = parseInt(cleanId.substring(4, 6), 10);
+      if (month < 1 || month > 12 || day < 1 || day > 31) {
         return { valid: false, error: '생년월일(YYMMDD 6자리) 날짜 형식이 올바르지 않습니다.' };
-      }
-    } else if (cleanId.length === 13) {
-      if (!isValidRRN(cleanId)) {
-        return { valid: false, error: '유효하지 않은 주민등록번호(13자리) 검증 체크섬 오류입니다.' };
       }
     } else if (cleanId.length === 10) {
       if (!isValidBRN(cleanId)) {
         return { valid: false, error: '유효하지 않은 사업자등록번호(10자리) 번호 오류입니다.' };
       }
     } else {
-      return { valid: false, error: '주민등록번호(6자리/13자리) 또는 사업자번호(10자리)를 정확히 입력해 주세요.' };
+      return { valid: false, error: '생년월일(6자리) 또는 사업자번호(10자리)를 입력해 주세요.' };
     }
   } else {
     if (cleanId.length === 10) {
       if (!isValidBRN(cleanId)) {
         return { valid: false, error: '유효하지 않은 법인/사업자등록번호(10자리)입니다.' };
       }
-    } else if (cleanId.length !== 13) {
-      return { valid: false, error: '올바른 법인등록번호(10자리/13자리)를 입력해 주세요.' };
-    }
+    } else return { valid: false, error: '법인 사업자등록번호(10자리)를 입력해 주세요.' };
   }
 
   return { valid: true };
@@ -155,7 +133,8 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   const [accountType, setAccountType] = useState<'personal' | 'corporate'>(
     initialData?.accountType || 'personal'
   );
-  const [idNumber, setIdNumber] = useState(initialData?.idNumber || '');
+  // 식별자는 토스 인증 요청에만 사용하고 저장하지 않습니다.
+  const [idNumber, setIdNumber] = useState('');
   const [bankName, setBankName] = useState(initialData?.bankName || banks[0]);
   const [accountOwnerName, setAccountOwnerName] = useState(initialData?.accountOwnerName || '');
   const [accountNumber, setAccountNumber] = useState(initialData?.accountNumber || '');
@@ -221,7 +200,6 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
 
     onSave({
       accountType,
-      idNumber,
       bankName,
       accountOwnerName: accountOwnerName || '계좌 소유자',
       accountNumber,
@@ -258,7 +236,12 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
             <label className="block text-xs font-bold text-gray-600">{tr('계좌 유형', 'Account type')}*</label>
             <select
               value={accountType}
-              onChange={(e) => setAccountType(e.target.value as 'personal' | 'corporate')}
+              onChange={(e) => {
+                setAccountType(e.target.value as 'personal' | 'corporate');
+                setIdNumber('');
+                setIsCertified(false);
+                setAccountOwnerName('');
+              }}
               className="w-full p-3.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black focus:border-black cursor-pointer"
             >
               <option value="personal">{tr('개인 / 개인사업자 계좌', 'Personal / business account')}</option>
@@ -300,7 +283,11 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
               <div className="relative">
                 <select
                   value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
+                  onChange={(e) => {
+                    setBankName(e.target.value);
+                    setIsCertified(false);
+                    setAccountOwnerName('');
+                  }}
                   className="w-full p-3.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black cursor-pointer pr-8 appearance-none"
                 >
                   {banks.map((b) => (
@@ -316,9 +303,9 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
               <input
                 type="text"
                 value={accountOwnerName}
-                onChange={(e) => setAccountOwnerName(e.target.value)}
                 placeholder="계좌를 인증해 주세요."
-                className="w-full p-3.5 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+                readOnly
+                className="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 placeholder-gray-400"
               />
             </div>
           </div>
@@ -330,7 +317,11 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
               <input
                 type="text"
                 value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
+                onChange={(e) => {
+                  setAccountNumber(e.target.value);
+                  setIsCertified(false);
+                  setAccountOwnerName('');
+                }}
                 placeholder={tr('숫자만 입력하세요', 'Enter numbers only')}
                 className="w-full p-3.5 pr-28 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
               />
