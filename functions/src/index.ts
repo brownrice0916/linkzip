@@ -1430,6 +1430,31 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
   const userSnapshots = await db.getAll(...authUsers.users.map((account) => db.collection("users").doc(account.uid)));
   const userByUid = new Map(userSnapshots.filter((item) => item.exists).map((item) => [item.id, item.data() || {}]));
   const memberByUid = new Map(memberSnapshot.docs.map((item) => [item.id, item.data()]));
+  const activitySnapshots = await Promise.allSettled([
+    db.collection("publicProfiles").get(),
+    db.collectionGroup("sales_orders").limit(5000).get(),
+    db.collectionGroup("donations").limit(5000).get(),
+    db.collection("guestbooks").limit(5000).get(),
+    db.collectionGroup("anonymous_messages").limit(5000).get(),
+  ]);
+  const docsAt = (index: number) => activitySnapshots[index].status === "fulfilled"
+    ? activitySnapshots[index].value.docs
+    : [];
+  const increment = (map: Map<string, number>, key: string | undefined) => {
+    if (key) map.set(key, (map.get(key) || 0) + 1);
+  };
+  const salesByUid = new Map<string, number>();
+  const donationsByUid = new Map<string, number>();
+  const messagesByUid = new Map<string, number>();
+  const guestbooksByUid = new Map<string, number>();
+  docsAt(1).forEach((item) => increment(salesByUid, item.ref.parent.parent?.id));
+  docsAt(2).forEach((item) => increment(donationsByUid, item.ref.parent.parent?.id));
+  docsAt(4).forEach((item) => increment(messagesByUid, item.ref.parent.parent?.id));
+  docsAt(3).forEach((item) => {
+    const entry = item.data();
+    const ownerUid = typeof entry.targetOwnerUid === "string" ? entry.targetOwnerUid : undefined;
+    increment(guestbooksByUid, ownerUid);
+  });
   const members = authUsers.users.map((account) => {
     const member = memberByUid.get(account.uid);
     const user = userByUid.get(account.uid);
@@ -1444,8 +1469,9 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       displayName: account.displayName || "",
       photoURL: account.photoURL || "",
       disabled: account.disabled,
-      status: member?.status || (member ? "active" : "auth-only"),
-      source: member?.source || "auth",
+      status: member?.status || (user ? "active" : "pending"),
+      betaStatus: member?.status || (user ? "legacy" : "pending"),
+      source: member?.source || (user ? "legacy" : "auth"),
       inviteLabel: member?.inviteLabel || "",
       joinedAt: serializeTimestamp(member?.joinedAt) || account.metadata.creationTime || null,
       lastSignInAt: account.metadata.lastSignInTime || null,
@@ -1454,6 +1480,10 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       membershipPlan: typeof user?.membershipPlan === "string" ? user.membershipPlan : "basic",
       username: typeof user?.username === "string" ? user.username : "",
       updatedAt: typeof user?.updatedAt === "string" ? user.updatedAt : null,
+      salesOrders: salesByUid.get(account.uid) || 0,
+      donations: donationsByUid.get(account.uid) || 0,
+      guestbookEntries: guestbooksByUid.get(account.uid) || 0,
+      anonymousMessages: messagesByUid.get(account.uid) || 0,
     };
   });
   const invites = inviteSnapshot.docs.map((item) => {
@@ -1471,16 +1501,7 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
     };
   }).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
-  const optionalCounts = await Promise.allSettled([
-    db.collection("publicProfiles").count().get(),
-    db.collectionGroup("sales_orders").count().get(),
-    db.collectionGroup("donations").count().get(),
-    db.collection("guestbooks").count().get(),
-    db.collectionGroup("anonymous_messages").count().get(),
-  ]);
-  const countAt = (index: number) => optionalCounts[index].status === "fulfilled"
-    ? optionalCounts[index].value.data().count
-    : 0;
+  const countAt = (index: number) => docsAt(index).length;
   const planBreakdown = members.reduce((result, member) => {
     const plan = member.membershipPlan === "premium" || member.membershipPlan === "standard" ? member.membershipPlan : "basic";
     result[plan] += 1;

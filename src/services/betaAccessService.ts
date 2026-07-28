@@ -32,6 +32,7 @@ export interface BetaMember {
   photoURL: string;
   disabled: boolean;
   status: string;
+  betaStatus: 'active' | 'disabled' | 'legacy' | 'pending' | string;
   source: string;
   inviteLabel: string;
   joinedAt: string | null;
@@ -41,6 +42,10 @@ export interface BetaMember {
   membershipPlan: 'basic' | 'standard' | 'premium' | string;
   username: string;
   updatedAt: string | null;
+  salesOrders: number;
+  donations: number;
+  guestbookEntries: number;
+  anonymousMessages: number;
 }
 
 export interface SiteAdminMetrics {
