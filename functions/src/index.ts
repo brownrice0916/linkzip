@@ -1422,12 +1422,21 @@ export const redeemBetaInvite = onCall(betaCallableOptions, async (request) => {
 
 export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request) => {
   requireSiteAdmin(request);
-  const [inviteSnapshot, memberSnapshot, authUsers] = await Promise.all([
+  const authAccounts = [];
+  let nextPageToken: string | undefined;
+  do {
+    const page = await getAuth().listUsers(1000, nextPageToken);
+    authAccounts.push(...page.users);
+    nextPageToken = page.pageToken;
+  } while (nextPageToken);
+
+  const [inviteSnapshot, memberSnapshot] = await Promise.all([
     db.collection("betaInviteCodes").limit(200).get(),
-    db.collection("betaMembers").limit(500).get(),
-    getAuth().listUsers(500),
+    db.collection("betaMembers").limit(1000).get(),
   ]);
-  const userSnapshots = await db.getAll(...authUsers.users.map((account) => db.collection("users").doc(account.uid)));
+  const userSnapshots = authAccounts.length
+    ? await db.getAll(...authAccounts.map((account) => db.collection("users").doc(account.uid)))
+    : [];
   const userByUid = new Map(userSnapshots.filter((item) => item.exists).map((item) => [item.id, item.data() || {}]));
   const memberByUid = new Map(memberSnapshot.docs.map((item) => [item.id, item.data()]));
   const activitySnapshots = await Promise.allSettled([
@@ -1436,6 +1445,8 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
     db.collectionGroup("donations").limit(5000).get(),
     db.collection("guestbooks").limit(5000).get(),
     db.collectionGroup("anonymous_messages").limit(5000).get(),
+    db.collectionGroup("collected_customer_data").limit(5000).get(),
+    db.collection("tossPaymentOrders").where("kind", "==", "membership").limit(5000).get(),
   ]);
   const docsAt = (index: number) => activitySnapshots[index].status === "fulfilled"
     ? activitySnapshots[index].value.docs
@@ -1447,15 +1458,85 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
   const donationsByUid = new Map<string, number>();
   const messagesByUid = new Map<string, number>();
   const guestbooksByUid = new Map<string, number>();
-  docsAt(1).forEach((item) => increment(salesByUid, item.ref.parent.parent?.id));
-  docsAt(2).forEach((item) => increment(donationsByUid, item.ref.parent.parent?.id));
-  docsAt(4).forEach((item) => increment(messagesByUid, item.ref.parent.parent?.id));
+  const customerDataByUid = new Map<string, number>();
+  const unreadMessagesByUid = new Map<string, number>();
+  const paidSalesByUid = new Map<string, number>();
+  const pendingSalesByUid = new Map<string, number>();
+  const salesRevenueByUid = new Map<string, number>();
+  const donationRevenueByUid = new Map<string, number>();
+  const latestActivityByUid = new Map<string, string>();
+  const profilesByUid = new Map<string, Array<Record<string, unknown>>>();
+  const timestampText = (value: unknown) => value instanceof Timestamp
+    ? value.toDate().toISOString()
+    : typeof value === "string" ? value : null;
+  const recordActivity = (uid: string | undefined, data: FirebaseFirestore.DocumentData) => {
+    if (!uid) return;
+    const candidate = timestampText(data.paidAt) || timestampText(data.createdAt) || timestampText(data.updatedAt);
+    if (candidate && candidate > (latestActivityByUid.get(uid) || "")) latestActivityByUid.set(uid, candidate);
+  };
+  docsAt(0).forEach((item) => {
+    const profile = item.data();
+    const uid = typeof profile.ownerUid === "string" ? profile.ownerUid : undefined;
+    if (!uid) return;
+    const links = Array.isArray(profile.customLinks) ? profile.customLinks : [];
+    const details = profilesByUid.get(uid) || [];
+    details.push({
+      id: item.id,
+      username: typeof profile.username === "string" ? profile.username : "",
+      name: typeof profile.profile?.name === "string" ? profile.profile.name : "",
+      blockCount: links.length,
+      visibleBlockCount: links.filter((link: Record<string, unknown>) => link?.isVisible !== false).length,
+      updatedAt: timestampText(profile.updatedAt),
+    });
+    profilesByUid.set(uid, details);
+  });
+  docsAt(1).forEach((item) => {
+    const uid = item.ref.parent.parent?.id;
+    const order = item.data();
+    increment(salesByUid, uid);
+    if (order.status === "paid") {
+      increment(paidSalesByUid, uid);
+      if (uid) salesRevenueByUid.set(uid, (salesRevenueByUid.get(uid) || 0) + (Number(order.amount) || 0));
+    } else if (order.status === "pending") increment(pendingSalesByUid, uid);
+    recordActivity(uid, order);
+  });
+  docsAt(2).forEach((item) => {
+    const uid = item.ref.parent.parent?.id;
+    const donation = item.data();
+    increment(donationsByUid, uid);
+    if (uid) donationRevenueByUid.set(uid, (donationRevenueByUid.get(uid) || 0) + (Number(donation.amount) || 0));
+    recordActivity(uid, donation);
+  });
+  docsAt(4).forEach((item) => {
+    const uid = item.ref.parent.parent?.id;
+    increment(messagesByUid, uid);
+    if (item.data().isRead !== true) increment(unreadMessagesByUid, uid);
+    recordActivity(uid, item.data());
+  });
+  docsAt(5).forEach((item) => {
+    const uid = item.ref.parent.parent?.id;
+    increment(customerDataByUid, uid);
+    recordActivity(uid, item.data());
+  });
   docsAt(3).forEach((item) => {
     const entry = item.data();
     const ownerUid = typeof entry.targetOwnerUid === "string" ? entry.targetOwnerUid : undefined;
     increment(guestbooksByUid, ownerUid);
+    recordActivity(ownerUid, entry);
   });
-  const members = authUsers.users.map((account) => {
+  const membershipPaymentsByUid = new Map<string, {count: number; amount: number; lastPaidAt: string | null}>();
+  docsAt(6).forEach((item) => {
+    const payment = item.data();
+    if (payment.status !== "PAID" || typeof payment.ownerUid !== "string") return;
+    const current = membershipPaymentsByUid.get(payment.ownerUid) || {count: 0, amount: 0, lastPaidAt: null};
+    const paidAt = timestampText(payment.paidAt) || timestampText(payment.approvedAt);
+    membershipPaymentsByUid.set(payment.ownerUid, {
+      count: current.count + 1,
+      amount: current.amount + (Number(payment.amount) || 0),
+      lastPaidAt: paidAt && paidAt > (current.lastPaidAt || "") ? paidAt : current.lastPaidAt,
+    });
+  });
+  const members = authAccounts.map((account) => {
     const member = memberByUid.get(account.uid);
     const user = userByUid.get(account.uid);
     const workspaces = Array.isArray(user?.profileWorkspaces) ? user.profileWorkspaces : [];
@@ -1463,6 +1544,20 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
     const blockCount = workspaces.length
       ? workspaces.reduce((sum: number, workspace: Record<string, unknown>) => sum + (Array.isArray(workspace.customLinks) ? workspace.customLinks.length : 0), 0)
       : (Array.isArray(user?.customLinks) ? user.customLinks.length : 0);
+    const publicProfiles = profilesByUid.get(account.uid) || [];
+    const profileDetails = publicProfiles.length ? publicProfiles : workspaces.map((workspace: Record<string, unknown>) => {
+      const profile = workspace.profile && typeof workspace.profile === "object" ? workspace.profile as Record<string, unknown> : {};
+      const links = Array.isArray(workspace.customLinks) ? workspace.customLinks : [];
+      return {
+        id: typeof workspace.id === "string" ? workspace.id : "",
+        username: typeof profile.username === "string" ? profile.username : "",
+        name: typeof profile.name === "string" ? profile.name : "",
+        blockCount: links.length,
+        visibleBlockCount: links.filter((link: Record<string, unknown>) => link?.isVisible !== false).length,
+        updatedAt: typeof workspace.updatedAt === "string" ? workspace.updatedAt : null,
+      };
+    });
+    const membershipPayments = membershipPaymentsByUid.get(account.uid) || {count: 0, amount: 0, lastPaidAt: null};
     return {
       uid: account.uid,
       email: account.email || "",
@@ -1478,12 +1573,29 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       profileCount,
       blockCount,
       membershipPlan: typeof user?.membershipPlan === "string" ? user.membershipPlan : "basic",
+      membershipBillingCycle: typeof user?.membershipBillingCycle === "string" ? user.membershipBillingCycle : "",
+      membershipPeriodStartedAt: timestampText(user?.membershipPeriodStartedAt),
+      membershipPeriodEndsAt: timestampText(user?.membershipPeriodEndsAt),
+      membershipPaymentProvider: typeof user?.membershipPaymentProvider === "string" ? user.membershipPaymentProvider : "",
+      membershipPaymentCount: membershipPayments.count,
+      membershipPaidAmount: membershipPayments.amount,
+      membershipLastPaidAt: membershipPayments.lastPaidAt,
       username: typeof user?.username === "string" ? user.username : "",
       updatedAt: typeof user?.updatedAt === "string" ? user.updatedAt : null,
+      emailVerified: account.emailVerified,
+      providers: account.providerData.map((provider) => provider.providerId),
+      profiles: profileDetails,
       salesOrders: salesByUid.get(account.uid) || 0,
+      paidSalesOrders: paidSalesByUid.get(account.uid) || 0,
+      pendingSalesOrders: pendingSalesByUid.get(account.uid) || 0,
+      salesRevenue: salesRevenueByUid.get(account.uid) || 0,
       donations: donationsByUid.get(account.uid) || 0,
+      donationRevenue: donationRevenueByUid.get(account.uid) || 0,
       guestbookEntries: guestbooksByUid.get(account.uid) || 0,
       anonymousMessages: messagesByUid.get(account.uid) || 0,
+      unreadAnonymousMessages: unreadMessagesByUid.get(account.uid) || 0,
+      collectedCustomers: customerDataByUid.get(account.uid) || 0,
+      latestActivityAt: latestActivityByUid.get(account.uid) || null,
     };
   });
   const invites = inviteSnapshot.docs.map((item) => {
@@ -1518,6 +1630,11 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       donations: countAt(2),
       guestbookEntries: countAt(3),
       anonymousMessages: countAt(4),
+      collectedCustomers: countAt(5),
+      grossSalesAmount: Array.from(salesRevenueByUid.values()).reduce((sum, amount) => sum + amount, 0),
+      grossDonationAmount: Array.from(donationRevenueByUid.values()).reduce((sum, amount) => sum + amount, 0),
+      paidMemberships: Array.from(membershipPaymentsByUid.values()).reduce((sum, payment) => sum + payment.count, 0),
+      membershipRevenue: Array.from(membershipPaymentsByUid.values()).reduce((sum, payment) => sum + payment.amount, 0),
       planBreakdown,
     },
   };

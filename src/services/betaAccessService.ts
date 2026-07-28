@@ -40,12 +40,36 @@ export interface BetaMember {
   profileCount: number;
   blockCount: number;
   membershipPlan: 'basic' | 'standard' | 'premium' | string;
+  membershipBillingCycle: 'monthly' | 'annual' | '' | string;
+  membershipPeriodStartedAt: string | null;
+  membershipPeriodEndsAt: string | null;
+  membershipPaymentProvider: string;
+  membershipPaymentCount: number;
+  membershipPaidAmount: number;
+  membershipLastPaidAt: string | null;
   username: string;
   updatedAt: string | null;
+  emailVerified: boolean;
+  providers: string[];
+  profiles: Array<{
+    id: string;
+    username: string;
+    name: string;
+    blockCount: number;
+    visibleBlockCount: number;
+    updatedAt: string | null;
+  }>;
   salesOrders: number;
+  paidSalesOrders: number;
+  pendingSalesOrders: number;
+  salesRevenue: number;
   donations: number;
+  donationRevenue: number;
   guestbookEntries: number;
   anonymousMessages: number;
+  unreadAnonymousMessages: number;
+  collectedCustomers: number;
+  latestActivityAt: string | null;
 }
 
 export interface SiteAdminMetrics {
@@ -55,6 +79,11 @@ export interface SiteAdminMetrics {
   donations: number;
   guestbookEntries: number;
   anonymousMessages: number;
+  collectedCustomers: number;
+  grossSalesAmount: number;
+  grossDonationAmount: number;
+  paidMemberships: number;
+  membershipRevenue: number;
   planBreakdown: {basic: number; standard: number; premium: number};
 }
 
