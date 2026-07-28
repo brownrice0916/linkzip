@@ -237,6 +237,14 @@ interface TossBankVerificationResponse {
   isValid?: unknown;
   code?: unknown;
   message?: unknown;
+  entityBody?: {
+    holderName?: unknown;
+    isValid?: unknown;
+  };
+  error?: {
+    code?: unknown;
+    message?: unknown;
+  } | null;
 }
 
 const requestTossBankVerification = async (
@@ -257,7 +265,7 @@ const requestTossBankVerification = async (
   const payload = await tossResponse.json().catch(() => ({})) as TossBankVerificationResponse;
   if (tossResponse.ok) return payload;
 
-  const errorCode = cleanString(payload.code, 100);
+  const errorCode = cleanString(payload.error?.code ?? payload.code, 100);
   logger.warn("Toss bank account verification failed", {
     status: tossResponse.status,
     code: errorCode,
@@ -270,7 +278,7 @@ const requestTossBankVerification = async (
   }
   throw new HttpsError(
     "failed-precondition",
-    cleanString(payload.message, 200) || "계좌 정보가 일치하지 않습니다.",
+    cleanString(payload.error?.message ?? payload.message, 200) || "계좌 정보가 일치하지 않습니다.",
   );
 };
 
@@ -299,7 +307,7 @@ export const verifyTossBankAccount = onCall(
       bankCode,
       accountNumber,
     });
-    const holderName = cleanString(holder.holderName, 50);
+    const holderName = cleanString(holder.entityBody?.holderName ?? holder.holderName, 50);
     if (!holderName) throw new HttpsError("failed-precondition", "예금주 정보를 확인할 수 없습니다.");
 
     const verification = await requestTossBankVerification("/v2/bank-accounts/verify-identifier", {
@@ -307,7 +315,7 @@ export const verifyTossBankAccount = onCall(
       accountNumber,
       identityNumber,
     });
-    if (verification.isValid !== true) {
+    if ((verification.entityBody?.isValid ?? verification.isValid) !== true) {
       throw new HttpsError("failed-precondition", "계좌번호와 소유자 정보가 일치하지 않습니다.");
     }
 
