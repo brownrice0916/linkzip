@@ -8,6 +8,7 @@ interface ProfitAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: Partial<DonationConfig>;
+  onDisconnect?: () => void;
   onSave: (accountData: {
     accountType: 'personal' | 'corporate';
     bankName: string;
@@ -126,6 +127,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
   isOpen,
   onClose,
   initialData,
+  onDisconnect,
   onSave
 }) => {
   const language = useStore((state) => state.language);
@@ -343,20 +345,34 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
 
         </div>
 
-        {/* Modal Save Button (Enabled ONLY when certified) */}
-        <button
-          onClick={handleSave}
-          disabled={!isCertified}
-          className={clsx(
-            "w-full py-4 rounded-xl font-black text-sm transition tracking-wide flex items-center justify-center gap-2",
-            isCertified
-              ? "bg-black hover:bg-gray-800 text-white cursor-pointer shadow-md"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
+        <div className="space-y-2">
+          <button
+            onClick={handleSave}
+            disabled={!isCertified}
+            className={clsx(
+              "w-full py-4 rounded-xl font-black text-sm transition tracking-wide flex items-center justify-center gap-2",
+              isCertified
+                ? "bg-black hover:bg-gray-800 text-white cursor-pointer shadow-md"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
+            )}
+            title={!isCertified ? tr('계좌 인증을 완료해야 저장할 수 있습니다.', 'Verify the account before saving.') : tr('저장하기', 'Save')}
+          >
+            <span>{isCertified ? tr('저장', 'Save') : tr('인증 완료 후 저장 가능', 'Verify before saving')}</span>
+          </button>
+          {initialData?.accountConnected && onDisconnect && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!window.confirm(tr('연동된 계좌를 해제할까요? 후원·판매 블록의 계좌 정보도 함께 삭제됩니다.', 'Disconnect this account? Account details will also be removed from donation and sales blocks.'))) return;
+                onDisconnect();
+                onClose();
+              }}
+              className="w-full cursor-pointer rounded-xl py-3 text-xs font-extrabold text-red-600 transition hover:bg-red-50 hover:text-red-700"
+            >
+              {tr('계좌 연동 해제', 'Disconnect account')}
+            </button>
           )}
-          title={!isCertified ? tr('계좌 인증을 완료해야 저장할 수 있습니다.', 'Verify the account before saving.') : tr('저장하기', 'Save')}
-        >
-          <span>{isCertified ? tr('저장', 'Save') : tr('인증 완료 후 저장 가능', 'Verify before saving')}</span>
-        </button>
+        </div>
 
       </div>
     </div>

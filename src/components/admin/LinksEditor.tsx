@@ -62,6 +62,29 @@ const getSocialIconComp = (platform: string) => {
   return getLinkIcon(platform);
 };
 
+const disconnectAccountFromLinks = (links: CustomLink[]): CustomLink[] => links.map((link) => {
+  const donationConfig = link.donationConfig ? {...link.donationConfig} : undefined;
+  if (donationConfig) {
+    donationConfig.accountConnected = false;
+    delete donationConfig.bankName;
+    delete donationConfig.accountNumber;
+    delete donationConfig.accountOwnerName;
+    delete donationConfig.idNumber;
+  }
+  const salesConfig = link.salesConfig ? {...link.salesConfig} : undefined;
+  if (salesConfig) {
+    delete salesConfig.bankName;
+    delete salesConfig.accountNumber;
+    delete salesConfig.accountOwner;
+  }
+  return {
+    ...link,
+    ...(donationConfig ? {donationConfig} : {}),
+    ...(salesConfig ? {salesConfig} : {}),
+    ...(link.links ? {links: disconnectAccountFromLinks(link.links)} : {}),
+  };
+});
+
 const LinksEditor = () => {
   const {
     profile,
@@ -82,6 +105,7 @@ const LinksEditor = () => {
     addCustomLink,
     updateCustomLink,
     removeCustomLink,
+    reorderLinks,
     moveItemToCollection,
     moveItemToRoot,
     moveItemRelative,
@@ -2943,6 +2967,13 @@ const LinksEditor = () => {
           initialData={
             activeProfitAccountLink.donationConfig || profile.verifiedAccount
           }
+          onDisconnect={() => {
+            const nextProfile = {...profile};
+            delete nextProfile.verifiedAccount;
+            setProfile(nextProfile);
+            reorderLinks(disconnectAccountFromLinks(customLinks));
+            setActiveProfitAccountLink(null);
+          }}
           onSave={(accountData) => {
             // 1. Save globally to User Profile so it can be recalled anytime!
             setProfile({ ...profile, verifiedAccount: accountData });
