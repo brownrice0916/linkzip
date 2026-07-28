@@ -147,18 +147,6 @@ const LinksEditor = () => {
     ? findLinkContext(customLinks, activeStyleLinkId)
     : undefined;
   const activeStyleLink = activeStyleContext?.link;
-  const draggedLink = draggedId
-    ? findLinkContext(customLinks, draggedId)?.link
-    : undefined;
-  const dragPreviewLabel = draggedLink?.title || (isKo ? '블록 이동' : 'Move block');
-
-  const getDropPreviewProps = (targetId: string) => ({
-    'data-drop-preview': dragOverTargetId === targetId ? dragOverPosition || undefined : undefined,
-    'data-drop-label': dragOverTargetId === targetId
-      ? `${dragPreviewLabel} · ${isKo ? '여기에 놓기' : 'Drop here'}`
-      : undefined,
-  });
-
   const handleCardStyleClick = (event: React.MouseEvent, linkId: string) => {
     const target = event.target as HTMLElement;
     if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
@@ -608,7 +596,6 @@ const LinksEditor = () => {
     parentCollectionId?: string
   ) => {
     const isBeingDragged = draggedId === link.id;
-    const isDragOver = dragOverTargetId === link.id;
 
     const isGuestbookLink = link.url?.includes('/guestbook') || link.title?.includes('방명록');
     const isImage = !isGuestbookLink &&
@@ -621,7 +608,6 @@ const LinksEditor = () => {
       <div
         key={link.id}
         data-testid={`link-card-${link.id}`}
-        {...getDropPreviewProps(link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -632,8 +618,7 @@ const LinksEditor = () => {
           isNested
             ? "border-gray-200 bg-gray-50/50 shadow-2xs"
             : "border-gray-200 shadow-2xs",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver && "border-2 border-indigo-500 bg-indigo-50/50"
+          isBeingDragged && "opacity-40 border-dashed border-gray-400"
         )}
       >
         <div className="flex items-center gap-2.5">
@@ -737,7 +722,6 @@ const LinksEditor = () => {
   // Render Collection (Group) Block Card
   const renderCollection = (collection: CustomLink) => {
     const isBeingDragged = draggedId === collection.id;
-    const isDragOver = dragOverTargetId === collection.id;
     const isCollapsed = isBlockCollapsed(collection.id, true);
     const hasCollectionItems = (collection.links || []).length > 0;
 
@@ -755,7 +739,6 @@ const LinksEditor = () => {
         <div
         data-testid={`collection-card-${collection.id}`}
         data-collapsed={isCollapsed}
-        {...getDropPreviewProps(collection.id)}
         onClick={(event) => handleCollectionCardClick(event, collection.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, collection.id)}
@@ -770,7 +753,7 @@ const LinksEditor = () => {
               : "p-4 shadow-xs"
             : "p-5 space-y-4 shadow-sm",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver ? "border-black bg-gray-50" : "border-gray-200"
+          "border-gray-200"
         )}
       >
         {/* Collection Header Controls */}
@@ -916,7 +899,6 @@ const LinksEditor = () => {
 
   const renderDonationCard = (link: CustomLink) => {
     const isBeingDragged = draggedId === link.id;
-    const isDragOver = dragOverTargetId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const config = link.donationConfig || {
@@ -940,7 +922,6 @@ const LinksEditor = () => {
         key={link.id}
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
-        {...getDropPreviewProps(link.id)}
         onClick={(event) => {
           const target = event.target as HTMLElement;
           if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
@@ -956,9 +937,7 @@ const LinksEditor = () => {
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver
-            ? "border-2 border-indigo-500 bg-indigo-50/50"
-            : "border-gray-200"
+          "border-gray-200"
         )}
       >
         {/* Header Row: Drag Handle, Up/Down Move, Fold/Expand, Toggle, Title, Info, Controls */}
@@ -1172,7 +1151,6 @@ const LinksEditor = () => {
 
   const renderFileSharingCard = (link: CustomLink) => {
     const isBeingDragged = draggedId === link.id;
-    const isDragOver = dragOverTargetId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const config = link.fileConfig || {
@@ -1225,7 +1203,6 @@ const LinksEditor = () => {
         key={link.id}
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
-        {...getDropPreviewProps(link.id)}
         onClick={(event) => handleCardStyleClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
@@ -1236,9 +1213,7 @@ const LinksEditor = () => {
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver
-            ? "border-2 border-indigo-500 bg-indigo-50/50"
-            : "border-gray-200"
+          "border-gray-200"
         )}
       >
         {/* Header Row */}
@@ -1418,7 +1393,6 @@ const LinksEditor = () => {
 
   const renderSNSCard = (link: CustomLink) => {
     const isBeingDragged = draggedId === link.id;
-    const isDragOver = dragOverTargetId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const items = link.snsLinks || [
@@ -1456,8 +1430,7 @@ const LinksEditor = () => {
         key={link.id}
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
-        {...getDropPreviewProps(link.id)}
-        onClick={(event) => handleCardStyleClick(event, link.id)}
+        onClick={(event) => handleCollapsibleCardClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
         onDragEnd={handleDragEnd}
@@ -1467,9 +1440,7 @@ const LinksEditor = () => {
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver
-            ? "border-2 border-indigo-500 bg-indigo-50/50"
-            : "border-gray-200"
+          "border-gray-200"
         )}
       >
         {/* Header Row */}
@@ -1524,6 +1495,15 @@ const LinksEditor = () => {
                   link.isVisible !== false ? "translate-x-5" : "translate-x-0"
                 )}
               />
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveStyleLinkId(link.id)}
+              className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black"
+              aria-label="SNS 디자인 수정"
+              title="SNS 디자인 수정"
+            >
+              <Palette className="h-4 w-4" />
             </button>
             {renderCollapseControl(link.id, isCollapsed)}
             <button
@@ -1644,7 +1624,6 @@ const LinksEditor = () => {
 
   const renderReservationCard = (link: CustomLink) => {
     const isBeingDragged = draggedId === link.id;
-    const isDragOver = dragOverTargetId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const resConfig = link.reservationConfig || {
@@ -1697,7 +1676,6 @@ const LinksEditor = () => {
         key={link.id}
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
-        {...getDropPreviewProps(link.id)}
         onClick={(event) => handleCollapsibleCardClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
@@ -1708,7 +1686,7 @@ const LinksEditor = () => {
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver ? "border-2 border-indigo-500 bg-indigo-50/50" : "border-gray-200"
+          "border-gray-200"
         )}
       >
         {/* Card Header (Matching User Screenshot) */}
@@ -1835,7 +1813,6 @@ const LinksEditor = () => {
 
   const renderNoticeCard = (link: CustomLink) => {
     const isBeingDragged = draggedId === link.id;
-    const isDragOver = dragOverTargetId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const notice = link.noticeConfig || {
@@ -1849,7 +1826,6 @@ const LinksEditor = () => {
         key={link.id}
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
-        {...getDropPreviewProps(link.id)}
         onClick={(event) => {
           const target = event.target as HTMLElement;
           if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
@@ -1864,9 +1840,7 @@ const LinksEditor = () => {
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver
-            ? "border-2 border-indigo-500 bg-indigo-50/50"
-            : "border-gray-200"
+          "border-gray-200"
         )}
       >
         {/* Header Row */}
@@ -1964,7 +1938,6 @@ const LinksEditor = () => {
 
   const renderCustomerInfoCard = (link: CustomLink) => {
     const isBeingDragged = draggedId === link.id;
-    const isDragOver = dragOverTargetId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const storedConfig = link.customerInfoConfig;
@@ -1994,7 +1967,6 @@ const LinksEditor = () => {
         key={link.id}
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
-        {...getDropPreviewProps(link.id)}
         onClick={(event) => {
           const target = event.target as HTMLElement;
           if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
@@ -2010,9 +1982,7 @@ const LinksEditor = () => {
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver
-            ? "border-2 border-indigo-500 bg-indigo-50/50"
-            : "border-gray-200"
+          "border-gray-200"
         )}
       >
         {/* Header Row */}
@@ -2186,7 +2156,6 @@ const LinksEditor = () => {
 
   const renderSalesCard = (link: CustomLink) => {
     const isBeingDragged = draggedId === link.id;
-    const isDragOver = dragOverTargetId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const config = link.salesConfig || {
@@ -2244,7 +2213,6 @@ const LinksEditor = () => {
           key={link.id}
           data-testid={`link-card-${link.id}`}
           data-collapsed={isCollapsed}
-          {...getDropPreviewProps(link.id)}
           onClick={(event) => handleCollapsibleCardClick(event, link.id)}
           draggable
           onDragStart={(e) => handleDragStart(e, link.id)}
@@ -2255,9 +2223,7 @@ const LinksEditor = () => {
             "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
             isCollapsed ? "p-4" : "p-5 space-y-4",
             isBeingDragged && "opacity-40 border-dashed border-gray-400",
-            isDragOver
-              ? "border-2 border-indigo-500 bg-indigo-50/50"
-              : "border-gray-200"
+            "border-gray-200"
           )}
         >
           {/* Header Row */}
@@ -2389,7 +2355,6 @@ const LinksEditor = () => {
         key={link.id}
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
-        {...getDropPreviewProps(link.id)}
         onClick={(event) => handleCollapsibleCardClick(event, link.id)}
         draggable
         onDragStart={(e) => handleDragStart(e, link.id)}
@@ -2400,9 +2365,7 @@ const LinksEditor = () => {
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
           isBeingDragged && "opacity-40 border-dashed border-gray-400",
-          isDragOver
-            ? "border-2 border-indigo-500 bg-indigo-50/50"
-            : "border-gray-200"
+          "border-gray-200"
         )}
       >
         {/* Header */}
@@ -2774,7 +2737,7 @@ const LinksEditor = () => {
     };
 
     return (
-      <div key={link.id} data-testid={`affiliate-card-${link.id}`} data-collapsed={isCollapsed} {...getDropPreviewProps(link.id)} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return; toggleBlockCollapse(link.id); }} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
+      <div key={link.id} data-testid={`affiliate-card-${link.id}`} data-collapsed={isCollapsed} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return; toggleBlockCollapse(link.id); }} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
         <div className={clsx("flex items-center justify-between gap-3", !isCollapsed && "border-b border-gray-100 pb-3")}>
           <div className="flex min-w-0 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" /><span className={blockIconClassName}><BadgeDollarSign className="h-5 w-5" /></span><span className="truncate text-sm font-black">{link.title || (isKo ? "추천 상품" : "Recommended product")}</span></div>
           <div className="flex shrink-0 items-center gap-2">
@@ -2823,7 +2786,7 @@ const LinksEditor = () => {
     const mapSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
     const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;
     return (
-      <div key={link.id} data-testid={`map-card-${link.id}`} data-collapsed={isCollapsed} {...getDropPreviewProps(link.id)} onClick={(event) => handleCollapsibleCardClick(event, link.id)} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
+      <div key={link.id} data-testid={`map-card-${link.id}`} data-collapsed={isCollapsed} onClick={(event) => handleCollapsibleCardClick(event, link.id)} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
         <div className={clsx("flex items-center justify-between gap-3", !isCollapsed && "border-b border-gray-100 pb-3")}>
           <div className="flex min-w-0 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" /><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-700" aria-label="기본 위치 아이콘"><MapPinned className="h-5 w-5" /></span><span className="truncate text-sm font-black">{link.title || (isKo ? "오시는 길" : "Location")}</span></div>
           <div className="flex shrink-0 items-center gap-2">{renderVisibilityControl(link)}<button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label={isKo ? "거주지 디자인 수정" : "Edit location design"} title={isKo ? "거주지 디자인 수정" : "Edit location design"}><Palette className="h-4 w-4" /></button>{renderCollapseControl(link.id, isCollapsed)}<button type="button" onClick={() => removeCustomLink(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" aria-label={isKo ? "지도 삭제" : "Delete map"}><Trash2 className="h-4 w-4" /></button></div>
@@ -2861,7 +2824,7 @@ const LinksEditor = () => {
         }}
         onClose={() => setActiveStyleLinkId(null)}
         onUpdate={(updates) => updateCustomLink(activeStyleLink.id, updates)}
-        designOnly={activeStyleLink.type === "collection" || activeStyleLink.type === "reservation" || activeStyleLink.type === "map" || activeStyleLink.type === "donation" || activeStyleLink.type === "sales" || activeStyleLink.type === "affiliate_product" || activeStyleLink.type === "notice" || activeStyleLink.type === "customer_info"}
+        designOnly={activeStyleLink.type === "collection" || activeStyleLink.type === "reservation" || activeStyleLink.type === "map" || activeStyleLink.type === "donation" || activeStyleLink.type === "sales" || activeStyleLink.type === "affiliate_product" || activeStyleLink.type === "notice" || activeStyleLink.type === "customer_info" || activeStyleLink.type === "sns"}
         onUpdateChildren={activeStyleLink.type === "collection" ? (updates) => {
           const updatedChildren = (activeStyleLink.links || []).map((child) => ({
             ...child,
