@@ -49,7 +49,7 @@ const validateIdentityNumber = (idNum: string, type: 'personal' | 'corporate'): 
   const cleanId = idNum.replace(/[^0-9]/g, '');
 
   if (!cleanId) {
-    return { valid: false, error: 'ID number(주민등록번호/사업자번호)를 입력해 주세요.' };
+    return { valid: false, error: '생년월일 6자리 또는 사업자등록번호를 입력해 주세요.' };
   }
 
   if (type === 'personal') {
@@ -192,7 +192,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
 
   const handleSave = () => {
     if (!idNumber.trim()) {
-      alert(accountType === 'personal' ? '주민등록번호/사업자번호를 입력해주세요.' : '법인등록번호를 입력해주세요.');
+      alert(accountType === 'personal' ? '생년월일 6자리 또는 사업자등록번호를 입력해주세요.' : '사업자등록번호를 입력해주세요.');
       return;
     }
     if (!accountNumber.trim()) {
@@ -251,10 +251,10 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
             </select>
           </div>
 
-          {/* ID Number / Business Registration Number */}
+          {/* Birth date / Business Registration Number */}
           <div className="space-y-1">
             <label className="block text-xs font-bold text-gray-600">
-              {accountType === 'personal' ? tr('주민등록번호 / 사업자번호*', 'ID number*') : tr('법인등록번호*', 'Company registration number*')}
+              {accountType === 'personal' ? tr('생년월일 6자리 / 사업자등록번호*', 'Birth date (YYMMDD) / business number*') : tr('사업자등록번호*', 'Business registration number*')}
             </label>
             <input
               type="text"
@@ -263,7 +263,7 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
                 setIdNumber(e.target.value);
                 setIsCertified(false);
               }}
-              placeholder={accountType === 'personal' ? tr('번호만 입력하세요', 'Enter ID number without hyphens') : tr('법인등록번호만 입력하세요', 'Enter registration number without hyphens')}
+              placeholder={accountType === 'personal' ? tr('예: 910101 또는 사업자번호 10자리', 'YYMMDD or 10-digit business number') : tr('사업자등록번호 10자리를 입력하세요', 'Enter the 10-digit business number')}
               className={clsx(
                 "w-full p-3.5 bg-white border rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 placeholder-gray-400 transition-all",
                 hasIdError
