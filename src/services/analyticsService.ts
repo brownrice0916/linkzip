@@ -11,12 +11,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { AnalyticsDailyItem } from '../store/useStore';
-import { shouldRecordAnalytics } from '../domain/analytics';
+import { shouldRecordAnalytics, toLocalDateKey } from '../domain/analytics';
 
-const localDateKey = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-};
+const localDateKey = () => toLocalDateKey(new Date());
 
 export async function recordPageView(ownerUid: string): Promise<void> {
   if (!shouldRecordAnalytics()) return;
@@ -62,7 +59,7 @@ export async function getAnalytics(ownerUid: string): Promise<{
   const daily = dailySnapshot.docs
     .map((item) => item.data() as AnalyticsDailyItem)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-7);
+    .slice(-400);
   const linkClicks = Object.fromEntries(
     linksSnapshot.docs.map((item) => [item.id, Number(item.data().clicks || 0)]),
   );
@@ -99,7 +96,7 @@ export function subscribeToAnalytics(
       daily = snapshot.docs
         .map((item) => item.data() as AnalyticsDailyItem)
         .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(-7);
+        .slice(-400);
       emit();
     }, handleError),
     onSnapshot(collection(db, 'analytics', ownerUid, 'links'), (snapshot) => {

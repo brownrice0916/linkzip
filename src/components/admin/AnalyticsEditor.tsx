@@ -18,6 +18,17 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { subscribeToAnalytics } from '../../services/analyticsService';
+import {
+  filterAnalyticsByPeriod,
+  sumAnalytics,
+  type AnalyticsPeriod,
+} from '../../domain/analytics';
+
+const PERIOD_OPTIONS: Array<{ value: AnalyticsPeriod; label: string; description: string }> = [
+  { value: 'day', label: '일간', description: '오늘' },
+  { value: 'week', label: '주간', description: '최근 7일' },
+  { value: 'month', label: '월간', description: '최근 30일' },
+];
 
 export const AnalyticsEditor: React.FC = () => {
   const {
@@ -31,6 +42,7 @@ export const AnalyticsEditor: React.FC = () => {
   } = useStore();
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'clicks' | 'ctr' | 'title'>('clicks');
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>('week');
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -61,18 +73,22 @@ export const AnalyticsEditor: React.FC = () => {
   }));
   const flatLinks = [...getAllLinks(customLinks), ...socialAnalyticsLinks];
 
-  // Total Clicks calculation across all links
-  const totalClicks = flatLinks.reduce((acc, link) => acc + (link.clicks || 0), 0);
+  // Period summary is based on daily source data so views, clicks and CTR use the same range.
+  const periodHistory = filterAnalyticsByPeriod(analyticsDailyHistory, analyticsPeriod);
+  const periodSummary = sumAnalytics(periodHistory);
+  const periodLabel = PERIOD_OPTIONS.find((option) => option.value === analyticsPeriod)?.description || '최근 7일';
+  const totalClicks = periodSummary.clicks;
+  const periodPageViews = periodSummary.views;
 
   // Overall Click-Through Rate (CTR)
-  const overallCtr = pageViews > 0 ? ((totalClicks / pageViews) * 100).toFixed(1) : '0.0';
+  const overallCtr = periodPageViews > 0 ? ((totalClicks / periodPageViews) * 100).toFixed(1) : '0.0';
 
   // Top Performing Link
   const topLinkCandidate = [...flatLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0];
   const topLink = (topLinkCandidate?.clicks || 0) > 0 ? topLinkCandidate : undefined;
 
   // Maximum daily views for bar chart scaling
-  const maxDailyViews = Math.max(...analyticsDailyHistory.map((d) => d.views), 1);
+  const maxDailyViews = Math.max(...periodHistory.map((d) => d.views), 1);
 
   // Filtered and Sorted links list
   const filteredLinks = flatLinks.filter((link) => {
@@ -126,23 +142,48 @@ export const AnalyticsEditor: React.FC = () => {
         <div><p className="text-xs font-black">실시간 성과 데이터</p><p className="text-[11px] text-gray-500 mt-0.5">프로필 조회수, 링크 클릭수, 클릭률을 실제 집계 데이터로 보여줍니다.</p></div>
       </div>
 
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-black text-gray-950">페이지 조회수 및 클릭률</h2>
+          <p className="mt-1 text-xs font-semibold text-gray-500">선택한 기간의 실제 데이터만 집계합니다.</p>
+        </div>
+        <div className="flex shrink-0 rounded-2xl bg-gray-100 p-1" aria-label="통계 조회 기간">
+          {PERIOD_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setAnalyticsPeriod(option.value)}
+              aria-pressed={analyticsPeriod === option.value}
+              className={clsx(
+                'min-w-16 rounded-xl px-3 py-2 text-xs font-black transition',
+                analyticsPeriod === option.value
+                  ? 'bg-white text-gray-950 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900',
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* 4 Summary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* 1. Total Page Views */}
         <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs space-y-3 relative overflow-hidden group hover:border-gray-300 transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-gray-500">페이지 총 조회수</span>
+            <span className="text-xs font-extrabold text-gray-500">페이지 조회수</span>
             <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
               <Eye className="w-5 h-5" />
             </div>
           </div>
           <div>
             <div className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-              {pageViews.toLocaleString()} <span className="text-xs font-bold text-gray-400">회</span>
+              {periodPageViews.toLocaleString()} <span className="text-xs font-bold text-gray-400">회</span>
             </div>
             <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-gray-500">
-              <span>실제 누적 조회 데이터</span>
+              <span>{periodLabel} 실제 조회 데이터</span>
             </div>
           </div>
         </div>
@@ -150,7 +191,7 @@ export const AnalyticsEditor: React.FC = () => {
         {/* 2. Total Link Clicks */}
         <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs space-y-3 relative overflow-hidden group hover:border-gray-300 transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-gray-500">총 링크 클릭수</span>
+            <span className="text-xs font-extrabold text-gray-500">링크 클릭수</span>
             <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
               <MousePointerClick className="w-5 h-5" />
             </div>
@@ -160,7 +201,7 @@ export const AnalyticsEditor: React.FC = () => {
               {totalClicks.toLocaleString()} <span className="text-xs font-bold text-gray-400">회</span>
             </div>
             <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-gray-500">
-              <span>실시간 클릭 집계</span>
+              <span>{periodLabel} 실제 클릭 데이터</span>
             </div>
           </div>
         </div>
@@ -178,7 +219,7 @@ export const AnalyticsEditor: React.FC = () => {
               {overallCtr}%
             </div>
             <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-amber-600">
-              <span>🎯 (총 클릭 / 조회수 비율)</span>
+              <span>{periodLabel} 클릭 ÷ 조회</span>
             </div>
           </div>
         </div>
@@ -210,7 +251,7 @@ export const AnalyticsEditor: React.FC = () => {
           <div className="space-y-0.5">
             <h3 className="font-extrabold text-base text-gray-900 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-purple-600" />
-              <span>주간 트래픽 및 클릭 추이 (최근 7일)</span>
+              <span>{periodLabel} 트래픽 및 클릭 추이</span>
             </h3>
             <p className="text-xs text-gray-500">일별 조회수 대비 실제 클릭수 비교 차트</p>
           </div>
@@ -228,11 +269,11 @@ export const AnalyticsEditor: React.FC = () => {
 
         {/* CSS Bar Chart */}
         <div className="h-48 flex items-end justify-between gap-3 pt-6 px-2 border-b border-gray-100 pb-4">
-          {analyticsDailyHistory.length === 0 ? (
+          {periodHistory.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400">
               아직 집계된 트래픽이 없습니다.
             </div>
-          ) : analyticsDailyHistory.map((item) => {
+          ) : periodHistory.map((item) => {
             const viewsHeightPercent = Math.round((item.views / maxDailyViews) * 100);
             const clicksHeightPercent = Math.round((item.clicks / maxDailyViews) * 100);
             const dailyCtr = item.views > 0 ? ((item.clicks / item.views) * 100).toFixed(0) : 0;

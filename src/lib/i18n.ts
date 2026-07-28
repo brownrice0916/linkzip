@@ -8,7 +8,7 @@ export const translations = {
     navDesign: "디자인",
     navAnalytics: "통계 분석",
     navMarketing: "마케팅 & DM",
-    navGrowth: "고객 자동화",
+    navGrowth: "고객 데이터",
     navSettings: "설정",
     navLogout: "로그아웃",
 
@@ -27,7 +27,7 @@ export const translations = {
     designTitle: "디자인 & 테마 스타일",
     analyticsTitle: "페이지 조회수 & CTR 분석",
     marketingTitle: "인스타그램 DM & 카카오 알림톡 자동화",
-    growthTitle: "고객 데이터 수집 및 멤버 관리",
+    growthTitle: "고객 데이터 및 운영",
     settingsTitle: "계정 및 도메인 설정",
 
     // Toast
@@ -47,7 +47,7 @@ export const translations = {
     navDesign: "Design",
     navAnalytics: "Analytics",
     navMarketing: "Marketing & DM",
-    navGrowth: "Growth",
+    navGrowth: "Customer Data",
     navSettings: "Settings",
     navLogout: "Logout",
 
@@ -66,7 +66,7 @@ export const translations = {
     designTitle: "Design & Themes",
     analyticsTitle: "Analytics & CTR",
     marketingTitle: "Marketing & DM Automation",
-    growthTitle: "Growth & Team Members",
+    growthTitle: "Customer Data & Operations",
     settingsTitle: "Settings & Domain",
 
     // Toast
