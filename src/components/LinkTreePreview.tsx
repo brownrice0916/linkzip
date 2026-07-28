@@ -31,6 +31,7 @@ interface LinkTreePreviewProps {
   ownerUid?: string;
   design?: Partial<DesignSettings>;
   stickerEditable?: boolean;
+  beforeSalesOrder?: () => Promise<boolean>;
 }
 
 const getScheduleDate = (value: string | undefined, fallbackYear: number) => {
@@ -1578,6 +1579,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           block={activeSalesBlock}
           profile={profile}
           ownerUid={ownerUid}
+          beforeCreateOrder={props.beforeSalesOrder}
         />
       )}
     </>

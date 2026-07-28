@@ -20,6 +20,7 @@ interface SalesVisitorModalProps {
   block: CustomLink;
   profile: UserProfile;
   ownerUid?: string;
+  beforeCreateOrder?: () => Promise<boolean>;
 }
 
 const paymentLabel: Record<PublicOrderLookupResult['status'], string> = {
@@ -29,7 +30,7 @@ const fulfillmentLabel: Record<PublicOrderLookupResult['fulfillmentStatus'], str
   payment_pending: '결제 대기', preparing: '상품 준비 중', shipping: '배송 중', delivered: '배송 완료',
 };
 
-export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, onClose, block, profile, ownerUid }) => {
+export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, onClose, block, profile, ownerUid, beforeCreateOrder }) => {
   const config = block.salesConfig || { mainText: block.title || '실물 상품 판매', description: '상품 설명을 확인해주세요.', products: [] };
   const isPhysical = config.salesType === 'product';
   const [tab, setTab] = useState<'order' | 'lookup'>('order');
@@ -79,6 +80,9 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
     if (!ownerUid) return alert('판매자 정보를 확인할 수 없습니다.');
     try {
       setSubmitting(true);
+      if (beforeCreateOrder && !(await beforeCreateOrder())) {
+        throw new Error('상품 변경사항을 저장하지 못했습니다. 저장 상태를 확인한 뒤 다시 시도해주세요.');
+      }
       const result = await createSalesOrder(ownerUid, {
         blockId: block.id,
         targetUsername: profile.username,

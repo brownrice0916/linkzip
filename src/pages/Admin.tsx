@@ -593,7 +593,10 @@ const Admin = () => {
         {/* Sleek Borderless Mobile Device Container */}
         <div data-map-popup-container className="w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-[0_18px_48px_rgba(15,23,42,0.14)] relative flex flex-col overflow-hidden border border-gray-200">
           <div className="w-full h-full overflow-y-auto scrollbar-none">
-            <LinkTreePreview stickerEditable={activeTab === 'appearance'} />
+            <LinkTreePreview
+              stickerEditable={activeTab === 'appearance'}
+              beforeSalesOrder={async () => !useStore.getState().isDirty || handleManualSave()}
+            />
           </div>
         </div>
       </div>
