@@ -187,6 +187,8 @@ export interface DesignSettings {
   buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
   buttonColor?: string;
   buttonTextColor?: string;
+  buttonBorderColor?: string;
+  buttonBorderWidth?: number;
   buttonOpacity?: number;
   buttonTextOpacity?: number;
   fontFamily: string;
@@ -262,6 +264,8 @@ export interface AppStateSnapshot {
   buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
   buttonColor?: string;
   buttonTextColor?: string;
+  buttonBorderColor?: string;
+  buttonBorderWidth?: number;
   buttonOpacity?: number;
   buttonTextOpacity?: number;
   fontFamily: string;
@@ -312,6 +316,8 @@ interface AppState {
   buttonShadow: 'none' | 'soft' | 'strong' | 'hard';
   buttonColor?: string;
   buttonTextColor?: string;
+  buttonBorderColor?: string;
+  buttonBorderWidth?: number;
   buttonOpacity?: number;
   buttonTextOpacity?: number;
   fontFamily: string;
@@ -405,6 +411,8 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   buttonShadow: state.buttonShadow,
   buttonColor: state.buttonColor,
   buttonTextColor: state.buttonTextColor,
+  buttonBorderColor: state.buttonBorderColor,
+  buttonBorderWidth: state.buttonBorderWidth,
   buttonOpacity: state.buttonOpacity,
   buttonTextOpacity: state.buttonTextOpacity,
   fontFamily: state.fontFamily,
@@ -435,6 +443,8 @@ const getWorkspaceFromState = (state: any, id = state.activeProfileId || 'primar
     buttonShadow: state.buttonShadow,
     buttonColor: state.buttonColor,
     buttonTextColor: state.buttonTextColor,
+    buttonBorderColor: state.buttonBorderColor,
+    buttonBorderWidth: state.buttonBorderWidth,
     buttonOpacity: state.buttonOpacity,
     buttonTextOpacity: state.buttonTextOpacity,
     fontFamily: state.fontFamily,
@@ -466,6 +476,8 @@ const getStateFromWorkspace = (workspace: ProfileWorkspace) => {
   buttonShadow: usePresetDefaults ? preset.buttonShadow : (workspace.design?.buttonShadow ?? preset.buttonShadow),
   buttonColor: usePresetDefaults ? preset.buttonColor : (workspace.design?.buttonColor || preset.buttonColor),
   buttonTextColor: usePresetDefaults ? preset.buttonTextColor : (workspace.design?.buttonTextColor || preset.buttonTextColor),
+  buttonBorderColor: workspace.design?.buttonBorderColor,
+  buttonBorderWidth: workspace.design?.buttonBorderWidth ?? 0,
   buttonOpacity: usePresetDefaults ? preset.buttonOpacity : (workspace.design?.buttonOpacity ?? preset.buttonOpacity),
   buttonTextOpacity: usePresetDefaults ? preset.buttonTextOpacity : (workspace.design?.buttonTextOpacity ?? preset.buttonTextOpacity),
   fontFamily: usePresetDefaults ? preset.fontFamily : (workspace.design?.fontFamily || preset.fontFamily),
@@ -540,6 +552,8 @@ export const useStore = create<AppState>((set) => ({
   buttonStyle: 'solid',
   buttonRoundness: 'full',
   buttonShadow: 'soft',
+  buttonBorderColor: '#111827',
+  buttonBorderWidth: 0,
   buttonOpacity: 100,
   buttonTextOpacity: 100,
   pageTextOpacity: 100,
@@ -588,6 +602,8 @@ export const useStore = create<AppState>((set) => ({
       templateValue: value,
       ...(type === 'preset' ? {
         ...presetDesign,
+        buttonBorderColor: preset.buttonTextColor,
+        buttonBorderWidth: preset.buttonStyle === 'outline' ? 2 : 0,
         profile: { ...state.profile, titleColor: preset.pageTextColor },
         customLinks: resetLinkThemeOverrides(state.customLinks),
       } : {}),
@@ -605,6 +621,8 @@ export const useStore = create<AppState>((set) => ({
       'buttonShadow',
       'buttonColor',
       'buttonTextColor',
+      'buttonBorderColor',
+      'buttonBorderWidth',
       'buttonOpacity',
       'buttonTextOpacity',
       'fontFamily',
@@ -733,6 +751,8 @@ export const useStore = create<AppState>((set) => ({
           buttonStyle: 'solid',
           buttonRoundness: 'full',
           buttonShadow: 'soft',
+          buttonBorderColor: '#111827',
+          buttonBorderWidth: 0,
           buttonOpacity: 100,
           buttonTextOpacity: 100,
           pageTextOpacity: 100,

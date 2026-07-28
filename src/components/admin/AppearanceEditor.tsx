@@ -62,6 +62,8 @@ const AppearanceEditor = () => {
     buttonRoundness, 
     buttonColor, 
     buttonTextColor,
+    buttonBorderColor,
+    buttonBorderWidth,
     buttonOpacity,
     buttonTextOpacity,
     fontFamily,
@@ -219,7 +221,11 @@ const AppearanceEditor = () => {
 
               {/* Outline */}
               <button
-                onClick={() => setDesignSettings({ buttonStyle: 'outline' })}
+                onClick={() => setDesignSettings({
+                  buttonStyle: 'outline',
+                  buttonBorderWidth: buttonBorderWidth && buttonBorderWidth > 0 ? buttonBorderWidth : 2,
+                  buttonBorderColor: buttonBorderColor || buttonTextColor || '#111827',
+                })}
                 className={clsx(
                   "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 bg-white",
                   buttonStyle === 'outline' ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-300"
@@ -299,6 +305,35 @@ const AppearanceEditor = () => {
           <div className="space-y-3">
             <div><span className="text-sm font-bold text-gray-900 block">{tr('버튼 글자색', 'Button text color')}</span><span className="text-[11px] text-gray-400">{tr('글자색과 투명도를 별도로 조절합니다', 'Adjust text color and opacity separately')}</span></div>
             <ColorPickerPopover label={tr('버튼 글자색', 'Button text color')} value={buttonTextColor || '#000000'} opacity={buttonTextOpacity ?? 100} onChange={(color) => setDesignSettings({ buttonTextColor: color })} onOpacityChange={(nextOpacity) => setDesignSettings({ buttonTextColor: buttonTextColor || '#000000', buttonTextOpacity: nextOpacity })} suggested={['#000000', '#FFFFFF', '#111827', '#4B5563', '#7C3AED', '#DC2626']} />
+          </div>
+
+          <div className="space-y-4 rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+            <div>
+              <span className="block text-sm font-bold text-gray-900">{tr('버튼 테두리', 'Button border')}</span>
+              <span className="text-[11px] text-gray-400">{tr('테두리 색상과 굵기를 조절합니다', 'Adjust border color and thickness')}</span>
+            </div>
+            <ColorPickerPopover
+              label={tr('테두리 색상', 'Border color')}
+              value={buttonBorderColor || buttonTextColor || '#111827'}
+              opacity={100}
+              onChange={(color) => setDesignSettings({ buttonBorderColor: color })}
+              suggested={['#111827', '#FFFFFF', '#D1D5DB', '#7C3AED', '#EC4899', '#10B981']}
+            />
+            <label className="block space-y-2">
+              <span className="flex items-center justify-between text-sm font-bold text-gray-900">
+                <span>{tr('테두리 굵기', 'Border thickness')}</span>
+                <span className="tabular-nums text-gray-500">{buttonBorderWidth ?? 0}px</span>
+              </span>
+              <input
+                type="range"
+                min="0"
+                max="8"
+                step="1"
+                value={buttonBorderWidth ?? 0}
+                onChange={(event) => setDesignSettings({ buttonBorderWidth: Number(event.target.value) })}
+                className="w-full accent-black"
+              />
+            </label>
           </div>
 
         </div>

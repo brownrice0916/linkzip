@@ -206,6 +206,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const buttonShadow = usePresetDefaults ? presetDesign.buttonShadow : (designSource.buttonShadow ?? store.buttonShadow);
   const buttonColor = usePresetDefaults ? presetDesign.buttonColor : designSource.buttonColor;
   const buttonTextColor = usePresetDefaults ? presetDesign.buttonTextColor : designSource.buttonTextColor;
+  const buttonBorderColor = designSource.buttonBorderColor ?? store.buttonBorderColor ?? buttonTextColor ?? '#111827';
+  const buttonBorderWidth = designSource.buttonBorderWidth ?? store.buttonBorderWidth ?? (buttonStyle === 'outline' ? 2 : 0);
   const buttonOpacity = usePresetDefaults ? presetDesign.buttonOpacity : (designSource.buttonOpacity ?? store.buttonOpacity);
   const buttonTextOpacity = usePresetDefaults ? presetDesign.buttonTextOpacity : (designSource.buttonTextOpacity ?? store.buttonTextOpacity);
   const fontFamily = usePresetDefaults ? presetDesign.fontFamily : (designSource.fontFamily || store.fontFamily);
@@ -371,6 +373,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   let customButtonStyle: React.CSSProperties = {};
   if (buttonColor) customButtonStyle.backgroundColor = colorWithOpacity(buttonColor, buttonOpacity ?? 100);
   if (buttonTextColor) customButtonStyle.color = colorWithOpacity(buttonTextColor, buttonTextOpacity ?? 100);
+  customButtonStyle.borderStyle = 'solid';
+  customButtonStyle.borderColor = buttonBorderColor;
+  customButtonStyle.borderWidth = `${buttonBorderWidth}px`;
 
   const getCustomLinkStyle = (link: CustomLink): React.CSSProperties => {
     const style = link.customStyle;
@@ -771,8 +776,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                   target={destination.isInternal ? '_self' : '_blank'}
                                   rel="noopener noreferrer"
                                   onClick={() => recordLinkClick(link.id)}
-                                  className="flex aspect-[3/4] w-[43%] min-w-[43%] snap-start flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/80 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                                  style={{ ...getCustomLinkStyle(link), padding: 0 }}
+                                  className="flex aspect-[3/4] w-[43%] min-w-[43%] snap-start flex-col overflow-hidden rounded-xl border border-white/30 bg-white/80 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                                  style={{ ...getCustomLinkStyle(link), padding: 0, borderRadius: '12px' }}
                                 >
                                   {link.icon ? (
                                     <img src={link.icon} alt={link.title || '이미지 링크'} className="min-h-0 w-full flex-1 object-cover" />
@@ -847,8 +852,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                 target={destination.isInternal ? '_self' : '_blank'}
                                 rel="noopener noreferrer"
                                 onClick={() => recordLinkClick(link.id)}
-                                className="flex aspect-[3/4] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/30 bg-white/80 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-lg"
-                                style={{ ...getCustomLinkStyle(link), padding: 0 }}
+                                className="flex aspect-[3/4] min-w-0 flex-col overflow-hidden rounded-xl border border-white/30 bg-white/80 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-lg"
+                                style={{ ...getCustomLinkStyle(link), padding: 0, borderRadius: '12px' }}
                               >
                                 {link.icon ? (
                                   <img src={link.icon} alt={link.title || '이미지 링크'} className="min-h-0 w-full flex-1 object-cover" />
@@ -946,8 +951,8 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                 target={destination.isInternal ? '_self' : '_blank'}
                                 rel="noopener noreferrer"
                                 onClick={() => recordLinkClick(link.id)}
-                                className={clsx('block w-full overflow-hidden bg-white transition-transform hover:-translate-y-0.5', shadowClass, roundnessClass)}
-                                style={{ ...getCustomLinkStyle(link), padding: 0, height: 'auto' }}
+                                className={clsx('block w-full overflow-hidden rounded-xl bg-white transition-transform hover:-translate-y-0.5', shadowClass)}
+                                style={{ ...getCustomLinkStyle(link), padding: 0, height: 'auto', borderRadius: '12px' }}
                               >
                                 {link.icon ? (
                                   <img src={link.icon} alt={link.title || '이미지 링크'} className="block h-auto w-full object-cover" />
@@ -1027,12 +1032,13 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     className={clsx(
                       'group block w-full overflow-hidden bg-white transition-transform hover:-translate-y-0.5',
                       shadowClass,
-                      roundnessClass,
+                      'rounded-xl',
                     )}
                     style={{
                       ...getCustomLinkStyle(block),
                       padding: 0,
                       height: 'auto',
+                      borderRadius: '12px',
                     }}
                   >
                     {block.icon ? (
@@ -1564,7 +1570,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
           </div>
 
           <div className="mt-auto pt-8 flex flex-col items-center">
-            {!profile.hideWatermark && (
+            {isPublic && !profile.hideWatermark && (
               <a
                 href="/"
                 target="_blank"
