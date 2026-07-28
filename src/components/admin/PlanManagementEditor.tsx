@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Check, Crown, Download, Sparkles } from 'lucide-react';
-import { MEMBERSHIP_PLANS, type MembershipPlanDefinition } from '../../domain/membershipPlans';
+import { Check, Crown, Download, LoaderCircle, Sparkles } from 'lucide-react';
+import { MEMBERSHIP_PLANS, membershipCheckoutAmount, type MembershipPlan, type MembershipPlanDefinition } from '../../domain/membershipPlans';
 import { useStore } from '../../store/useStore';
+import { createMembershipPaymentOrder } from '../../services/membershipService';
+import { requestTossPayment } from '../../services/tossPaymentService';
 
 const accentStyles: Record<MembershipPlanDefinition['accent'], {
   card: string;
@@ -31,11 +33,41 @@ const accentStyles: Record<MembershipPlanDefinition['accent'], {
 
 const PlanManagementEditor: React.FC = () => {
   const [annualBilling, setAnnualBilling] = useState(false);
+  const [processingPlan, setProcessingPlan] = useState<MembershipPlan | null>(null);
+  const [checkoutError, setCheckoutError] = useState('');
   const language = useStore((state) => state.language);
   const membershipPlan = useStore((state) => state.membershipPlan);
+  const user = useStore((state) => state.user);
+  const profile = useStore((state) => state.profile);
   const isKo = language === 'ko';
   const currentPlan = MEMBERSHIP_PLANS.find((plan) => plan.id === membershipPlan) || MEMBERSHIP_PLANS[0];
   const displayedPrice = (monthlyPrice: number) => annualBilling ? Math.round(monthlyPrice * 0.5) : monthlyPrice;
+  const planRank: Record<MembershipPlan, number> = { basic: 0, standard: 1, premium: 2 };
+
+  const handleCheckout = async (plan: MembershipPlanDefinition) => {
+    if (plan.id === 'basic' || planRank[plan.id] <= planRank[membershipPlan]) return;
+    if (!user) {
+      setCheckoutError(isKo ? '로그인 후 플랜을 결제해주세요.' : 'Please sign in before purchasing a plan.');
+      return;
+    }
+    setCheckoutError('');
+    setProcessingPlan(plan.id);
+    try {
+      const billingCycle = annualBilling ? 'annual' : 'monthly';
+      const order = await createMembershipPaymentOrder(plan.id, billingCycle);
+      await requestTossPayment({
+        orderId: order.orderNumber,
+        orderName: order.orderName,
+        amount: order.amount,
+        customerName: profile.name || user.displayName || 'LinkZip 회원',
+        customerEmail: user.email || undefined,
+        paymentKind: 'membership',
+      });
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : (isKo ? '결제를 시작하지 못했습니다.' : 'Unable to start payment.'));
+      setProcessingPlan(null);
+    }
+  };
 
   return (
     <div className="space-y-6 pb-20 font-sans">
@@ -44,7 +76,7 @@ const PlanManagementEditor: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10"><Crown className="h-5 w-5" /></div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">Current membership</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">{isKo ? '현재 플랜' : 'Current membership'}</p>
               <h3 className="mt-0.5 text-xl font-black">{isKo ? currentPlan.nameKo : currentPlan.name}</h3>
             </div>
           </div>
@@ -53,7 +85,7 @@ const PlanManagementEditor: React.FC = () => {
           </span>
         </div>
         <p className="mt-5 max-w-xl text-xs font-medium leading-relaxed text-gray-300">
-          {isKo ? '회원 타입은 계정 단위로 적용됩니다. 결제 기능 연결 전까지 현재 회원은 베이직으로 표시됩니다.' : 'Membership applies to your account. Until billing is connected, existing members are shown as Basic.'}
+          {isKo ? '결제가 승인되면 계정에 플랜이 바로 적용됩니다. 월간·연간 이용권은 자동 갱신되지 않습니다.' : 'Your plan activates immediately after payment. Monthly and annual passes do not renew automatically.'}
         </p>
       </section>
 
@@ -75,6 +107,8 @@ const PlanManagementEditor: React.FC = () => {
       <div className="grid gap-4 lg:grid-cols-3">
         {MEMBERSHIP_PLANS.map((plan) => {
           const active = plan.id === membershipPlan;
+          const canPurchase = plan.id !== 'basic' && planRank[plan.id] > planRank[membershipPlan];
+          const isProcessing = processingPlan === plan.id;
           const styles = accentStyles[plan.accent];
           return (
             <article key={plan.id} className={`relative flex min-h-[360px] flex-col rounded-[24px] border p-5 ${styles.card}`}>
@@ -89,7 +123,7 @@ const PlanManagementEditor: React.FC = () => {
                 <strong className="text-3xl font-black tracking-tight">{displayedPrice(plan.monthlyPrice).toLocaleString()}</strong>
                 <span className="pb-1 text-[11px] font-bold text-gray-500">{isKo ? '원 / 월' : 'KRW / mo'}</span>
               </div>
-              {annualBilling && plan.monthlyPrice > 0 && <p className="mt-1 text-[10px] font-bold text-gray-400">{isKo ? `연 ${Math.round(plan.monthlyPrice * 6).toLocaleString()}원 청구` : `${Math.round(plan.monthlyPrice * 6).toLocaleString()} KRW billed yearly`}</p>}
+              {annualBilling && plan.monthlyPrice > 0 && <p className="mt-1 text-[10px] font-bold text-gray-400">{isKo ? `연 ${membershipCheckoutAmount(plan, 'annual').toLocaleString()}원 일시 결제` : `${membershipCheckoutAmount(plan, 'annual').toLocaleString()} KRW prepaid yearly`}</p>}
               <div className="mt-4 rounded-2xl border border-black/5 bg-white/70 px-3 py-2.5">
                 <p className="text-[10px] font-bold text-gray-500">{isKo ? '상품 판매 수수료' : 'Sales fee'}</p>
                 <p className="mt-0.5 text-lg font-black text-gray-950">{plan.salesFeePercent}% <span className="text-[9px] font-bold text-gray-400">{isKo ? 'PG 수수료 별도' : 'PG fee separate'}</span></p>
@@ -99,16 +133,33 @@ const PlanManagementEditor: React.FC = () => {
                   <li key={feature} className="flex items-center gap-2 text-xs font-bold text-gray-700">{feature === '데이터 다운로드' || feature === 'Data download' ? <Download className={`h-4 w-4 shrink-0 ${styles.check}`} /> : <Check className={`h-4 w-4 shrink-0 ${styles.check}`} />}{feature}</li>
                 ))}
               </ul>
-              <button type="button" disabled className={`mt-6 w-full cursor-not-allowed rounded-full py-3 text-xs font-black ${active ? 'opacity-100' : 'opacity-50'} ${styles.button}`}>
-                {active ? (isKo ? '현재 플랜' : 'Current plan') : (isKo ? '결제 연동 예정' : 'Billing coming soon')}
+              <button
+                type="button"
+                disabled={!canPurchase || processingPlan !== null}
+                onClick={() => void handleCheckout(plan)}
+                className={`mt-6 flex w-full items-center justify-center gap-2 rounded-full py-3 text-xs font-black transition ${canPurchase && processingPlan === null ? 'hover:-translate-y-0.5 hover:shadow-lg' : 'cursor-not-allowed opacity-50'} ${styles.button}`}
+              >
+                {isProcessing && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                {active
+                  ? (isKo ? '현재 플랜' : 'Current plan')
+                  : plan.id === 'basic'
+                    ? (isKo ? '무료 플랜' : 'Free plan')
+                    : !canPurchase
+                      ? (isKo ? '현재 플랜보다 낮음' : 'Lower plan')
+                      : isProcessing
+                        ? (isKo ? '결제 준비 중' : 'Preparing payment')
+                        : annualBilling
+                          ? (isKo ? '연간 결제하기' : 'Pay annually')
+                          : (isKo ? '월간 결제하기' : 'Pay monthly')}
               </button>
             </article>
           );
         })}
       </div>
 
+      {checkoutError && <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-[11px] font-bold leading-relaxed text-red-700">{checkoutError}</p>}
       <p className="rounded-2xl bg-gray-100 px-4 py-3 text-[11px] font-semibold leading-relaxed text-gray-500">
-        {isKo ? '현재는 회원 타입과 플랜 화면만 구분했습니다. 기능 제한은 결제·구독 검증을 서버에 연결할 때 적용해야 기존 사용자의 기능이 갑자기 막히지 않습니다.' : 'Membership types and plan UI are now separated. Feature limits will be enabled with server-side billing verification so existing users are not unexpectedly restricted.'}
+        {isKo ? '토스페이먼츠에서 결제를 완료하면 선택한 기간 동안 플랜이 활성화됩니다. 현재는 자동 갱신 없는 기간제 이용권이며, PG 결제창에서 최종 금액을 다시 확인할 수 있습니다.' : 'The selected plan activates after Toss Payments approval. Passes are prepaid and do not renew automatically.'}
       </p>
     </div>
   );

@@ -1,4 +1,5 @@
 export type MembershipPlan = 'basic' | 'standard' | 'premium';
+export type MembershipBillingCycle = 'monthly' | 'annual';
 
 export interface MembershipPlanDefinition {
   id: MembershipPlan;
@@ -56,3 +57,8 @@ export const MEMBERSHIP_PLANS: MembershipPlanDefinition[] = [
 
 export const normalizeMembershipPlan = (value: unknown): MembershipPlan =>
   value === 'standard' || value === 'premium' ? value : 'basic';
+
+export const membershipCheckoutAmount = (
+  plan: Pick<MembershipPlanDefinition, 'monthlyPrice'>,
+  billingCycle: MembershipBillingCycle,
+) => billingCycle === 'annual' ? plan.monthlyPrice * 6 : plan.monthlyPrice;

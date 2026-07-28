@@ -21,6 +21,8 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentFail = lazy(() => import("./pages/PaymentFail"));
 const DonationPaymentSuccess = lazy(() => import("./pages/DonationPaymentSuccess"));
 const DonationPaymentFail = lazy(() => import("./pages/DonationPaymentFail"));
+const PlanPaymentSuccess = lazy(() => import("./pages/PlanPaymentSuccess"));
+const PlanPaymentFail = lazy(() => import("./pages/PlanPaymentFail"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 
 // Protected Route Component
@@ -212,6 +214,8 @@ function App() {
         <Route path="/payment/fail" element={<PaymentFail />} />
         <Route path="/payment/donation/success" element={<DonationPaymentSuccess />} />
         <Route path="/payment/donation/fail" element={<DonationPaymentFail />} />
+        <Route path="/payment/plan/success" element={<ProtectedRoute><PlanPaymentSuccess /></ProtectedRoute>} />
+        <Route path="/payment/plan/fail" element={<ProtectedRoute><PlanPaymentFail /></ProtectedRoute>} />
         <Route path="/terms" element={<LegalPage />} />
         <Route path="/privacy" element={<LegalPage />} />
         <Route path="/refund-policy" element={<LegalPage />} />

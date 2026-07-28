@@ -10,23 +10,25 @@ export interface TossPaymentRequest {
   customerName: string;
   customerEmail?: string;
   customerMobilePhone?: string;
-  targetUsername: string;
-  paymentKind?: 'sales' | 'donation';
+  targetUsername?: string;
+  paymentKind?: 'sales' | 'donation' | 'membership';
 }
 
 export async function requestTossPayment(request: TossPaymentRequest): Promise<void> {
   const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
   const payment = tossPayments.payment({ customerKey: ANONYMOUS });
-  const profile = encodeURIComponent(request.targetUsername);
-  const paymentPath = request.paymentKind === 'donation' ? '/payment/donation' : '/payment';
+  const profileQuery = request.targetUsername ? `?profile=${encodeURIComponent(request.targetUsername)}` : '';
+  const paymentPath = request.paymentKind === 'donation'
+    ? '/payment/donation'
+    : request.paymentKind === 'membership' ? '/payment/plan' : '/payment';
 
   await payment.requestPayment({
     method: 'CARD',
     amount: { currency: 'KRW', value: request.amount },
     orderId: request.orderId,
     orderName: request.orderName,
-    successUrl: `${window.location.origin}${paymentPath}/success?profile=${profile}`,
-    failUrl: `${window.location.origin}${paymentPath}/fail?profile=${profile}`,
+    successUrl: `${window.location.origin}${paymentPath}/success${profileQuery}`,
+    failUrl: `${window.location.origin}${paymentPath}/fail${profileQuery}`,
     customerName: request.customerName,
     customerEmail: request.customerEmail || undefined,
     customerMobilePhone: request.customerMobilePhone?.replace(/\D/g, '') || undefined,

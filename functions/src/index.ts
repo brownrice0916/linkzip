@@ -1,4 +1,5 @@
 import {initializeApp} from "firebase-admin/app";
+import {getAuth} from "firebase-admin/auth";
 import {FieldValue, Timestamp, getFirestore} from "firebase-admin/firestore";
 import {getStorage} from "firebase-admin/storage";
 import {logger} from "firebase-functions";
@@ -98,7 +99,7 @@ const setPublicPostCors = (request: Request, response: Response) => {
   if (orderLookupOrigins.has(origin)) response.set("Access-Control-Allow-Origin", origin);
   response.set("Vary", "Origin");
   if (request.method === "OPTIONS") {
-    response.set("Access-Control-Allow-Headers", "Content-Type");
+    response.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
     response.set("Access-Control-Allow-Methods", "POST");
     response.status(204).send("");
     return false;
@@ -179,6 +180,225 @@ const createDonationOrderNumber = () => {
   const date = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}${String(now.getUTCDate()).padStart(2, "0")}`;
   return `DN-${date}-${randomBytes(5).toString("hex").toUpperCase()}`;
 };
+
+type PaidMembershipPlan = "standard" | "premium";
+type MembershipBillingCycle = "monthly" | "annual";
+
+const paidMembershipPlans: Record<PaidMembershipPlan, {name: string; monthlyPrice: number}> = {
+  standard: {name: "스탠다드", monthlyPrice: 3900},
+  premium: {name: "프리미엄", monthlyPrice: 9900},
+};
+
+const createMembershipOrderNumber = () => {
+  const now = new Date();
+  const date = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}${String(now.getUTCDate()).padStart(2, "0")}`;
+  return `MB-${date}-${randomBytes(5).toString("hex").toUpperCase()}`;
+};
+
+const requireAuthenticatedUid = async (request: Request) => {
+  const authorization = request.get("authorization") || "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) throw new Error("UNAUTHENTICATED");
+  return (await getAuth().verifyIdToken(match[1])).uid;
+};
+
+const membershipPeriodEnd = (billingCycle: MembershipBillingCycle) => {
+  const end = new Date();
+  if (billingCycle === "annual") end.setUTCFullYear(end.getUTCFullYear() + 1);
+  else end.setUTCMonth(end.getUTCMonth() + 1);
+  return end;
+};
+
+export const createTossMembershipOrder = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 20,
+    invoker: "public",
+  },
+  async (request, response) => {
+    if (!setPublicPostCors(request, response)) return;
+
+    let uid = "";
+    try {
+      uid = await requireAuthenticatedUid(request);
+    } catch {
+      response.status(401).json({message: "로그인 후 플랜을 결제해주세요."});
+      return;
+    }
+
+    const planId = cleanString(request.body?.planId, 20) as PaidMembershipPlan;
+    const billingCycle = cleanString(request.body?.billingCycle, 20) as MembershipBillingCycle;
+    const plan = paidMembershipPlans[planId];
+    if (!plan || (billingCycle !== "monthly" && billingCycle !== "annual")) {
+      response.status(400).json({message: "플랜 또는 결제 기간을 확인해주세요."});
+      return;
+    }
+
+    const amount = billingCycle === "annual" ? plan.monthlyPrice * 6 : plan.monthlyPrice;
+    const orderNumber = createMembershipOrderNumber();
+    const orderName = `LinkZip ${plan.name} ${billingCycle === "annual" ? "연간" : "월간"} 이용권`;
+    await db.collection("tossPaymentOrders").doc(orderNumber).create({
+      kind: "membership",
+      ownerUid: uid,
+      planId,
+      planName: plan.name,
+      billingCycle,
+      productName: orderName,
+      amount,
+      status: "READY",
+      idempotencyKey: randomUUID(),
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    response.status(201).json({orderNumber, orderName, amount});
+  },
+);
+
+export const confirmTossMembershipPayment = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    invoker: "public",
+    secrets: [tossSecretKey],
+  },
+  async (request, response) => {
+    if (!setPublicPostCors(request, response)) return;
+
+    let uid = "";
+    try {
+      uid = await requireAuthenticatedUid(request);
+    } catch {
+      response.status(401).json({message: "로그인 정보가 만료되었습니다. 다시 로그인해주세요."});
+      return;
+    }
+
+    const paymentKey = cleanString(request.body?.paymentKey, 200);
+    const orderId = cleanString(request.body?.orderId, 64).toUpperCase();
+    const returnedAmount = request.body?.amount;
+    if (!paymentKey || !/^MB-\d{8}-[A-F0-9]{10}$/.test(orderId) || !Number.isSafeInteger(returnedAmount)) {
+      response.status(400).json({message: "결제 승인 정보가 올바르지 않습니다."});
+      return;
+    }
+
+    const orderRef = db.collection("tossPaymentOrders").doc(orderId);
+    let orderData: FirebaseFirestore.DocumentData | undefined;
+    try {
+      await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(orderRef);
+        orderData = snapshot.data();
+        if (!snapshot.exists || !orderData || orderData.kind !== "membership") throw new Error("ORDER_NOT_FOUND");
+        if (orderData.ownerUid !== uid) throw new Error("FORBIDDEN");
+        if (orderData.amount !== returnedAmount) throw new Error("AMOUNT_MISMATCH");
+        if (orderData.status === "PAID") return;
+        if (orderData.status !== "READY" && orderData.status !== "CONFIRMING") throw new Error("ORDER_INVALID_STATUS");
+        if (orderData.status === "READY") {
+          transaction.update(orderRef, {status: "CONFIRMING", confirmingAt: FieldValue.serverTimestamp()});
+        }
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      const status = code === "FORBIDDEN" ? 403 : 400;
+      const message = code === "AMOUNT_MISMATCH"
+        ? "결제 금액이 주문 금액과 일치하지 않습니다."
+        : code === "FORBIDDEN" ? "본인의 플랜 주문만 승인할 수 있습니다."
+          : code === "ORDER_INVALID_STATUS" ? "결제할 수 없는 주문 상태입니다." : "플랜 주문을 찾을 수 없습니다.";
+      response.status(status).json({message});
+      return;
+    }
+
+    if (!orderData) {
+      response.status(404).json({message: "플랜 주문을 찾을 수 없습니다."});
+      return;
+    }
+    const existingEnd = orderData.periodEndsAt instanceof Timestamp ? orderData.periodEndsAt.toDate() : null;
+    if (orderData.status === "PAID") {
+      response.status(200).json({
+        planId: orderData.planId,
+        planName: orderData.planName,
+        billingCycle: orderData.billingCycle,
+        amount: orderData.amount,
+        orderNumber: orderId,
+        periodEndsAt: existingEnd?.toISOString() || "",
+        approvedAt: orderData.approvedAt || null,
+      });
+      return;
+    }
+
+    const authorization = Buffer.from(`${tossSecretKey.value()}:`, "utf8").toString("base64");
+    let tossResponse: globalThis.Response;
+    try {
+      tossResponse = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${authorization}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": String(orderData.idempotencyKey),
+        },
+        body: JSON.stringify({paymentKey, orderId, amount: orderData.amount}),
+      });
+    } catch (error) {
+      await orderRef.update({status: "READY", lastErrorAt: FieldValue.serverTimestamp()});
+      logger.error("Toss membership confirmation network error", {orderId, error});
+      response.status(502).json({message: "결제 승인 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요."});
+      return;
+    }
+
+    const tossResult = await tossResponse.json() as Record<string, unknown>;
+    if (!tossResponse.ok) {
+      await orderRef.update({
+        status: "READY",
+        lastErrorCode: typeof tossResult.code === "string" ? tossResult.code : "UNKNOWN",
+        lastErrorAt: FieldValue.serverTimestamp(),
+      });
+      response.status(tossResponse.status >= 500 ? 502 : 400).json({
+        message: typeof tossResult.message === "string" ? tossResult.message : "결제를 승인하지 못했습니다.",
+      });
+      return;
+    }
+    if (tossResult.orderId !== orderId || tossResult.totalAmount !== orderData.amount) {
+      logger.error("Toss membership response did not match the order", {orderId});
+      response.status(502).json({message: "결제 승인 결과를 확인하지 못했습니다. 고객센터에 문의해주세요."});
+      return;
+    }
+
+    const periodStartedAt = new Date();
+    const periodEndsAt = membershipPeriodEnd(orderData.billingCycle as MembershipBillingCycle);
+    const paymentMethod = typeof tossResult.method === "string" ? tossResult.method : "";
+    const approvedAt = typeof tossResult.approvedAt === "string" ? tossResult.approvedAt : null;
+    await db.runTransaction(async (transaction) => {
+      transaction.update(orderRef, {
+        status: "PAID",
+        paymentKey,
+        paymentMethod,
+        approvedAt,
+        periodStartedAt: Timestamp.fromDate(periodStartedAt),
+        periodEndsAt: Timestamp.fromDate(periodEndsAt),
+        paidAt: FieldValue.serverTimestamp(),
+      });
+      transaction.set(db.collection("users").doc(uid), {
+        membershipPlan: orderData?.planId,
+        membershipBillingCycle: orderData?.billingCycle,
+        membershipPeriodStartedAt: Timestamp.fromDate(periodStartedAt),
+        membershipPeriodEndsAt: Timestamp.fromDate(periodEndsAt),
+        membershipPaymentProvider: "toss",
+        membershipUpdatedAt: FieldValue.serverTimestamp(),
+      }, {merge: true});
+    });
+
+    response.status(200).json({
+      planId: orderData.planId,
+      planName: orderData.planName,
+      billingCycle: orderData.billingCycle,
+      amount: orderData.amount,
+      orderNumber: orderId,
+      periodEndsAt: periodEndsAt.toISOString(),
+      approvedAt,
+    });
+  },
+);
 
 export const createTossSalesOrder = onRequest(
   {
