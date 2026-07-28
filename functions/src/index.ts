@@ -31,6 +31,12 @@ import {
   verifyWebhookChallenge,
   webhookEventId,
 } from "./metaWebhook.js";
+import {
+  generateInviteCode,
+  inviteCodeId,
+  isSiteAdmin,
+  normalizeInviteCode,
+} from "./betaAccess.js";
 
 initializeApp();
 
@@ -40,6 +46,22 @@ const metaAppSecret = defineSecret("META_APP_SECRET");
 const metaInstagramAppId = defineSecret("META_INSTAGRAM_APP_ID");
 const metaTokenEncryptionKey = defineSecret("META_TOKEN_ENCRYPTION_KEY");
 const tossSecretKey = defineSecret("TOSS_SECRET_KEY");
+
+const betaCallableOptions = {
+  region: "asia-northeast3" as const,
+  memory: "256MiB" as const,
+  timeoutSeconds: 30,
+};
+
+const requireSiteAdmin = (request: {auth?: {token: Record<string, unknown>}}) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  if (!isSiteAdmin(request.auth.token)) {
+    throw new HttpsError("permission-denied", "사이트 관리자만 사용할 수 있습니다.");
+  }
+};
+
+const serializeTimestamp = (value: unknown): string | null =>
+  value instanceof Timestamp ? value.toDate().toISOString() : null;
 
 const instagramRedirectUri = "https://linkzip.kr/auth/instagram/callback";
 const instagramGraphVersion = "v24.0";
@@ -1302,6 +1324,189 @@ async function processInboundEvent(
     throw error;
   }
 }
+
+export const checkBetaAccess = onCall(betaCallableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const uid = request.auth.uid;
+  const [memberSnapshot, userSnapshot] = await Promise.all([
+    db.collection("betaMembers").doc(uid).get(),
+    db.collection("users").doc(uid).get(),
+  ]);
+  const member = memberSnapshot.data();
+  const admin = isSiteAdmin(request.auth.token);
+  const legacy = userSnapshot.exists;
+  const allowed = admin || (memberSnapshot.exists ? member?.status === "active" : legacy);
+
+  if (legacy && !memberSnapshot.exists) {
+    await db.collection("betaMembers").doc(uid).set({
+      uid,
+      email: request.auth.token.email || null,
+      displayName: request.auth.token.name || null,
+      photoURL: request.auth.token.picture || null,
+      status: "active",
+      source: "legacy",
+      joinedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  }
+
+  return {allowed, admin, legacy, status: member?.status || (allowed ? "active" : "pending")};
+});
+
+export const redeemBetaInvite = onCall(betaCallableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const uid = request.auth.uid;
+  const code = normalizeInviteCode(request.data?.code);
+  if (!code || code.length > 40) {
+    throw new HttpsError("invalid-argument", "초대코드를 확인해주세요.");
+  }
+
+  const memberRef = db.collection("betaMembers").doc(uid);
+  const userRef = db.collection("users").doc(uid);
+  const inviteRef = db.collection("betaInviteCodes").doc(inviteCodeId(code));
+  await db.runTransaction(async (transaction) => {
+    const [memberSnapshot, userSnapshot, inviteSnapshot] = await Promise.all([
+      transaction.get(memberRef),
+      transaction.get(userRef),
+      transaction.get(inviteRef),
+    ]);
+    if (memberSnapshot.exists) {
+      if (memberSnapshot.data()?.status === "active") return;
+      throw new HttpsError("permission-denied", "이용이 중지된 계정입니다. 관리자에게 문의해주세요.");
+    }
+
+    if (userSnapshot.exists || isSiteAdmin(request.auth!.token)) {
+      transaction.set(memberRef, {
+        uid,
+        email: request.auth!.token.email || null,
+        displayName: request.auth!.token.name || null,
+        photoURL: request.auth!.token.picture || null,
+        status: "active",
+        source: userSnapshot.exists ? "legacy" : "admin",
+        joinedAt: FieldValue.serverTimestamp(),
+      }, {merge: true});
+      return;
+    }
+
+    const invite = inviteSnapshot.data();
+    if (!inviteSnapshot.exists || invite?.status !== "active") {
+      throw new HttpsError("permission-denied", "유효하지 않거나 사용 중지된 초대코드입니다.");
+    }
+    const expiresAt = invite.expiresAt as Timestamp | null | undefined;
+    if (expiresAt && expiresAt.toMillis() <= Date.now()) {
+      throw new HttpsError("permission-denied", "만료된 초대코드입니다.");
+    }
+    const maxUses = typeof invite.maxUses === "number" ? invite.maxUses : 1;
+    const useCount = typeof invite.useCount === "number" ? invite.useCount : 0;
+    if (useCount >= maxUses) {
+      throw new HttpsError("resource-exhausted", "사용 가능한 인원을 모두 채운 초대코드입니다.");
+    }
+
+    transaction.update(inviteRef, {
+      useCount: FieldValue.increment(1),
+      lastUsedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(memberRef, {
+      uid,
+      email: request.auth!.token.email || null,
+      displayName: request.auth!.token.name || null,
+      photoURL: request.auth!.token.picture || null,
+      inviteCodeId: inviteRef.id,
+      inviteLabel: typeof invite.label === "string" ? invite.label : "",
+      status: "active",
+      source: "invite",
+      joinedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return {allowed: true};
+});
+
+export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request) => {
+  requireSiteAdmin(request);
+  const [inviteSnapshot, memberSnapshot, authUsers] = await Promise.all([
+    db.collection("betaInviteCodes").orderBy("createdAt", "desc").limit(200).get(),
+    db.collection("betaMembers").orderBy("joinedAt", "desc").limit(500).get(),
+    getAuth().listUsers(500),
+  ]);
+  const memberByUid = new Map(memberSnapshot.docs.map((item) => [item.id, item.data()]));
+  const members = authUsers.users.map((account) => {
+    const member = memberByUid.get(account.uid);
+    return {
+      uid: account.uid,
+      email: account.email || "",
+      displayName: account.displayName || "",
+      photoURL: account.photoURL || "",
+      disabled: account.disabled,
+      status: member?.status || (member ? "active" : "auth-only"),
+      source: member?.source || "auth",
+      inviteLabel: member?.inviteLabel || "",
+      joinedAt: serializeTimestamp(member?.joinedAt) || account.metadata.creationTime || null,
+      lastSignInAt: account.metadata.lastSignInTime || null,
+    };
+  });
+  const invites = inviteSnapshot.docs.map((item) => {
+    const invite = item.data();
+    return {
+      id: item.id,
+      code: invite.code || "",
+      label: invite.label || "",
+      status: invite.status || "disabled",
+      maxUses: invite.maxUses || 1,
+      useCount: invite.useCount || 0,
+      expiresAt: serializeTimestamp(invite.expiresAt),
+      createdAt: serializeTimestamp(invite.createdAt),
+      lastUsedAt: serializeTimestamp(invite.lastUsedAt),
+    };
+  });
+  return {members, invites};
+});
+
+export const createBetaInviteCode = onCall(betaCallableOptions, async (request) => {
+  requireSiteAdmin(request);
+  const label = cleanString(request.data?.label, 80);
+  const maxUses = Math.max(1, Math.min(1000, Math.trunc(Number(request.data?.maxUses) || 1)));
+  const expiresAtText = cleanString(request.data?.expiresAt, 64);
+  const expiresAtDate = expiresAtText ? new Date(expiresAtText) : null;
+  if (expiresAtDate && Number.isNaN(expiresAtDate.getTime())) {
+    throw new HttpsError("invalid-argument", "만료일 형식이 올바르지 않습니다.");
+  }
+  const code = generateInviteCode();
+  const ref = db.collection("betaInviteCodes").doc(inviteCodeId(code));
+  await ref.set({
+    code,
+    label: label || "비공개 베타 초대",
+    status: "active",
+    maxUses,
+    useCount: 0,
+    expiresAt: expiresAtDate ? Timestamp.fromDate(expiresAtDate) : null,
+    createdAt: FieldValue.serverTimestamp(),
+    createdBy: request.auth!.uid,
+  });
+  return {id: ref.id, code};
+});
+
+export const setBetaInviteStatus = onCall(betaCallableOptions, async (request) => {
+  requireSiteAdmin(request);
+  const id = cleanString(request.data?.id, 128);
+  const status = request.data?.status === "active" ? "active" : "disabled";
+  if (!/^[a-f0-9]{64}$/.test(id)) throw new HttpsError("invalid-argument", "초대코드 ID가 올바르지 않습니다.");
+  await db.collection("betaInviteCodes").doc(id).update({status, updatedAt: FieldValue.serverTimestamp()});
+  return {updated: true};
+});
+
+export const setBetaMemberStatus = onCall(betaCallableOptions, async (request) => {
+  requireSiteAdmin(request);
+  const uid = cleanString(request.data?.uid, 128);
+  const status = request.data?.status === "active" ? "active" : "disabled";
+  if (!uid) throw new HttpsError("invalid-argument", "회원 정보가 올바르지 않습니다.");
+  if (uid === request.auth!.uid && status === "disabled") {
+    throw new HttpsError("failed-precondition", "현재 관리자 계정은 중지할 수 없습니다.");
+  }
+  await Promise.all([
+    getAuth().updateUser(uid, {disabled: status === "disabled"}),
+    db.collection("betaMembers").doc(uid).set({status, updatedAt: FieldValue.serverTimestamp()}, {merge: true}),
+  ]);
+  return {updated: true};
+});
 
 async function exchangeAuthorizationCode(
   code: string,

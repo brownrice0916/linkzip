@@ -1,11 +1,18 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { onAuthStateChanged } from "firebase/auth";
+import { deleteUser, onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import { useStore } from "./store/useStore";
 import { getUserByUid, saveUserData } from "./services/userService";
 import type { ProfileWorkspace } from "./store/useStore";
 import { normalizeMembershipPlan } from "./domain/membershipPlans";
+import {
+  BETA_ACCESS_ERROR_EVENT,
+  BETA_INVITE_SESSION_KEY,
+  betaErrorMessage,
+  checkBetaAccess,
+  redeemBetaInvite,
+} from "./services/betaAccessService";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const TemplateSelection = lazy(() => import("./pages/onboarding/TemplateSelection"));
@@ -24,6 +31,7 @@ const DonationPaymentFail = lazy(() => import("./pages/DonationPaymentFail"));
 const PlanPaymentSuccess = lazy(() => import("./pages/PlanPaymentSuccess"));
 const PlanPaymentFail = lazy(() => import("./pages/PlanPaymentFail"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
+const SiteAdmin = lazy(() => import("./pages/SiteAdmin"));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -42,8 +50,6 @@ function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-
       // Check localStorage backup
       let localBackup: any = null;
       try {
@@ -54,9 +60,51 @@ function App() {
       }
 
       if (user) {
+        let resolvedUser: Awaited<ReturnType<typeof getUserByUid>> = null;
         try {
-          const resolvedUser = await getUserByUid(user.uid);
-          
+          resolvedUser = await getUserByUid(user.uid);
+        } catch (error) {
+          console.error("Error checking existing user data", error);
+        }
+
+        try {
+          const pendingInvite = sessionStorage.getItem(BETA_INVITE_SESSION_KEY);
+          let betaAllowed = false;
+          if (pendingInvite) {
+            try {
+              betaAllowed = (await redeemBetaInvite(pendingInvite)).allowed;
+            } finally {
+              sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
+            }
+          } else {
+            betaAllowed = (await checkBetaAccess()).allowed;
+          }
+
+          if (!betaAllowed) {
+            throw new Error('비공개 베타는 초대코드를 받은 분만 가입할 수 있습니다.');
+          }
+
+          setUser(user);
+        } catch (error) {
+          console.error("Beta access denied", error);
+          const message = betaErrorMessage(error);
+          setUser(null);
+          sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
+          if (!resolvedUser) {
+            try {
+              if (auth.currentUser?.uid === user.uid) await deleteUser(user);
+            } catch {
+              await signOut(auth).catch(() => undefined);
+            }
+          } else {
+            await signOut(auth).catch(() => undefined);
+          }
+          window.dispatchEvent(new CustomEvent(BETA_ACCESS_ERROR_EVENT, { detail: message }));
+          setLoading(false);
+          return;
+        }
+
+        try {
           if (resolvedUser) {
             const data = resolvedUser.data;
             if (data.username && !(Array.isArray(data.profileWorkspaces) && data.profileWorkspaces.length > 0)) {
@@ -130,7 +178,10 @@ function App() {
           if (localBackup) loadData(localBackup);
         }
       } else if (localBackup) {
+        setUser(null);
         loadData(localBackup);
+      } else {
+        setUser(null);
       }
 
       setLoading(false);
@@ -151,6 +202,7 @@ function App() {
       <Suspense fallback={<div className="flex h-screen items-center justify-center bg-gray-50">Loading...</div>}>
         <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/site-admin" element={<ProtectedRoute><SiteAdmin /></ProtectedRoute>} />
 
         {/* Onboarding Flow */}
         <Route

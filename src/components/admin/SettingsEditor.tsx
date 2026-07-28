@@ -97,6 +97,13 @@ const SettingsEditor = () => {
         </div>
       </div>
 
+      {user?.email?.toLowerCase() === 'brownrice0916@gmail.com' && (
+        <button type="button" onClick={() => navigate('/site-admin')} className="flex w-full cursor-pointer items-center gap-4 rounded-3xl border border-indigo-200 bg-indigo-50/70 p-6 text-left transition hover:-translate-y-0.5 hover:bg-indigo-50">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white"><Key className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1"><strong className="block text-sm font-black text-indigo-950">사이트 관리자</strong><span className="mt-1 block text-xs font-medium text-indigo-700">가입자와 비공개 베타 초대코드를 관리합니다.</span></span>
+        </button>
+      )}
+
       {/* 2. Logout Action Card */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 flex items-center justify-between">
         <div>

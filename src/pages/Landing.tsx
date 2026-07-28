@@ -1,20 +1,40 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithGoogle } from "../lib/firebase";
 import { useStore } from "../store/useStore";
-import { Link2, Sparkles, ArrowRight, LayoutDashboard, Clock3, X } from "lucide-react";
+import { Link2, Sparkles, ArrowRight, LayoutDashboard, KeyRound, Loader2, X } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 import { getUserByUid } from "../services/userService";
 import BusinessFooter from "../components/BusinessFooter";
 import PrivateBetaBadge from "../components/PrivateBetaBadge";
+import {
+  BETA_ACCESS_ERROR_EVENT,
+  BETA_INVITE_SESSION_KEY,
+  betaErrorMessage,
+  redeemBetaInvite,
+} from "../services/betaAccessService";
 
 const Landing = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
-  const [isComingSoonOpen, setIsComingSoonOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+
+  useEffect(() => {
+    const handleError = (event: Event) => {
+      setInviteError((event as CustomEvent<string>).detail || '초대코드를 확인해주세요.');
+      setIsInviteOpen(true);
+      setIsJoining(false);
+    };
+    window.addEventListener(BETA_ACCESS_ERROR_EVENT, handleError);
+    return () => window.removeEventListener(BETA_ACCESS_ERROR_EVENT, handleError);
+  }, []);
 
   const handleGoogleLogin = async () => {
     try {
+      sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
       const user = await signInWithGoogle();
       if (await getUserByUid(user.uid)) {
         navigate("/admin");
@@ -37,6 +57,33 @@ const Landing = () => {
           error?.message || "알 수 없는 오류가 발생했습니다."
         }\n\n1. Firebase Console에서 Google 로그인이 활성화되어 있는지 확인하세요.\n2. API 키가 정확한지 확인하세요.`
       );
+    }
+  };
+
+  const handleInviteSignup = async () => {
+    const code = inviteCode.trim();
+    if (!code) {
+      setInviteError('초대코드를 입력해주세요.');
+      return;
+    }
+    setInviteError('');
+    setIsJoining(true);
+    sessionStorage.setItem(BETA_INVITE_SESSION_KEY, code);
+    try {
+      const signedInUser = await signInWithGoogle();
+      await redeemBetaInvite(code);
+      sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
+      setIsInviteOpen(false);
+      if (await getUserByUid(signedInUser.uid)) navigate('/admin');
+      else navigate('/onboarding/template');
+    } catch (error: any) {
+      sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
+      if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+        setIsJoining(false);
+        return;
+      }
+      setInviteError(betaErrorMessage(error));
+      setIsJoining(false);
     }
   };
 
@@ -77,7 +124,7 @@ const Landing = () => {
                 Log in
               </button>
               <button
-                onClick={() => setIsComingSoonOpen(true)}
+                onClick={() => { setInviteError(''); setIsInviteOpen(true); }}
                 className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-gray-100 font-semibold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.2)] cursor-pointer"
               >
                 Sign up
@@ -102,7 +149,7 @@ const Landing = () => {
         </h1>
 
         <button
-          onClick={user ? () => navigate('/admin') : () => setIsComingSoonOpen(true)}
+          onClick={user ? () => navigate('/admin') : () => { setInviteError(''); setIsInviteOpen(true); }}
           className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-full font-bold text-lg overflow-hidden transition-transform hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] cursor-pointer"
         >
           {user ? (
@@ -126,14 +173,18 @@ const Landing = () => {
 
       <BusinessFooter dark />
 
-      {isComingSoonOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setIsComingSoonOpen(false)}>
-          <section role="dialog" aria-modal="true" aria-labelledby="coming-soon-title" className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-[#151515] p-7 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <button type="button" onClick={() => setIsComingSoonOpen(false)} className="absolute right-4 top-4 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-gray-400 transition hover:bg-white/10 hover:text-white" aria-label="팝업 닫기"><X className="h-4 w-4" /></button>
-            <span className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-300"><Clock3 className="h-7 w-7" /></span>
-            <h2 id="coming-soon-title" className="text-xl font-black text-white">현재 준비 중입니다</h2>
-            <p className="mt-2 text-sm font-medium leading-relaxed text-gray-400">회원가입 기능을 더 좋은 모습으로 준비하고 있어요.<br />조금만 기다려 주세요.</p>
-            <button type="button" onClick={() => setIsComingSoonOpen(false)} className="mt-6 w-full cursor-pointer rounded-2xl bg-white py-3.5 text-sm font-black text-black transition hover:bg-gray-100">확인</button>
+      {isInviteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => !isJoining && setIsInviteOpen(false)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="invite-title" className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-[#151515] p-7 text-left shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => setIsInviteOpen(false)} disabled={isJoining} className="absolute right-4 top-4 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-gray-400 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed" aria-label="팝업 닫기"><X className="h-4 w-4" /></button>
+            <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-300"><KeyRound className="h-7 w-7" /></span>
+            <h2 id="invite-title" className="text-xl font-black text-white">비공개 베타 참여</h2>
+            <p className="mt-2 text-sm font-medium leading-relaxed text-gray-400">초대받은 분만 새 계정을 만들 수 있어요. 전달받은 초대코드를 입력해주세요.</p>
+            <label className="mt-6 block text-xs font-bold text-gray-300">초대코드
+              <input value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} onKeyDown={(event) => { if (event.key === 'Enter') void handleInviteSignup(); }} autoComplete="off" placeholder="LZ-XXXXX-XXXXX" className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-black uppercase tracking-wider text-white outline-none transition focus:border-indigo-400 focus:bg-white/10" />
+            </label>
+            {inviteError && <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-bold leading-relaxed text-red-300">{inviteError}</p>}
+            <button type="button" onClick={handleInviteSignup} disabled={isJoining} className="mt-5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-sm font-black text-black transition hover:bg-gray-100 disabled:cursor-wait disabled:opacity-60">{isJoining ? <><Loader2 className="h-4 w-4 animate-spin" /> 확인 중</> : <><FaGoogle className="h-4 w-4" /> 코드 확인 후 가입</>}</button>
           </section>
         </div>
       )}

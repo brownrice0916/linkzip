@@ -10,6 +10,15 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function hasBetaAccess() {
+      return signedIn() && (
+        (!exists(/databases/$(database)/documents/betaMembers/$(request.auth.uid))
+          && exists(/databases/$(database)/documents/users/$(request.auth.uid)))
+        || (exists(/databases/$(database)/documents/betaMembers/$(request.auth.uid))
+          && get(/databases/$(database)/documents/betaMembers/$(request.auth.uid)).data.status == 'active')
+      );
+    }
+
     function isOwnedPublicProfile(profileId) {
       return signedIn()
         && (profileId == request.auth.uid
@@ -44,7 +53,7 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read, create, update, delete: if isOwner(uid);
+      allow read, create, update, delete: if isOwner(uid) && hasBetaAccess();
 
       match /collected_customer_data/{entryId} {
         allow create: if request.resource.data.keys().hasOnly([
@@ -95,16 +104,24 @@ service cloud.firestore {
 
     match /publicProfiles/{profileId} {
       allow read: if true;
-      allow create, update, delete: if isOwnedPublicProfile(profileId);
+      allow create, update, delete: if isOwnedPublicProfile(profileId) && hasBetaAccess();
     }
 
     match /usernames/{username} {
       allow read: if true;
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if signedIn()
+      allow create: if signedIn() && hasBetaAccess() && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && hasBetaAccess()
         && resource.data.uid == request.auth.uid
         && request.resource.data.uid == request.auth.uid;
-      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && hasBetaAccess() && resource.data.uid == request.auth.uid;
+    }
+
+    match /betaMembers/{uid} {
+      allow read, write: if false;
+    }
+
+    match /betaInviteCodes/{codeId} {
+      allow read, write: if false;
     }
 
     match /analytics/{uid} {
