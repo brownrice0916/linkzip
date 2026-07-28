@@ -271,12 +271,28 @@ export async function manageBankTransferOrder(
   return payload;
 }
 
+export async function reportBankTransferDeposit(
+  orderNumber: string,
+  buyerContact: string,
+): Promise<{ orderNumber: string; status: 'DEPOSIT_REPORTED'; alreadyReported?: boolean }> {
+  const endpoint = import.meta.env.VITE_BANK_TRANSFER_REPORT_URL
+    || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/reportBankTransferDeposit';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderNumber, buyerContact }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '입금 확인 요청을 접수하지 못했습니다.');
+  return payload;
+}
+
 export interface BankTransferOrderSummary {
   orderNumber: string;
   kind: 'sales' | 'donation' | 'membership';
   productName: string;
   amount: number;
-  status: 'WAITING_DEPOSIT' | 'PAID' | 'CANCELLED' | 'EXPIRED';
+  status: 'WAITING_DEPOSIT' | 'DEPOSIT_REPORTED' | 'PAID' | 'CANCELLED' | 'EXPIRED';
   depositorName: string;
   buyerContact: string;
   nickname: string;

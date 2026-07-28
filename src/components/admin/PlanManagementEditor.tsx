@@ -110,7 +110,7 @@ const PlanManagementEditor: React.FC = () => {
         </p>
       </section>
 
-      {bankOrder?.bankTransfer && <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} onDone={() => setBankOrder(null)} />}
+      {bankOrder?.bankTransfer && <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} buyerContact={buyerContact} onDone={() => setBankOrder(null)} />}
 
       <section className="rounded-[24px] border border-gray-200 bg-white p-4 sm:p-5">
         <p className="text-xs font-black text-gray-900">결제 방법</p>

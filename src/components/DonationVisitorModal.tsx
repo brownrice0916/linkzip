@@ -101,7 +101,7 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
         </button>
 
         {bankOrder?.bankTransfer ? (
-          <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} onDone={onClose} />
+          <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} buyerContact={buyerContact} onDone={onClose} />
         ) : <div className="space-y-6 text-center pt-2">
             <div className="space-y-2">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-800">

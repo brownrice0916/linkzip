@@ -168,7 +168,7 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
           </div>
         ) : (
           bankOrder?.bankTransfer ? (
-            <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} onDone={() => setTab('lookup')} />
+            <BankTransferInstructions orderNumber={bankOrder.orderNumber} amount={bankOrder.amount} instructions={bankOrder.bankTransfer} buyerContact={buyerContact} onDone={() => setTab('lookup')} />
           ) : <div className="space-y-5">
             {config.image && <img src={config.image} alt="상품" className="h-48 w-full rounded-2xl border border-gray-200 object-cover" />}
             {config.description && <div className="whitespace-pre-wrap rounded-2xl border border-gray-100 bg-gray-50 p-4 text-xs font-medium leading-relaxed text-gray-700">{config.description}</div>}

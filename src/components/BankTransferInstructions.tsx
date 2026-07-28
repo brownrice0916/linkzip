@@ -1,18 +1,37 @@
-import React from 'react';
-import { Check, Copy, Landmark } from 'lucide-react';
-import type { BankTransferInstructions as Instructions } from '../services/commerceService';
+import React, { useState } from 'react';
+import { Check, Copy, Landmark, LoaderCircle } from 'lucide-react';
+import { reportBankTransferDeposit, type BankTransferInstructions as Instructions } from '../services/commerceService';
 
 interface Props {
   orderNumber: string;
   amount: number;
   instructions: Instructions;
+  buyerContact: string;
   onDone?: () => void;
 }
 
-const BankTransferInstructions: React.FC<Props> = ({ orderNumber, amount, instructions, onDone }) => {
+const BankTransferInstructions: React.FC<Props> = ({ orderNumber, amount, instructions, buyerContact, onDone }) => {
+  const [reporting, setReporting] = useState(false);
+  const [reported, setReported] = useState(false);
+  const [error, setError] = useState('');
+
   const copy = async (value: string) => {
     await navigator.clipboard.writeText(value);
     alert('복사했습니다.');
+  };
+
+  const reportDeposit = async () => {
+    if (reporting || reported) return;
+    setReporting(true);
+    setError('');
+    try {
+      await reportBankTransferDeposit(orderNumber, buyerContact);
+      setReported(true);
+    } catch (reportError) {
+      setError(reportError instanceof Error ? reportError.message : '입금 확인 요청을 접수하지 못했습니다.');
+    } finally {
+      setReporting(false);
+    }
   };
   return (
     <div className="space-y-4 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-left">
@@ -29,7 +48,19 @@ const BankTransferInstructions: React.FC<Props> = ({ orderNumber, amount, instru
         <div className="flex items-center justify-between gap-4"><dt className="font-bold text-gray-500">주문번호</dt><dd className="flex items-center gap-1 font-mono text-[10px] font-bold text-gray-700">{orderNumber}<button type="button" onClick={() => void copy(orderNumber)} className="cursor-pointer rounded-lg p-1 hover:bg-gray-100" aria-label="주문번호 복사"><Copy className="h-3.5 w-3.5" /></button></dd></div>
       </dl>
       <p className="text-[10px] font-bold text-amber-800">입금 기한: {new Date(instructions.expiresAt).toLocaleString('ko-KR')}</p>
-      {onDone && <button type="button" onClick={onDone} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gray-950 py-3 text-xs font-black text-white"><Check className="h-4 w-4" />확인</button>}
+      {reported ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-center">
+          <p className="text-xs font-black text-emerald-800">입금 확인 요청이 접수되었습니다</p>
+          <p className="mt-1 text-[10px] font-semibold leading-relaxed text-emerald-700">관리자가 실제 입금을 확인한 뒤 파일 다운로드 또는 플랜 이용이 활성화됩니다.</p>
+        </div>
+      ) : (
+        <button type="button" onClick={() => void reportDeposit()} disabled={reporting} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gray-950 py-3 text-xs font-black text-white disabled:cursor-wait disabled:opacity-60">
+          {reporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          {reporting ? '요청 접수 중...' : '입금했어요'}
+        </button>
+      )}
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-[10px] font-bold text-red-600">{error}</p>}
+      {onDone && <button type="button" onClick={onDone} className="w-full cursor-pointer rounded-2xl border border-gray-200 bg-white py-3 text-xs font-black text-gray-600 transition hover:bg-gray-50">{reported ? '확인' : '나중에 확인하기'}</button>}
     </div>
   );
 };

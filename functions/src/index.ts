@@ -962,6 +962,49 @@ const enqueueBankTransferNotification = async (
   }, {merge: true});
 };
 
+const manageableBankTransferStatuses = new Set(["WAITING_DEPOSIT", "DEPOSIT_REPORTED"]);
+
+export const reportBankTransferDeposit = onRequest(
+  {region: "asia-northeast3", memory: "256MiB", timeoutSeconds: 20, invoker: "public"},
+  async (request, response) => {
+    if (!setPublicPostCors(request, response)) return;
+    const orderNumber = cleanString(request.body?.orderNumber, 64).toUpperCase();
+    const buyerContact = cleanString(request.body?.buyerContact, 50).replace(/\D/g, "");
+    if (!/^(?:LZ|DN|MB)-\d{8}-[A-F0-9]{10}$/.test(orderNumber) || !/^\d{9,15}$/.test(buyerContact)) {
+      response.status(400).json({message: "주문번호와 주문 시 입력한 휴대폰 번호를 확인해주세요."});
+      return;
+    }
+
+    const orderRef = db.collection("tossPaymentOrders").doc(orderNumber);
+    const snapshot = await orderRef.get();
+    const orderData = snapshot.data();
+    const storedContact = cleanString(orderData?.buyerContact, 50).replace(/\D/g, "");
+    if (!snapshot.exists || !orderData || orderData.paymentProvider !== "bank_transfer" || storedContact !== buyerContact) {
+      response.status(404).json({message: "일치하는 계좌이체 주문을 찾을 수 없습니다."});
+      return;
+    }
+    if (orderData.status === "DEPOSIT_REPORTED") {
+      response.status(200).json({orderNumber, status: "DEPOSIT_REPORTED", alreadyReported: true});
+      return;
+    }
+    if (orderData.status !== "WAITING_DEPOSIT") {
+      response.status(400).json({message: "입금 확인을 요청할 수 없는 주문 상태입니다."});
+      return;
+    }
+    const expiresAt = orderData.expiresAt instanceof Timestamp ? orderData.expiresAt.toMillis() : 0;
+    if (expiresAt > 0 && expiresAt <= Date.now()) {
+      await orderRef.update({status: "EXPIRED", expiredAt: FieldValue.serverTimestamp()});
+      response.status(400).json({message: "입금 기한이 지난 주문입니다."});
+      return;
+    }
+    await orderRef.update({
+      status: "DEPOSIT_REPORTED",
+      depositReportedAt: FieldValue.serverTimestamp(),
+    });
+    response.status(200).json({orderNumber, status: "DEPOSIT_REPORTED"});
+  },
+);
+
 export const manageBankTransferOrder = onRequest(
   {
     region: "asia-northeast3",
@@ -1003,7 +1046,7 @@ export const manageBankTransferOrder = onRequest(
       response.status(200).json({orderNumber, status: "PAID", alreadyProcessed: true});
       return;
     }
-    if (orderData.status !== "WAITING_DEPOSIT") {
+    if (!manageableBankTransferStatuses.has(orderData.status)) {
       response.status(400).json({message: "처리할 수 없는 주문 상태입니다."});
       return;
     }
@@ -1022,7 +1065,7 @@ export const manageBankTransferOrder = onRequest(
       try {
         await db.runTransaction(async (transaction) => {
           const current = await transaction.get(orderRef);
-          if (current.data()?.status !== "WAITING_DEPOSIT") throw new Error("ORDER_ALREADY_PROCESSED");
+          if (!manageableBankTransferStatuses.has(current.data()?.status)) throw new Error("ORDER_ALREADY_PROCESSED");
           transaction.update(orderRef, {status: "CANCELLED", cancelledAt: FieldValue.serverTimestamp()});
           if (salesOrderRef) transaction.update(salesOrderRef, {status: "cancelled"});
         });
@@ -1041,7 +1084,7 @@ export const manageBankTransferOrder = onRequest(
     try {
       await db.runTransaction(async (transaction) => {
         const current = await transaction.get(orderRef);
-        if (current.data()?.status !== "WAITING_DEPOSIT") throw new Error("ORDER_ALREADY_PROCESSED");
+        if (!manageableBankTransferStatuses.has(current.data()?.status)) throw new Error("ORDER_ALREADY_PROCESSED");
         transaction.update(orderRef, {
           status: "PAID",
           paymentMethod: "계좌이체",
@@ -1143,7 +1186,7 @@ export const expireBankTransferOrders = onSchedule(
   {region: "asia-northeast3", schedule: "every 60 minutes", timeZone: "Asia/Seoul"},
   async () => {
     const snapshot = await db.collection("tossPaymentOrders")
-      .where("status", "==", "WAITING_DEPOSIT")
+      .where("status", "in", ["WAITING_DEPOSIT", "DEPOSIT_REPORTED"])
       .limit(500)
       .get();
     const now = Date.now();
