@@ -367,15 +367,16 @@ const LinksEditor = () => {
         id: `link-${Date.now()}`,
         type: "file",
         title: "자료집 및 대표 파일 다운로드",
-        url: "https://images.unsplash.com/photo-1542435503-956c469947f6",
+        url: "",
         isVisible: true,
-        iconName: "download",
+        icon: "",
+        thumbnailType: "none",
         fileConfig: {
           title: "자료집 및 대표 파일 다운로드",
           description: "누구나 자유롭게 다운로드하실 수 있습니다.",
-          fileUrl: "https://images.unsplash.com/photo-1542435503-956c469947f6",
-          fileName: "linkzip_presentation.pdf",
-          fileSize: "2.4MB",
+          fileUrl: "",
+          fileName: "",
+          fileSize: "",
         },
       });
     } else if (blockType === "notice") {
@@ -1188,6 +1189,7 @@ const LinksEditor = () => {
       const newConfig = { ...config, ...updates };
       updateCustomLink(link.id, {
         title: newConfig.title || link.title,
+        url: newConfig.fileUrl || "",
         fileConfig: newConfig,
       });
     };
@@ -1199,14 +1201,19 @@ const LinksEditor = () => {
         alert(isKo ? "파일 크기는 25MB 이하여야 합니다." : "The file must be 25MB or smaller.");
         return;
       }
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      const sizeLabel = file.size < 1024 * 1024
+        ? `${Math.max(1, Math.ceil(file.size / 1024))}KB`
+        : `${(file.size / (1024 * 1024)).toFixed(1)}MB`;
       try {
         setUploadingFileId(link.id);
         const fileUrl = await uploadPublicFile(user.uid, file);
-        updateConfig({ fileUrl, fileName: file.name, fileSize: `${sizeMb}MB` });
+        updateConfig({ fileUrl, fileName: file.name, fileSize: sizeLabel });
       } catch (error) {
         console.error("Failed to upload shared file", error);
-        alert(isKo ? "파일 업로드에 실패했습니다." : "File upload failed.");
+        const message = error instanceof Error ? error.message : "";
+        alert(isKo
+          ? `파일 업로드에 실패했습니다.${message ? `\n${message}` : ""}`
+          : `File upload failed.${message ? `\n${message}` : ""}`);
       } finally {
         setUploadingFileId(null);
         e.target.value = "";
@@ -1261,9 +1268,22 @@ const LinksEditor = () => {
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
             </div> */}
-            <span className={blockIconClassName}>
-              <FileDown className="h-5 w-5" />
-            </span>
+            <button
+              type="button"
+              data-no-style-editor
+              onClick={(event) => {
+                event.stopPropagation();
+                setActiveThumbnailLink(link);
+              }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 text-gray-500 transition hover:border-gray-400 hover:bg-gray-100 cursor-pointer"
+              title={isKo ? "썸네일 이미지 설정" : "Set thumbnail image"}
+            >
+              {link.thumbnailType === "image" && link.icon ? (
+                <img src={link.icon} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <ImageIcon className="h-5 w-5" />
+              )}
+            </button>
             <span className="truncate text-sm font-black text-gray-900">
               {config.title || link.title || "파일 공유"}
             </span>
@@ -1315,11 +1335,15 @@ const LinksEditor = () => {
                   className="flex-1 p-3.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
                 />
                 <button
-                  onClick={() => setActiveThumbnailLink(link)}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveThumbnailLink(link);
+                  }}
                   className="w-16 bg-[#8C9AA8] hover:bg-gray-600 text-white rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer shrink-0"
                 >
                   <ImageIcon className="w-4 h-4" />
-                  <span className="text-[9px] font-bold">{isKo ? '이미지' : 'image'}</span>
+                  <span className="text-[9px] font-bold">{isKo ? '썸네일' : 'Thumbnail'}</span>
                 </button>
               </div>
             </div>
@@ -1361,8 +1385,18 @@ const LinksEditor = () => {
                 </div>
               )}
 
-              <label className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2">
-                <span>{uploadingFileId === link.id ? (isKo ? "업로드 중..." : "Uploading...") : (isKo ? "+ 파일 선택" : "+ Choose file")}</span>
+              <label
+                data-no-style-editor
+                onClick={(event) => event.stopPropagation()}
+                className={clsx(
+                  "w-full py-4 rounded-2xl font-black text-sm transition shadow-md flex items-center justify-center gap-2",
+                  uploadingFileId === link.id
+                    ? "cursor-wait bg-gray-400 text-white"
+                    : "cursor-pointer bg-black text-white hover:bg-gray-800"
+                )}
+              >
+                <Upload className="h-4 w-4" />
+                <span>{uploadingFileId === link.id ? (isKo ? "업로드 중..." : "Uploading...") : (isKo ? config.fileName ? "파일 교체" : "파일 업로드" : config.fileName ? "Replace file" : "Upload file")}</span>
                 <input
                   type="file"
                   onChange={handleFileUpload}

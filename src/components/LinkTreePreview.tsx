@@ -1090,16 +1090,24 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
               }
 
               if (block.type === 'file') {
-                const downloadUrl = block.fileConfig?.fileUrl || block.url || '#';
+                const downloadUrl = block.fileConfig?.fileUrl || '';
+                const hasDownloadFile = Boolean(downloadUrl);
                 return (
                   <a
                     key={block.id}
-                    href={downloadUrl}
+                    href={downloadUrl || undefined}
                     download={block.fileConfig?.fileName || 'download'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => recordLinkClick(block.id)}
-                    className={buttonClass}
+                    target={hasDownloadFile ? "_blank" : undefined}
+                    rel={hasDownloadFile ? "noopener noreferrer" : undefined}
+                    aria-disabled={!hasDownloadFile}
+                    onClick={(event) => {
+                      if (!hasDownloadFile) {
+                        event.preventDefault();
+                        return;
+                      }
+                      recordLinkClick(block.id);
+                    }}
+                    className={clsx(buttonClass, !hasDownloadFile && "cursor-not-allowed opacity-60")}
                     style={getCustomLinkStyle(block)}
                   >
                     {!isNone && (
