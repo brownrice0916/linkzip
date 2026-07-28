@@ -1115,7 +1115,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     )}
                     <div className="flex-1 text-center truncate">
                       <span className="font-bold text-[15px] block truncate">
-                        📁 {block.fileConfig?.title || block.title || "파일 다운로드"}
+                        {(block.fileConfig?.title || block.title || "파일 다운로드").replace(/^[📁📂🗂]\uFE0F?\s*/u, "")}
                       </span>
                       {block.fileConfig?.fileName && (
                         <span className="text-[11px] opacity-70 block truncate">

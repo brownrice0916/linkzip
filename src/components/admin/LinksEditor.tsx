@@ -36,6 +36,7 @@ import {
   Newspaper,
   HandHeart,
   Pencil,
+  Globe2,
 } from "lucide-react";
 import { getLinkIcon } from "../../lib/icons";
 import { ThumbnailModal } from "./ThumbnailModal";
@@ -61,6 +62,9 @@ import { uploadPublicFile, uploadPublicImage } from "../../services/storageServi
 const getSocialIconComp = (platform: string) => {
   return getLinkIcon(platform);
 };
+
+const blockIconClassName =
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600";
 
 const disconnectAccountFromLinks = (links: CustomLink[]): CustomLink[] => links.map((link) => {
   const donationConfig = link.donationConfig ? {...link.donationConfig} : undefined;
@@ -987,8 +991,8 @@ const LinksEditor = () => {
               </button>
             </div> */}
 
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-700 shadow-xs">
-              <HandHeart className="h-6 w-6" />
+            <div className={blockIconClassName}>
+              <HandHeart className="h-5 w-5" />
             </div>
             <div className="truncate text-sm font-black text-gray-900">도네이션</div>
           </div>
@@ -1257,7 +1261,7 @@ const LinksEditor = () => {
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
             </div> */}
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600">
+            <span className={blockIconClassName}>
               <FileDown className="h-5 w-5" />
             </span>
             <span className="truncate text-sm font-black text-gray-900">
@@ -1435,7 +1439,7 @@ const LinksEditor = () => {
         )}
       >
         {/* Header Row */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+        <div className={clsx("flex items-center justify-between gap-2", !isCollapsed && "border-b border-gray-100 pb-3")}>
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div
               className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 transition shrink-0"
@@ -1461,23 +1465,10 @@ const LinksEditor = () => {
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
             </div> */}
-            <button
-              type="button"
-              onClick={() => toggleBlockCollapse(link.id)}
-              className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
-              title={isCollapsed ? "펼치기" : "접기"}
-            >
-              <ChevronDown
-                className={clsx(
-                  "w-4 h-4 transition-transform duration-200",
-                  isCollapsed
-                    ? "-rotate-90 text-gray-400"
-                    : "rotate-0 text-black"
-                )}
-              />
-            </button>
-            <span className="text-base shrink-0">🌐</span>
-            <span className="font-extrabold text-base text-gray-900 truncate">
+            <span className={blockIconClassName} aria-label="SNS 아이콘">
+              <Globe2 className="h-5 w-5" />
+            </span>
+            <span className="truncate text-sm font-black text-gray-900">
               {link.title || "SNS 아이콘 연동"}
             </span>
           </div>
@@ -2751,7 +2742,7 @@ const LinksEditor = () => {
     return (
       <div key={link.id} data-testid={`affiliate-card-${link.id}`} data-collapsed={isCollapsed} {...getDropPreviewProps(link.id)} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return; toggleBlockCollapse(link.id); }} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
         <div className={clsx("flex items-center justify-between gap-3", !isCollapsed && "border-b border-gray-100 pb-3")}>
-          <div className="flex min-w-0 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" /><BadgeDollarSign className="h-5 w-5 shrink-0 text-fuchsia-600" /><span className="truncate text-sm font-black">{link.title || (isKo ? "추천 상품" : "Recommended product")}</span></div>
+          <div className="flex min-w-0 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" /><span className={blockIconClassName}><BadgeDollarSign className="h-5 w-5" /></span><span className="truncate text-sm font-black">{link.title || (isKo ? "추천 상품" : "Recommended product")}</span></div>
           <div className="flex shrink-0 items-center gap-2">
             <button type="button" onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })} className={clsx("relative h-5 w-10 cursor-pointer rounded-full transition-colors", link.isVisible !== false ? "bg-black" : "bg-gray-200")} aria-label={isKo ? "공개 여부" : "Visibility"}><span className={clsx("absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-transform", link.isVisible !== false && "translate-x-5")} /></button>
             <button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label="추천 상품 디자인 수정" title="추천 상품 디자인 수정"><Palette className="h-4 w-4" /></button>
