@@ -69,14 +69,14 @@ function App() {
 
         try {
           const pendingInvite = sessionStorage.getItem(BETA_INVITE_SESSION_KEY);
-          let betaAllowed = false;
+          let betaAllowed = Boolean(resolvedUser);
           if (pendingInvite) {
             try {
               betaAllowed = (await redeemBetaInvite(pendingInvite)).allowed;
             } finally {
               sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
             }
-          } else {
+          } else if (!betaAllowed) {
             betaAllowed = (await checkBetaAccess()).allowed;
           }
 
