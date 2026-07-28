@@ -8,7 +8,7 @@ import {
   type DesignSettings,
   type ReservationScheduleItem,
 } from "../store/useStore";
-import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, MapPin, HandHeart } from "lucide-react";
+import { User, MoreHorizontal, Link2, X, Mail, Copy, Check, Share2, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, FileDown, MapPin, HandHeart } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import { getSocialUrl, normalizeSocialPlatform } from "../lib/social";
 import { DonationVisitorModal } from "./DonationVisitorModal";
@@ -1290,6 +1290,77 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
               }
 
               if (block.type === 'sales') {
+                const salesConfig = block.salesConfig;
+                const firstProduct = salesConfig?.products?.[0];
+                const productCount = salesConfig?.products?.length || 0;
+                const displayPrice = firstProduct
+                  ? (firstProduct.discountPrice ?? firstProduct.price)
+                  : null;
+                const formattedPrice = displayPrice !== null
+                  ? `${new Intl.NumberFormat(store.language === 'ko' ? 'ko-KR' : 'en-US').format(displayPrice)}${store.language === 'ko' ? '원' : ' KRW'}`
+                  : '';
+                const salesTitle = (salesConfig?.mainText || block.title || "실물 상품 판매").replace(/^[🛍️\s]+/u, "");
+                const SalesProductIcon = salesConfig?.salesType === 'digital_file' ? FileDown : ShoppingBag;
+
+                if (firstProduct || salesConfig?.image) {
+                  return (
+                    <button
+                      key={block.id}
+                      type="button"
+                      onClick={() => {
+                        recordLinkClick(block.id);
+                        setActiveSalesBlock(block);
+                      }}
+                      className={clsx(buttonClass, "group !min-h-[88px] !justify-start !px-3 !py-3 text-left")}
+                      style={getCustomLinkStyle(block)}
+                    >
+                      <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-black/5">
+                        {salesConfig?.image ? (
+                          <img
+                            src={salesConfig.image}
+                            alt={firstProduct?.name || salesTitle}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <SalesProductIcon className="h-7 w-7 opacity-40" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 px-1">
+                        <span className="block truncate text-[11px] font-semibold opacity-55">{salesTitle}</span>
+                        <span className="mt-0.5 block truncate text-[15px] font-extrabold">{firstProduct?.name || salesTitle}</span>
+                        <span className="mt-1 flex items-center gap-1.5 text-xs font-bold">
+                          {firstProduct?.discountPrice != null && (
+                            <span className="font-medium line-through opacity-40">
+                              {new Intl.NumberFormat(store.language === 'ko' ? 'ko-KR' : 'en-US').format(firstProduct.price)}
+                            </span>
+                          )}
+                          {formattedPrice && <span>{formattedPrice}</span>}
+                          {productCount > 1 && (
+                            <span className="font-semibold opacity-55">+{productCount - 1}</span>
+                          )}
+                        </span>
+                      </span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(event) => handleOpenShareModal(event, block)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setShareModalItem(block);
+                            setLinkCopied(false);
+                          }
+                        }}
+                        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition hover:bg-black/10"
+                        title="링크 공유"
+                      >
+                        <MoreHorizontal className="h-5 w-5 opacity-60 transition group-hover:opacity-100" />
+                      </span>
+                    </button>
+                  );
+                }
+
                 return (
                   <button
                     key={block.id}
@@ -1311,7 +1382,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       </div>
                     )}
                     <span className="flex-1 text-center font-bold text-[15px]">
-                      {(block.salesConfig?.mainText || block.title || "실물 상품 판매").replace(/^[🛍️\s]+/u, "")}
+                      {salesTitle}
                     </span>
                     <button
                       type="button"

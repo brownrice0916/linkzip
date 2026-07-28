@@ -94,8 +94,11 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
         paymentProvider,
         depositorName: buyerName.trim(),
       });
-      if (result.paymentProvider === 'bank_transfer' && result.bankTransfer) {
-        setBankOrder(result);
+      if (paymentProvider === 'bank_transfer') {
+        if (!result.bankTransfer) {
+          throw new Error('계좌이체 안내를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+        }
+        setBankOrder({ ...result, paymentProvider: 'bank_transfer' });
         return;
       }
       await requestTossPayment({
@@ -177,7 +180,11 @@ export const SalesVisitorModal: React.FC<SalesVisitorModalProps> = ({ isOpen, on
               <button type="button" onClick={() => setPaymentProvider('toss')} className={`cursor-pointer rounded-xl py-2.5 text-xs font-black transition ${paymentProvider === 'toss' ? 'bg-white shadow-sm' : 'text-gray-500'}`}>토스페이먼츠</button>
               <button type="button" onClick={() => setPaymentProvider('bank_transfer')} className={`cursor-pointer rounded-xl py-2.5 text-xs font-black transition ${paymentProvider === 'bank_transfer' ? 'bg-white shadow-sm' : 'text-gray-500'}`}>계좌이체</button>
             </div>
-            <button onClick={() => void handlePurchaseRequest()} disabled={submitting} className="w-full cursor-pointer rounded-2xl bg-black py-4 text-sm font-black text-white shadow-md transition hover:bg-gray-800 disabled:opacity-50">{submitting ? '결제창 여는 중...' : `${amount.toLocaleString()}원 결제하기`}</button>
+            <button onClick={() => void handlePurchaseRequest()} disabled={submitting} className="w-full cursor-pointer rounded-2xl bg-black py-4 text-sm font-black text-white shadow-md transition hover:bg-gray-800 disabled:opacity-50">
+              {submitting
+                ? (paymentProvider === 'bank_transfer' ? '주문 접수 중...' : '결제창 여는 중...')
+                : (paymentProvider === 'bank_transfer' ? `${amount.toLocaleString()}원 입금 안내 받기` : `${amount.toLocaleString()}원 결제하기`)}
+            </button>
           </div>
         )}
       </div>

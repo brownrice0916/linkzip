@@ -68,8 +68,11 @@ const PlanManagementEditor: React.FC = () => {
         depositorName: depositorName.trim(),
         buyerContact,
       });
-      if (order.paymentProvider === 'bank_transfer' && order.bankTransfer) {
-        setBankOrder(order);
+      if (paymentProvider === 'bank_transfer') {
+        if (!order.bankTransfer) {
+          throw new Error(isKo ? '계좌이체 안내를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.' : 'Unable to load bank transfer instructions. Please try again.');
+        }
+        setBankOrder({ ...order, paymentProvider: 'bank_transfer' });
         setProcessingPlan(null);
         return;
       }
@@ -177,9 +180,11 @@ const PlanManagementEditor: React.FC = () => {
                       ? (isKo ? '현재 플랜보다 낮음' : 'Lower plan')
                       : isProcessing
                         ? (isKo ? '결제 준비 중' : 'Preparing payment')
-                        : annualBilling
-                          ? (isKo ? '연간 결제하기' : 'Pay annually')
-                          : (isKo ? '월간 결제하기' : 'Pay monthly')}
+                        : paymentProvider === 'bank_transfer'
+                          ? (isKo ? '입금 안내 받기' : 'Get bank details')
+                          : annualBilling
+                            ? (isKo ? '연간 결제하기' : 'Pay annually')
+                            : (isKo ? '월간 결제하기' : 'Pay monthly')}
               </button>
             </article>
           );
@@ -188,7 +193,9 @@ const PlanManagementEditor: React.FC = () => {
 
       {checkoutError && <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-[11px] font-bold leading-relaxed text-red-700">{checkoutError}</p>}
       <p className="rounded-2xl bg-gray-100 px-4 py-3 text-[11px] font-semibold leading-relaxed text-gray-500">
-        {isKo ? '토스페이먼츠에서 결제를 완료하면 선택한 기간 동안 플랜이 활성화됩니다. 현재는 자동 갱신 없는 기간제 이용권이며, PG 결제창에서 최종 금액을 다시 확인할 수 있습니다.' : 'The selected plan activates after Toss Payments approval. Passes are prepaid and do not renew automatically.'}
+        {paymentProvider === 'bank_transfer'
+          ? (isKo ? '계좌이체 주문을 접수하면 입금 계좌와 기한이 표시됩니다. 입금 확인 후 선택한 기간 동안 플랜이 활성화됩니다.' : 'Bank details and a due date are shown after placing the order. Your plan activates after the transfer is confirmed.')
+          : (isKo ? '토스페이먼츠에서 결제를 완료하면 선택한 기간 동안 플랜이 활성화됩니다. 현재는 자동 갱신 없는 기간제 이용권이며, PG 결제창에서 최종 금액을 다시 확인할 수 있습니다.' : 'The selected plan activates after Toss Payments approval. Passes are prepaid and do not renew automatically.')}
       </p>
     </div>
   );

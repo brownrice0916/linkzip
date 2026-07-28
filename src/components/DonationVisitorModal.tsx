@@ -63,8 +63,11 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
         depositorName: donorName,
         buyerContact,
       });
-      if (order.paymentProvider === 'bank_transfer' && order.bankTransfer) {
-        setBankOrder(order);
+      if (paymentProvider === 'bank_transfer') {
+        if (!order.bankTransfer) {
+          throw new Error('계좌이체 안내를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+        }
+        setBankOrder({ ...order, paymentProvider: 'bank_transfer' });
         return;
       }
       await requestTossPayment({
@@ -168,14 +171,17 @@ export const DonationVisitorModal: React.FC<DonationVisitorModalProps> = ({
               <button type="button" onClick={() => setPaymentProvider('bank_transfer')} className={clsx('cursor-pointer rounded-xl py-2.5 text-xs font-black transition', paymentProvider === 'bank_transfer' ? 'bg-white text-black shadow-sm' : 'text-gray-500')}>계좌이체</button>
             </div>
 
-            {/* Toss Payments Trigger Button */}
             <button
               onClick={handleTossPayment}
               disabled={paying}
               className="w-full py-4 bg-[#333333] hover:bg-black disabled:cursor-wait disabled:opacity-60 text-white rounded-2xl font-bold text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
             >
               {paying && <LoaderCircle className="h-4 w-4 animate-spin" />}
-              {paying ? '주문 생성 중...' : `${amount.toLocaleString()}원 후원하기`}
+              {paying
+                ? '주문 생성 중...'
+                : paymentProvider === 'bank_transfer'
+                  ? `${amount.toLocaleString()}원 입금 안내 받기`
+                  : `${amount.toLocaleString()}원 후원하기`}
             </button>
           </div>}
 
