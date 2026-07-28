@@ -108,6 +108,7 @@ export interface PublicOrderLookupResult {
   orderNumber: string;
   productName: string;
   amount: number;
+  salesType: 'digital_file' | 'product';
   status: SalesOrder['status'];
   fulfillmentStatus: SalesOrder['fulfillmentStatus'];
   carrier: string;

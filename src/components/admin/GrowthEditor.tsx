@@ -401,6 +401,31 @@ export const GrowthEditor: React.FC = () => {
                   <strong className="shrink-0 text-xs font-black text-gray-900">{item.paidAmount.toLocaleString()}원</strong>
                 </div>
               ))}
+              {paidSalesOrders.length > 0 && (
+                <div className="space-y-2 border-t border-gray-200 pt-3">
+                  <p className="text-[10px] font-black text-gray-500">{tr('구매자 정보', 'Buyer details')}</p>
+                  {paidSalesOrders.map((order) => (
+                    <div key={`buyer-${order.id}`} className="rounded-xl border border-gray-200 bg-white px-3 py-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-black text-gray-900">{order.buyerName || tr('이름 미입력', 'No name')} · {order.productName}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-gray-400">{order.orderNumber || order.id}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">{order.amount.toLocaleString()}원</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold text-gray-600">
+                        {order.buyerContact && <a href={`tel:${order.buyerContact}`} className="hover:text-black hover:underline">{order.buyerContact}</a>}
+                        {order.buyerEmail && <a href={`mailto:${order.buyerEmail}`} className="break-all hover:text-black hover:underline">{order.buyerEmail}</a>}
+                      </div>
+                      {order.salesType === 'product' && order.shippingAddress && (
+                        <p className="mt-2 break-words rounded-lg bg-gray-50 px-2.5 py-2 text-[10px] font-semibold text-gray-600">
+                          {order.postalCode ? `[${order.postalCode}] ` : ''}{order.shippingAddress}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               {pendingSalesOrders.length > 0 && <div className="space-y-2 border-t border-gray-200 pt-3"><p className="text-[10px] font-black text-gray-500">{tr('입금 확인 대기', 'Pending payment confirmation')}</p>{pendingSalesOrders.map((order) => { const reported = depositReportedOrderNumbers.has(order.orderNumber); return <div key={order.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${reported ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}><div className="min-w-0"><div className="flex flex-wrap items-center gap-1.5"><p className="truncate text-xs font-black text-gray-900">{order.productName} · {order.buyerName}</p>{reported && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[9px] font-black text-white">구매자 확인 요청</span>}</div><p className="text-[10px] font-bold text-gray-500">{order.amount.toLocaleString()}원 · {order.buyerContact}{order.depositorName ? ` · 입금자 ${order.depositorName}` : ''}</p></div><div className="flex gap-1.5"><button type="button" onClick={() => void handleOrderStatus(order, 'paid')} className="cursor-pointer rounded-lg bg-black px-2.5 py-1.5 text-[10px] font-black text-white hover:bg-gray-800">{tr('입금 확인', 'Mark paid')}</button><button type="button" onClick={() => void handleOrderStatus(order, 'cancelled')} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-gray-500 hover:text-red-500">{tr('취소', 'Cancel')}</button></div></div>; })}</div>}
               {paidSalesOrders.filter((order) => order.salesType === 'product').length > 0 && <div className="space-y-2 border-t border-gray-200 pt-3"><p className="text-[10px] font-black text-gray-500">{tr('실물 상품 배송 관리', 'Physical product delivery')}</p>{paidSalesOrders.filter((order) => order.salesType === 'product').map((order) => <div key={order.id} className="rounded-xl border border-gray-200 bg-white px-3 py-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-xs font-black text-gray-900">{order.productName} · {order.buyerName}</p><p className="mt-0.5 font-mono text-[10px] text-gray-500">{order.orderNumber || order.id}</p><p className="mt-1 text-[10px] font-semibold text-gray-500">{order.shippingAddress}</p>{order.trackingNumber && <p className="mt-1 text-[10px] font-black text-blue-700">{order.carrier} · {order.trackingNumber}</p>}</div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">{order.fulfillmentStatus === 'delivered' ? tr('배송 완료', 'Delivered') : order.fulfillmentStatus === 'shipping' ? tr('배송 중', 'Shipping') : tr('상품 준비 중', 'Preparing')}</span></div><div className="mt-2 flex justify-end gap-1.5"><button type="button" onClick={() => void handleShippingUpdate(order, 'shipping')} className="cursor-pointer rounded-lg bg-blue-600 px-2.5 py-1.5 text-[10px] font-black text-white hover:bg-blue-700">{tr(order.trackingNumber ? '송장 수정' : '배송 시작', order.trackingNumber ? 'Edit tracking' : 'Start shipping')}</button><button type="button" onClick={() => void handleShippingUpdate(order, 'delivered')} className="cursor-pointer rounded-lg border border-gray-200 px-2.5 py-1.5 text-[10px] font-black text-gray-600 hover:bg-gray-50">{tr('배송 완료', 'Delivered')}</button></div></div>)}</div>}
             </div>

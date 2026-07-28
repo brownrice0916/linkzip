@@ -1224,7 +1224,7 @@ export const manageBankTransferOrder = onRequest(
         } else if (salesOrderRef) {
           transaction.update(salesOrderRef, {
             status: "paid",
-            fulfillmentStatus: "preparing",
+            fulfillmentStatus: orderData.salesType === "digital_file" ? "delivered" : "preparing",
             paymentProvider: "bank_transfer",
             paymentMethod: "계좌이체",
             paidAt: paidAt.toDate().toISOString(),
@@ -1434,6 +1434,7 @@ export const lookupSalesOrder = onRequest(
         orderNumber: typeof data.orderNumber === "string" ? data.orderNumber : "",
         productName: typeof data.productName === "string" ? data.productName : "상품",
         amount: typeof data.amount === "number" ? data.amount : 0,
+        salesType: data.salesType === "digital_file" ? "digital_file" : "product",
         status: ["pending", "paid", "cancelled"].includes(data.status) ? data.status : "pending",
         fulfillmentStatus: ["payment_pending", "preparing", "shipping", "delivered"].includes(data.fulfillmentStatus)
           ? data.fulfillmentStatus : "payment_pending",
