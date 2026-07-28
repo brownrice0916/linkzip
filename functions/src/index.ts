@@ -1423,13 +1423,21 @@ export const redeemBetaInvite = onCall(betaCallableOptions, async (request) => {
 export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request) => {
   requireSiteAdmin(request);
   const [inviteSnapshot, memberSnapshot, authUsers] = await Promise.all([
-    db.collection("betaInviteCodes").orderBy("createdAt", "desc").limit(200).get(),
-    db.collection("betaMembers").orderBy("joinedAt", "desc").limit(500).get(),
+    db.collection("betaInviteCodes").limit(200).get(),
+    db.collection("betaMembers").limit(500).get(),
     getAuth().listUsers(500),
   ]);
+  const userSnapshots = await db.getAll(...authUsers.users.map((account) => db.collection("users").doc(account.uid)));
+  const userByUid = new Map(userSnapshots.filter((item) => item.exists).map((item) => [item.id, item.data() || {}]));
   const memberByUid = new Map(memberSnapshot.docs.map((item) => [item.id, item.data()]));
   const members = authUsers.users.map((account) => {
     const member = memberByUid.get(account.uid);
+    const user = userByUid.get(account.uid);
+    const workspaces = Array.isArray(user?.profileWorkspaces) ? user.profileWorkspaces : [];
+    const profileCount = workspaces.length || (user?.profile || user?.username ? 1 : 0);
+    const blockCount = workspaces.length
+      ? workspaces.reduce((sum: number, workspace: Record<string, unknown>) => sum + (Array.isArray(workspace.customLinks) ? workspace.customLinks.length : 0), 0)
+      : (Array.isArray(user?.customLinks) ? user.customLinks.length : 0);
     return {
       uid: account.uid,
       email: account.email || "",
@@ -1441,6 +1449,11 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       inviteLabel: member?.inviteLabel || "",
       joinedAt: serializeTimestamp(member?.joinedAt) || account.metadata.creationTime || null,
       lastSignInAt: account.metadata.lastSignInTime || null,
+      profileCount,
+      blockCount,
+      membershipPlan: typeof user?.membershipPlan === "string" ? user.membershipPlan : "basic",
+      username: typeof user?.username === "string" ? user.username : "",
+      updatedAt: typeof user?.updatedAt === "string" ? user.updatedAt : null,
     };
   });
   const invites = inviteSnapshot.docs.map((item) => {
@@ -1456,8 +1469,37 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       createdAt: serializeTimestamp(invite.createdAt),
       lastUsedAt: serializeTimestamp(invite.lastUsedAt),
     };
-  });
-  return {members, invites};
+  }).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+  const optionalCounts = await Promise.allSettled([
+    db.collection("publicProfiles").count().get(),
+    db.collectionGroup("sales_orders").count().get(),
+    db.collectionGroup("donations").count().get(),
+    db.collection("guestbooks").count().get(),
+    db.collectionGroup("anonymous_messages").count().get(),
+  ]);
+  const countAt = (index: number) => optionalCounts[index].status === "fulfilled"
+    ? optionalCounts[index].value.data().count
+    : 0;
+  const planBreakdown = members.reduce((result, member) => {
+    const plan = member.membershipPlan === "premium" || member.membershipPlan === "standard" ? member.membershipPlan : "basic";
+    result[plan] += 1;
+    return result;
+  }, {basic: 0, standard: 0, premium: 0});
+
+  return {
+    members,
+    invites,
+    metrics: {
+      totalProfiles: countAt(0),
+      totalBlocks: members.reduce((sum, member) => sum + member.blockCount, 0),
+      salesOrders: countAt(1),
+      donations: countAt(2),
+      guestbookEntries: countAt(3),
+      anonymousMessages: countAt(4),
+      planBreakdown,
+    },
+  };
 });
 
 export const createBetaInviteCode = onCall(betaCallableOptions, async (request) => {

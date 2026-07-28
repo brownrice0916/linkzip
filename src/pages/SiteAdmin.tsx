@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Check, Clipboard, KeyRound, Loader2, Plus, RefreshCw,
-  Search, ShieldCheck, Ticket, UserCheck, UserX, Users, X,
+  ArrowLeft, Check, Clipboard, CreditCard, ExternalLink, FileStack, Gift, KeyRound, Loader2,
+  MessageCircle, PackageCheck, Plus, RefreshCw, Search, ShieldCheck, Ticket, UserCheck,
+  UserX, Users, X,
 } from 'lucide-react';
 import {
   betaErrorMessage,
@@ -12,7 +13,18 @@ import {
   setBetaMemberStatus,
   type BetaInvite,
   type BetaMember,
+  type SiteAdminMetrics,
 } from '../services/betaAccessService';
+
+const EMPTY_METRICS: SiteAdminMetrics = {
+  totalProfiles: 0,
+  totalBlocks: 0,
+  salesOrders: 0,
+  donations: 0,
+  guestbookEntries: 0,
+  anonymousMessages: 0,
+  planBreakdown: { basic: 0, standard: 0, premium: 0 },
+};
 
 const formatDate = (value: string | null) => value
   ? new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -22,6 +34,7 @@ const SiteAdmin: React.FC = () => {
   const navigate = useNavigate();
   const [members, setMembers] = useState<BetaMember[]>([]);
   const [invites, setInvites] = useState<BetaInvite[]>([]);
+  const [metrics, setMetrics] = useState<SiteAdminMetrics>(EMPTY_METRICS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
@@ -39,6 +52,7 @@ const SiteAdmin: React.FC = () => {
       const data = await getSiteAdminDashboard();
       setMembers(data.members);
       setInvites(data.invites);
+      setMetrics(data.metrics || EMPTY_METRICS);
     } catch (loadError) {
       setError(betaErrorMessage(loadError));
     } finally {
@@ -119,6 +133,23 @@ const SiteAdmin: React.FC = () => {
         </section>
 
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 p-5 sm:p-6"><h2 className="text-xl font-black">서비스 운영 현황</h2><p className="mt-1 text-xs font-medium text-slate-500">콘텐츠와 고객 활동을 한눈에 확인합니다.</p></div>
+          <div className="grid gap-px bg-slate-100 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { label: '공개 프로필', value: metrics.totalProfiles, unit: '개', icon: FileStack },
+              { label: '등록된 블록', value: metrics.totalBlocks, unit: '개', icon: PackageCheck },
+              { label: '상품 주문', value: metrics.salesOrders, unit: '건', icon: CreditCard },
+              { label: '후원', value: metrics.donations, unit: '건', icon: Gift },
+              { label: '방명록', value: metrics.guestbookEntries, unit: '개', icon: MessageCircle },
+              { label: '익명 메시지', value: metrics.anonymousMessages, unit: '개', icon: MessageCircle },
+            ].map(({ label: metricLabel, value, unit, icon: Icon }) => <article key={metricLabel} className="flex items-center gap-4 bg-white p-5 sm:p-6"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700"><Icon className="h-5 w-5" /></span><div><p className="text-xs font-bold text-slate-500">{metricLabel}</p><p className="mt-1 text-2xl font-black">{value.toLocaleString()}<span className="ml-1 text-xs text-slate-400">{unit}</span></p></div></article>)}
+          </div>
+          <div className="grid gap-3 border-t border-slate-100 p-5 sm:grid-cols-3 sm:p-6">
+            {([['베이직', metrics.planBreakdown.basic], ['스탠다드', metrics.planBreakdown.standard], ['프리미엄', metrics.planBreakdown.premium]] as const).map(([plan, count]) => <div key={plan} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"><span className="text-xs font-black text-slate-600">{plan}</span><strong>{count}명</strong></div>)}
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-5 sm:p-6"><div><h2 className="text-xl font-black">초대코드</h2><p className="mt-1 text-xs font-medium text-slate-500">사용 인원과 만료일을 지정하고 언제든 중지할 수 있습니다.</p></div><button type="button" onClick={() => { setCreatedCode(''); setIsCreateOpen(true); }} className="ml-auto flex cursor-pointer items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"><Plus className="h-4 w-4" /> 초대코드 만들기</button></div>
           <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6">
             {invites.map((invite) => <article key={invite.id} className="rounded-2xl border border-slate-200 p-4"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><KeyRound className="h-5 w-5" /></span><div className="min-w-0 flex-1"><h3 className="truncate text-sm font-black">{invite.label}</h3><button type="button" onClick={() => navigator.clipboard.writeText(invite.code)} className="mt-1 flex cursor-pointer items-center gap-1 font-mono text-xs font-bold text-slate-500 hover:text-black">{invite.code}<Clipboard className="h-3.5 w-3.5" /></button></div><button type="button" onClick={() => void toggleInvite(invite)} disabled={workingId === invite.id} className={`cursor-pointer rounded-full px-3 py-1.5 text-[11px] font-black ${invite.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{workingId === invite.id ? '처리 중' : invite.status === 'active' ? '사용 중' : '중지됨'}</button></div><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-slate-50 p-3"><span className="text-slate-400">사용 인원</span><strong className="mt-1 block">{invite.useCount} / {invite.maxUses}명</strong></div><div className="rounded-xl bg-slate-50 p-3"><span className="text-slate-400">만료일</span><strong className="mt-1 block truncate">{invite.expiresAt ? formatDate(invite.expiresAt) : '제한 없음'}</strong></div></div></article>)}
@@ -129,7 +160,7 @@ const SiteAdmin: React.FC = () => {
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center gap-4 border-b border-slate-100 p-5 sm:p-6"><div><h2 className="text-xl font-black">가입자</h2><p className="mt-1 text-xs font-medium text-slate-500">활성 {activeMembers}명 · 전체 {members.length}명</p></div><label className="ml-auto flex min-w-[240px] items-center gap-2 rounded-full border border-slate-200 px-4 py-2.5"><Search className="h-4 w-4 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 이메일 검색" className="min-w-0 flex-1 text-sm outline-none" /></label></div>
           <div className="divide-y divide-slate-100">
-            {filteredMembers.map((member) => <article key={member.uid} className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"><div className="h-11 w-11 overflow-hidden rounded-full bg-slate-100">{member.photoURL ? <img src={member.photoURL} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center font-black text-slate-400">{(member.displayName || member.email || '?')[0]}</div>}</div><div className="min-w-0 flex-1"><h3 className="truncate text-sm font-black">{member.displayName || '이름 없음'}</h3><p className="truncate text-xs font-medium text-slate-500">{member.email || '이메일 없음'}</p></div><div className="hidden min-w-32 sm:block"><p className="text-[10px] font-bold text-slate-400">가입 경로</p><p className="mt-1 text-xs font-bold">{member.inviteLabel || (member.source === 'legacy' ? '기존 가입자' : member.source === 'admin' ? '관리자' : '인증 계정')}</p></div><div className="hidden min-w-36 lg:block"><p className="text-[10px] font-bold text-slate-400">가입일</p><p className="mt-1 text-xs font-bold">{formatDate(member.joinedAt)}</p></div><button type="button" onClick={() => void toggleMember(member)} disabled={workingId === member.uid} className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-xs font-black transition ${member.disabled || member.status === 'disabled' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>{workingId === member.uid ? <Loader2 className="h-4 w-4 animate-spin" /> : member.disabled || member.status === 'disabled' ? <><UserCheck className="h-4 w-4" /> 복구</> : <><UserX className="h-4 w-4" /> 이용 중지</>}</button></article>)}
+            {filteredMembers.map((member) => <article key={member.uid} className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6"><div className="h-11 w-11 overflow-hidden rounded-full bg-slate-100">{member.photoURL ? <img src={member.photoURL} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center font-black text-slate-400">{(member.displayName || member.email || '?')[0]}</div>}</div><div className="min-w-0 flex-1"><h3 className="truncate text-sm font-black">{member.displayName || '이름 없음'}</h3><p className="truncate text-xs font-medium text-slate-500">{member.email || '이메일 없음'}</p><p className="mt-1 text-[10px] font-bold text-slate-400">{member.profileCount || 0}개 프로필 · {member.blockCount || 0}개 블록 · {(member.membershipPlan || 'basic').toUpperCase()}</p></div><div className="hidden min-w-32 sm:block"><p className="text-[10px] font-bold text-slate-400">가입 경로</p><p className="mt-1 text-xs font-bold">{member.inviteLabel || (member.source === 'legacy' ? '기존 가입자' : member.source === 'admin' ? '관리자' : '인증 계정')}</p></div><div className="hidden min-w-36 lg:block"><p className="text-[10px] font-bold text-slate-400">최근 로그인</p><p className="mt-1 text-xs font-bold">{formatDate(member.lastSignInAt)}</p></div>{member.username && <a href={`/${member.username}`} target="_blank" rel="noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200" aria-label={`${member.username} 공개 프로필 열기`}><ExternalLink className="h-4 w-4" /></a>}<button type="button" onClick={() => void toggleMember(member)} disabled={workingId === member.uid} className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-xs font-black transition ${member.disabled || member.status === 'disabled' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>{workingId === member.uid ? <Loader2 className="h-4 w-4 animate-spin" /> : member.disabled || member.status === 'disabled' ? <><UserCheck className="h-4 w-4" /> 복구</> : <><UserX className="h-4 w-4" /> 이용 중지</>}</button></article>)}
             {!loading && filteredMembers.length === 0 && <p className="py-12 text-center text-sm font-semibold text-slate-400">조건에 맞는 가입자가 없습니다.</p>}
             {loading && <p className="flex items-center justify-center gap-2 py-12 text-sm font-semibold text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> 불러오는 중</p>}
           </div>

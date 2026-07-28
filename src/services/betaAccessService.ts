@@ -36,6 +36,21 @@ export interface BetaMember {
   inviteLabel: string;
   joinedAt: string | null;
   lastSignInAt: string | null;
+  profileCount: number;
+  blockCount: number;
+  membershipPlan: 'basic' | 'standard' | 'premium' | string;
+  username: string;
+  updatedAt: string | null;
+}
+
+export interface SiteAdminMetrics {
+  totalProfiles: number;
+  totalBlocks: number;
+  salesOrders: number;
+  donations: number;
+  guestbookEntries: number;
+  anonymousMessages: number;
+  planBreakdown: {basic: number; standard: number; premium: number};
 }
 
 export const checkBetaAccess = async (): Promise<BetaAccessResult> => {
@@ -49,7 +64,7 @@ export const redeemBetaInvite = async (code: string): Promise<BetaAccessResult> 
 };
 
 export const getSiteAdminDashboard = async () => {
-  const callable = httpsCallable<undefined, {members: BetaMember[]; invites: BetaInvite[]}>(functions, 'getSiteAdminDashboard');
+  const callable = httpsCallable<undefined, {members: BetaMember[]; invites: BetaInvite[]; metrics: SiteAdminMetrics}>(functions, 'getSiteAdminDashboard');
   return (await callable()).data;
 };
 
