@@ -295,24 +295,19 @@ export const verifyTossBankAccount = onCall(
     const bankName = cleanString(request.data?.bankName, 50);
     const bankCode = tossBankCodes[bankName];
     const accountNumber = cleanString(request.data?.accountNumber, 30).replace(/\D/g, "");
+    const holderName = cleanString(request.data?.holderName, 50);
     const identityNumber = cleanString(request.data?.identityNumber, 20).replace(/\D/g, "");
-    if (!bankCode || accountNumber.length < 8 || accountNumber.length > 14) {
-      throw new HttpsError("invalid-argument", "은행과 계좌번호를 확인해주세요.");
+    if (!bankCode || !holderName || accountNumber.length < 8 || accountNumber.length > 14) {
+      throw new HttpsError("invalid-argument", "은행, 계좌번호, 예금주명을 확인해주세요.");
     }
     if (identityNumber.length !== 6 && identityNumber.length !== 10) {
       throw new HttpsError("invalid-argument", "생년월일 6자리 또는 사업자등록번호 10자리를 입력해주세요.");
     }
 
-    const holder = await requestTossBankVerification("/v2/bank-accounts/lookup-holder-name", {
+    const verification = await requestTossBankVerification("/v2/bank-accounts/verify-holder-real-name", {
       bankCode,
       accountNumber,
-    });
-    const holderName = cleanString(holder.entityBody?.holderName ?? holder.holderName, 50);
-    if (!holderName) throw new HttpsError("failed-precondition", "예금주 정보를 확인할 수 없습니다.");
-
-    const verification = await requestTossBankVerification("/v2/bank-accounts/verify-identifier", {
-      bankCode,
-      accountNumber,
+      holderName,
       identityNumber,
     });
     if ((verification.entityBody?.isValid ?? verification.isValid) !== true) {

@@ -170,16 +170,23 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
       alert(`❌ 은행 계좌 번호 불일치\n${bankValidation.error}`);
       return;
     }
+    const cleanHolderName = accountOwnerName.trim();
+    if (!cleanHolderName) {
+      setIsCertified(false);
+      alert('❌ 예금주명을 입력해주세요.');
+      return;
+    }
 
     setCertifying(true);
 
     try {
-      const holderName = await verifyBankAccount({
+      await verifyBankAccount({
         bankName,
         accountNumber: cleanAccount,
+        holderName: cleanHolderName,
         identityNumber: idNumber,
       });
-      setAccountOwnerName(holderName);
+      setAccountOwnerName(cleanHolderName);
       setIsCertified(true);
       alert('✅ 계좌 실명 인증이 완료되었습니다!');
     } catch (error) {
@@ -305,9 +312,12 @@ export const ProfitAccountModal: React.FC<ProfitAccountModalProps> = ({
               <input
                 type="text"
                 value={accountOwnerName}
-                placeholder="계좌를 인증해 주세요."
-                readOnly
-                className="w-full p-3.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 placeholder-gray-400"
+                onChange={(e) => {
+                  setAccountOwnerName(e.target.value);
+                  setIsCertified(false);
+                }}
+                placeholder={tr('예금주명을 입력하세요', 'Enter account holder name')}
+                className="w-full p-3.5 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-black focus:border-black"
               />
             </div>
           </div>

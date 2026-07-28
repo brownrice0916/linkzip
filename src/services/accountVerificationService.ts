@@ -4,6 +4,7 @@ import { app } from '../lib/firebase';
 interface AccountVerificationRequest {
   bankName: string;
   accountNumber: string;
+  holderName: string;
   identityNumber: string;
 }
 
