@@ -1312,7 +1312,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                         recordLinkClick(block.id);
                         setActiveSalesBlock(block);
                       }}
-                      className={clsx(buttonClass, "group !min-h-[88px] !justify-start !px-3 !py-3 text-left")}
+                      className={clsx(buttonClass, "group !min-h-[88px] !justify-start !gap-4 !px-3 !py-3 text-left")}
                       style={getCustomLinkStyle(block)}
                     >
                       <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-black/5">
@@ -1326,9 +1326,11 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           <SalesProductIcon className="h-7 w-7 opacity-40" />
                         )}
                       </span>
-                      <span className="min-w-0 flex-1 px-1">
-                        <span className="block truncate text-[11px] font-semibold opacity-55">{salesTitle}</span>
-                        <span className="mt-0.5 block truncate text-[15px] font-extrabold">{firstProduct?.name || salesTitle}</span>
+                      <span className="min-w-0 flex-1 pr-1">
+                        {salesConfig?.salesType !== 'digital_file' && (
+                          <span className="block truncate text-[11px] font-semibold opacity-55">{salesTitle}</span>
+                        )}
+                        <span className={clsx("block truncate text-[15px] font-extrabold", salesConfig?.salesType !== 'digital_file' && "mt-0.5")}>{firstProduct?.name || salesTitle}</span>
                         <span className="mt-1 flex items-center gap-1.5 text-xs font-bold">
                           {firstProduct?.discountPrice != null && (
                             <span className="font-medium line-through opacity-40">

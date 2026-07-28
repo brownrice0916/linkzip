@@ -681,6 +681,28 @@ export const createTossSalesOrder = onRequest(
       return;
     }
 
+    const previousOrdersSnapshot = await db.collection("users").doc(ownerUid)
+      .collection("sales_orders")
+      .where("buyerContactNormalized", "==", normalizedPhone)
+      .limit(50)
+      .get();
+    const matchingOrders = previousOrdersSnapshot.docs
+      .map((document) => document.data())
+      .filter((order) => order.productId === productId && order.targetUsername === targetUsername);
+    if (matchingOrders.some((order) => order.status === "paid")) {
+      response.status(409).json({message: "이미 구매한 상품입니다. 주문조회에서 다운로드 또는 배송 상태를 확인해주세요."});
+      return;
+    }
+    const recentPendingOrder = matchingOrders.some((order) => {
+      if (order.status !== "pending") return false;
+      const createdAt = order.createdAt;
+      return createdAt instanceof Timestamp && createdAt.toMillis() > Date.now() - 30 * 60 * 1000;
+    });
+    if (recentPendingOrder) {
+      response.status(409).json({message: "같은 상품의 결제가 이미 진행 중입니다. 주문조회에서 상태를 확인하거나 30분 후 다시 시도해주세요."});
+      return;
+    }
+
     const privateUserSnapshot = await db.collection("users").doc(ownerUid).get();
     const bankAccount = paymentProvider === "bank_transfer"
       ? findVerifiedAccount(privateUserSnapshot.data(), targetUsername)
