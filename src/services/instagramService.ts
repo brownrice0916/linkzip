@@ -33,11 +33,15 @@ export interface InstagramMediaItem {
 }
 
 export async function startInstagramConnection(): Promise<void> {
-  const callable = httpsCallable<undefined, { authorizationUrl: string }>(
+  const callable = httpsCallable<{ returnOrigin: string }, { authorizationUrl: string }>(
     functions,
     'startInstagramOAuth',
   );
-  const result = await callable();
+  // Instagram always redirects to the production callback -- the Meta console
+  // pins that URI -- so the callback needs to be told where to send the browser
+  // once it is done. Anything but linkzip.kr or a loopback address is ignored
+  // server-side.
+  const result = await callable({ returnOrigin: window.location.origin });
   if (!result.data.authorizationUrl.startsWith('https://www.instagram.com/')) {
     throw new Error('안전하지 않은 인스타그램 로그인 주소입니다.');
   }

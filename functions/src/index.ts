@@ -34,6 +34,11 @@ import {
   webhookEventId,
 } from "./metaWebhook.js";
 import {
+  INSTAGRAM_PRODUCTION_ORIGIN,
+  INSTAGRAM_REDIRECT_URI,
+  instagramReturnOrigin,
+} from "./instagramRedirect.js";
+import {
   generateInviteCode,
   inviteCodeId,
   isSiteAdmin,
@@ -107,7 +112,7 @@ const requireSiteAdmin = (request: {auth?: {token: Record<string, unknown>}}) =>
 const serializeTimestamp = (value: unknown): string | null =>
   value instanceof Timestamp ? value.toDate().toISOString() : null;
 
-const instagramRedirectUri = "https://linkzip.kr/auth/instagram/callback";
+const instagramRedirectUri = INSTAGRAM_REDIRECT_URI;
 const instagramGraphVersion = "v24.0";
 const instagramScopes = [
   "instagram_business_basic",
@@ -2845,6 +2850,7 @@ export const startInstagramOAuth = onCall(
     const state = randomOAuthState();
     await db.collection("metaInstagramOAuthStates").doc(hashOAuthState(state)).set({
       uid: request.auth.uid,
+      returnOrigin: instagramReturnOrigin(request.data?.returnOrigin),
       createdAt: FieldValue.serverTimestamp(),
       expiresAt: Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
       used: false,
@@ -2881,8 +2887,11 @@ export const instagramOAuthCallback = onRequest(
     const code = rawCode.trim().replace(/ /g, "+").replace(/#_$/, "");
     const state = singleQueryString(request.query.state);
     const error = singleQueryString(request.query.error);
+    // Resolved before the state is consumed so every exit below -- the failures
+    // included -- lands back on the origin the flow started from.
+    const returnOrigin = await storedInstagramReturnOrigin(state);
     if (error || !code || !state) {
-      redirectToInstagramResult(response, "error", "authorization_cancelled");
+      redirectToInstagramResult(response, "error", "authorization_cancelled", returnOrigin);
       return;
     }
 
@@ -2939,10 +2948,10 @@ export const instagramOAuthCallback = onRequest(
         updatedAt: FieldValue.serverTimestamp(),
       }, {merge: true});
 
-      redirectToInstagramResult(response, "connected");
+      redirectToInstagramResult(response, "connected", undefined, returnOrigin);
     } catch (callbackError) {
       logger.error("Instagram OAuth callback failed", callbackError);
-      redirectToInstagramResult(response, "error", "connection_failed");
+      redirectToInstagramResult(response, "error", "connection_failed", returnOrigin);
     }
   },
 );
@@ -4504,12 +4513,27 @@ function singleQueryString(value: unknown): string {
   return "";
 }
 
+async function storedInstagramReturnOrigin(state: string): Promise<string> {
+  if (!state) return INSTAGRAM_PRODUCTION_ORIGIN;
+  try {
+    const snapshot = await db
+      .collection("metaInstagramOAuthStates")
+      .doc(hashOAuthState(state))
+      .get();
+    return instagramReturnOrigin(snapshot.data()?.returnOrigin);
+  } catch (error) {
+    logger.warn("Could not resolve Instagram OAuth return origin", error);
+    return INSTAGRAM_PRODUCTION_ORIGIN;
+  }
+}
+
 function redirectToInstagramResult(
   response: {redirect: (status: number, url: string) => void},
   status: "connected" | "error",
   reason?: string,
+  origin: string = INSTAGRAM_PRODUCTION_ORIGIN,
 ): void {
-  const url = new URL("https://linkzip.kr/admin/marketing");
+  const url = new URL(`${origin}/admin/marketing`);
   url.searchParams.set("instagram", status);
   if (reason) url.searchParams.set("reason", reason);
   response.redirect(303, url.toString());
