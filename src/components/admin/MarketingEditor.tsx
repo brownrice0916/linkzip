@@ -27,7 +27,12 @@ import {
 
 // Temporary product switch. Keep connected accounts and saved rules intact
 // while preventing status sync, rule edits, and new OAuth connections.
-const INSTAGRAM_DM_AUTOMATION_PAUSED = true;
+// Paused unless explicitly opted in, so a build that forgets about this flag
+// ships the safe state. Set VITE_INSTAGRAM_DM_AUTOMATION=on in .env.local to
+// exercise the flow locally (recording the Meta review screencast, debugging)
+// — .env.local is gitignored, so it cannot reach a deploy.
+const INSTAGRAM_DM_AUTOMATION_PAUSED =
+  import.meta.env.VITE_INSTAGRAM_DM_AUTOMATION !== 'on';
 
 export const MarketingEditor: React.FC = () => {
   const state = useStore();
