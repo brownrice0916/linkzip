@@ -2774,7 +2774,7 @@ export const metaInstagramWebhook = onRequest(
     memory: "256MiB",
     timeoutSeconds: 30,
     invoker: "public",
-    secrets: [metaWebhookVerifyToken, metaAppSecret],
+    secrets: [metaWebhookVerifyToken, metaAppSecret, metaInstagramAppSecret],
   },
   async (request, response) => {
     if (request.method === "GET") {
@@ -2804,7 +2804,10 @@ export const metaInstagramWebhook = onRequest(
     }
 
     const signature = request.get("x-hub-signature-256");
-    if (!verifyMetaSignature(request.rawBody, signature, metaAppSecret.value())) {
+    if (!verifyMetaSignature(request.rawBody, signature, [
+      metaInstagramAppSecret.value(),
+      metaAppSecret.value(),
+    ])) {
       logger.warn("Rejected Meta webhook with an invalid signature");
       response.status(401).send("Invalid signature");
       return;

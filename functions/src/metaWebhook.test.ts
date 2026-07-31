@@ -82,13 +82,27 @@ test("rejects a webhook challenge with the wrong token", () => {
   });
 });
 
-test("verifies a signed Meta request body", () => {
+test("verifies a body signed with either app secret", () => {
   const body = Buffer.from(JSON.stringify({object: "instagram", entry: []}));
-  const secret = "app-secret";
-  const signature = `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
+  const sign = (secret: string) =>
+    `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
+  const secrets = ["ig-secret", "fb-secret"];
 
-  assert.equal(verifyMetaSignature(body, signature, secret), true);
-  assert.equal(verifyMetaSignature(body, signature, "wrong-secret"), false);
+  // Instagram Login apps sign with the Instagram secret; older Facebook
+  // deliveries sign with the Facebook one. Both have to pass.
+  assert.equal(verifyMetaSignature(body, sign("ig-secret"), secrets), true);
+  assert.equal(verifyMetaSignature(body, sign("fb-secret"), secrets), true);
+
+  assert.equal(verifyMetaSignature(body, sign("attacker"), secrets), false);
+  assert.equal(verifyMetaSignature(body, sign("ig-secret"), ["fb-secret"]), false);
+  // A body swapped after signing, and an unconfigured secret.
+  assert.equal(
+    verifyMetaSignature(Buffer.from("tampered"), sign("ig-secret"), secrets),
+    false,
+  );
+  assert.equal(verifyMetaSignature(body, sign(""), [""]), false);
+  assert.equal(verifyMetaSignature(body, undefined, secrets), false);
+  assert.equal(verifyMetaSignature(body, "not-a-signature", secrets), false);
 });
 
 test("creates stable identifiers for webhook retries", () => {

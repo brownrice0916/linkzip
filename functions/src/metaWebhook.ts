@@ -31,19 +31,26 @@ export function verifyWebhookChallenge(
   return {ok: true, challenge};
 }
 
+/**
+ * Accepts a list of secrets because an Instagram Login app signs its webhook
+ * deliveries with the Instagram app secret, not the Facebook one. Checking only
+ * the Facebook secret rejected every real comment and message event.
+ */
 export function verifyMetaSignature(
   rawBody: Buffer,
   signatureHeader: string | undefined,
-  appSecret: string,
+  appSecrets: string[],
 ): boolean {
   if (!signatureHeader?.startsWith("sha256=")) return false;
 
   const providedSignature = signatureHeader.slice("sha256=".length);
-  const expectedSignature = createHmac("sha256", appSecret)
-    .update(rawBody)
-    .digest("hex");
-
-  return safeEqual(providedSignature, expectedSignature);
+  return appSecrets.some((appSecret) => {
+    if (!appSecret) return false;
+    const expectedSignature = createHmac("sha256", appSecret)
+      .update(rawBody)
+      .digest("hex");
+    return safeEqual(providedSignature, expectedSignature);
+  });
 }
 
 export function webhookEventId(rawBody: Buffer): string {
