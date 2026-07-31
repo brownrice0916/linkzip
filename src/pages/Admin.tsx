@@ -236,9 +236,7 @@ const Admin = () => {
       if (state.user?.uid) {
         await saveUserProfilesData(state.user.uid, latestState.profileWorkspaces, latestState.activeProfileId, {
           teamMembers: latestState.teamMembers,
-          dmRules: latestState.dmRules,
           alimtalkSettings: latestState.alimtalkSettings,
-          instagramAccount: latestState.instagramAccount,
           pageViews: latestState.pageViews,
         });
         const usedProfileImages = new Set(latestState.profileWorkspaces.flatMap((workspace) => [workspace.profile.avatarUrl, workspace.profile.bannerUrl, workspace.profile.logoUrl, workspace.design.backgroundImageUrl].filter(Boolean) as string[]));
@@ -259,8 +257,6 @@ const Admin = () => {
           socialLinks: state.socialLinks,
           profileWorkspaces: latestState.profileWorkspaces,
           activeProfileId: latestState.activeProfileId,
-          dmRules: state.dmRules,
-          instagramAccount: state.instagramAccount,
         }));
       } catch (e) {
         console.warn("LocalStorage save warning:", e);

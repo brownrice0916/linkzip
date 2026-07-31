@@ -78,14 +78,10 @@ export const MarketingEditor: React.FC = () => {
     const loadConnection = async () => {
       setIsInstagramLoading(true);
       setInstagramError('');
-      useStore.setState((current) => ({
-        instagramAccount: '',
-        dmRules: current.dmRules.filter((rule) => !(
-          rule.id === 'rule-1'
-          && rule.keyword === '링크'
-          && rule.targetLinkUrl === 'https://linkzip.kr/preview'
-        )),
-      }));
+      // Blank until the server answers. Anything still in the store is from a
+      // previous session and showing it makes rules the account no longer has
+      // look live -- which is what used to happen right after reconnecting.
+      useStore.setState({ instagramAccount: '', dmRules: [] });
       try {
         const status = await getInstagramConnection();
         if (!active) return;
@@ -209,7 +205,9 @@ export const MarketingEditor: React.FC = () => {
     try {
       await disconnectInstagramConnection();
       setInstagramProfile({ name: '', profilePictureUrl: '' });
-      useStore.setState({ instagramAccount: '' });
+      // Disconnecting deletes the connection document, rules included, so the
+      // store must not keep showing them.
+      useStore.setState({ instagramAccount: '', dmRules: [] });
     } catch (error) {
       // 'internal' is what a callable reports for anything it did not raise as an
       // HttpsError -- a network failure included -- and showing that bare word

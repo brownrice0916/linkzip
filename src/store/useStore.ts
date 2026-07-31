@@ -507,10 +507,10 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   stickerY: state.stickerY,
   stickers: JSON.parse(JSON.stringify(state.stickers || [])),
   teamMembers: JSON.parse(JSON.stringify(state.teamMembers || [])),
-  dmRules: JSON.parse(JSON.stringify(state.dmRules || [])),
   alimtalkSettings: JSON.parse(JSON.stringify(state.alimtalkSettings || {})),
   metaAccessToken: state.metaAccessToken || '',
-  instagramAccount: state.instagramAccount || '',
+  // dmRules and instagramAccount are owned by instagramConnections/{uid}; a copy
+  // here is a second source of truth that goes stale on disconnect.
 });
 
 const getWorkspaceFromState = (state: any, id = state.activeProfileId || 'primary'): ProfileWorkspace => ({

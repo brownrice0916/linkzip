@@ -294,9 +294,15 @@ function App() {
               stickerY: data.design?.stickerY ?? 22,
               stickers: loadedStickers(data.design),
               teamMembers: data.teamMembers || [],
-              dmRules: data.dmRules || userLocalBackup?.dmRules || [],
+              // Deliberately not seeded from the profile document. The live rules
+              // and the linked account belong to instagramConnections/{uid}, which
+              // is what the DM automation actually runs on; the copy that used to
+              // live here outlived a disconnect and reappeared on the next
+              // connect, and then got saved back over the real (empty) rules.
+              // MarketingEditor fills both from the server.
+              dmRules: [],
               alimtalkSettings: data.alimtalkSettings,
-              instagramAccount: data.instagramAccount || userLocalBackup?.instagramAccount || '',
+              instagramAccount: '',
               pageViews: data.pageViews || 0,
               membershipPlan: resolveActiveMembershipPlan(data.membershipPlan, data.membershipPeriodEndsAt, Date.now(), data.membershipGrant),
               membershipPeriodEndsAt: data.membershipPeriodEndsAt?.toDate?.().toISOString?.()

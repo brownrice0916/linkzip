@@ -109,9 +109,7 @@ const AdminProfilesHome: React.FC = () => {
       if (latestState.user?.uid) {
         await saveUserProfilesData(latestState.user.uid, remainingWorkspaces, nextActiveProfileId, {
           teamMembers: latestState.teamMembers,
-          dmRules: latestState.dmRules,
           alimtalkSettings: latestState.alimtalkSettings,
-          instagramAccount: latestState.instagramAccount,
           pageViews: latestState.pageViews,
         });
       }

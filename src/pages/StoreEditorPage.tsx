@@ -72,9 +72,7 @@ const StoreEditorPage = () => {
     try {
       await saveUserProfilesData(latest.user!.uid, latest.profileWorkspaces, latest.activeProfileId, {
         teamMembers: latest.teamMembers,
-        dmRules: latest.dmRules,
         alimtalkSettings: latest.alimtalkSettings,
-        instagramAccount: latest.instagramAccount,
         pageViews: latest.pageViews,
       });
       latest.markSaved();
