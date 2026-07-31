@@ -12,7 +12,10 @@ export interface BugReportInput {
   expectedResult: string;
   actualResult: string;
   sourceUrl: string;
+  // attachmentUrl holds the first image so reports written before multi-image
+  // support — and any client still reading that field — keep rendering.
   attachmentUrl?: string;
+  attachmentUrls?: string[];
   userAgent: string;
   viewport: string;
   cardColor?: string;
@@ -118,7 +121,7 @@ export async function updateBugReportDescription(reportId: string, description: 
 
 export async function updateBugReportDetails(
   reportId: string,
-  updates: Partial<Pick<BugReportInput, 'description' | 'category' | 'attachmentUrl'>>,
+  updates: Partial<Pick<BugReportInput, 'description' | 'category' | 'attachmentUrl' | 'attachmentUrls'>>,
 ): Promise<void> {
   await updateDoc(doc(db, 'bugReports', reportId), {
     ...updates,

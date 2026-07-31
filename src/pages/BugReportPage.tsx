@@ -5,6 +5,7 @@ import {
   Bug,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ImagePlus,
   MessageCircle,
@@ -70,6 +71,29 @@ const normalizeReportStatus = (
   status: BugReportRecord["status"]
 ): BugReportStatus =>
   status === "in_progress" || status === "resolved" ? status : "new";
+const MAX_REPORT_IMAGES = 5;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+// Reports created before multi-image support only have attachmentUrl, so read
+// the list first and fall back to the single field.
+const reportImageUrls = (report: BugReportRecord): string[] => {
+  const urls = Array.isArray(report.attachmentUrls)
+    ? report.attachmentUrls.filter(
+        (url): url is string => typeof url === "string" && url.length > 0
+      )
+    : [];
+  if (urls.length > 0) return urls;
+  return report.attachmentUrl ? [report.attachmentUrl] : [];
+};
+// Sequential on purpose: uploadPublicImage builds the storage path from
+// Date.now() plus the file name, so two screenshots sharing a name could
+// overwrite each other if their uploads raced.
+const uploadReportImages = async (uid: string, files: File[]) => {
+  const urls: string[] = [];
+  for (const file of files) {
+    urls.push(await uploadPublicImage(`profiles/${uid}/bug-reports`, file));
+  }
+  return urls;
+};
 const cardColorForId = (id: string) => {
   const hash = Array.from(id).reduce(
     (total, character) => (total * 31 + character.charCodeAt(0)) >>> 0,
@@ -210,6 +234,159 @@ const BugReportReplies: React.FC<{
   );
 };
 
+const BugReportGallery: React.FC<{
+  images: string[];
+  canEdit: boolean;
+  busy: boolean;
+  onRemove: (imageUrl: string) => void;
+}> = ({ images, canEdit, busy, onRemove }) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+  // Confirmation lives in the page, not window.confirm: embedded browsers and
+  // some in-app webviews suppress native dialogs, which silently returns false
+  // and makes the delete look broken.
+  const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+
+  // Leaving edit mode, or the list changing under us, drops a stale prompt.
+  useEffect(() => {
+    setPendingRemoval(null);
+  }, [canEdit, images.length]);
+
+  // Deleting the last image would leave activeIndex past the end, so pull it
+  // back into range whenever the count shrinks.
+  useEffect(() => {
+    setActiveIndex((current) => Math.min(current, Math.max(0, images.length - 1)));
+  }, [images.length]);
+
+  const syncActiveIndex = () => {
+    const track = trackRef.current;
+    if (!track || track.clientWidth === 0) return;
+    // Round rather than floor so a half-finished drag doesn't flip the counter.
+    const next = Math.round(track.scrollLeft / track.clientWidth);
+    setActiveIndex(Math.min(images.length - 1, Math.max(0, next)));
+  };
+
+  const scrollToIndex = (index: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const clamped = Math.min(images.length - 1, Math.max(0, index));
+    track.scrollTo({ left: clamped * track.clientWidth, behavior: "smooth" });
+  };
+
+  if (images.length === 0) return null;
+
+  return (
+    <div className="relative border-y border-black/10 bg-white/25">
+      <div
+        ref={trackRef}
+        onScroll={syncActiveIndex}
+        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {images.map((imageUrl, index) => (
+          <div
+            key={imageUrl}
+            className="flex aspect-[4/3] max-h-72 w-full shrink-0 snap-center items-center justify-center"
+          >
+            <img
+              src={imageUrl}
+              alt={`오류 제보 첨부 ${index + 1}`}
+              loading="lazy"
+              draggable={false}
+              className="h-full w-full object-contain"
+            />
+          </div>
+        ))}
+      </div>
+      {images.length > 1 && (
+        <>
+          <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-black text-white">
+            {activeIndex + 1}/{images.length}
+          </span>
+          {/* Touch devices swipe the track directly; these are for mouse users. */}
+          {activeIndex > 0 && (
+            <button
+              type="button"
+              onClick={() => scrollToIndex(activeIndex - 1)}
+              aria-label="이전 사진"
+              className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-black/60 shadow transition hover:bg-white"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
+          {activeIndex < images.length - 1 && (
+            <button
+              type="button"
+              onClick={() => scrollToIndex(activeIndex + 1)}
+              aria-label="다음 사진"
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-black/60 shadow transition hover:bg-white"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+          <div className="pointer-events-auto absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/40 px-2 py-1">
+            {images.map((imageUrl, index) => (
+              <button
+                key={imageUrl}
+                type="button"
+                onClick={() => scrollToIndex(index)}
+                aria-label={`${index + 1}번째 사진 보기`}
+                aria-current={index === activeIndex}
+                className={`h-1.5 cursor-pointer rounded-full transition-all ${
+                  index === activeIndex ? "w-4 bg-white" : "w-1.5 bg-white/50"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+      {canEdit && !pendingRemoval && (
+        <button
+          type="button"
+          onClick={() => setPendingRemoval(images[activeIndex])}
+          disabled={busy}
+          aria-label={`${activeIndex + 1}번째 사진 삭제`}
+          className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/85 text-black/55 shadow transition hover:bg-red-500 hover:text-white disabled:cursor-wait disabled:opacity-50"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {canEdit && pendingRemoval && (
+        <div
+          role="alertdialog"
+          aria-label="사진 삭제 확인"
+          className="absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-black/75 px-3 py-2"
+        >
+          <span className="min-w-0 truncate text-[10px] font-black text-white">
+            이 사진을 삭제할까요?
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPendingRemoval(null)}
+              className="cursor-pointer rounded-full bg-white/25 px-2.5 py-1 text-[10px] font-black text-white transition hover:bg-white/40"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                // Delete the image the prompt was opened for, even if the
+                // carousel was swiped while the prompt was up.
+                onRemove(pendingRemoval);
+                setPendingRemoval(null);
+              }}
+              disabled={busy}
+              className="cursor-pointer rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black text-white transition hover:bg-red-600 disabled:cursor-wait disabled:opacity-50"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const BugReportPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -234,8 +411,7 @@ const BugReportPage: React.FC = () => {
   const [boardError, setBoardError] = useState("");
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [description, setDescription] = useState("");
-  const [attachment, setAttachment] = useState<File | null>(null);
-  const [attachmentPreview, setAttachmentPreview] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -290,17 +466,22 @@ const BugReportPage: React.FC = () => {
     []
   );
 
+  const attachmentPreviews = useMemo(
+    () => attachments.map((file) => URL.createObjectURL(file)),
+    [attachments]
+  );
+  // Cleanup runs when `attachments` changes as well as on unmount, so the
+  // previous batch's blob URLs are released as soon as they stop being shown.
   useEffect(
     () => () => {
-      if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
+      attachmentPreviews.forEach((preview) => URL.revokeObjectURL(preview));
     },
-    [attachmentPreview]
+    [attachmentPreviews]
   );
 
   const resetComposer = () => {
     setDescription("");
-    setAttachment(null);
-    setAttachmentPreview("");
+    setAttachments([]);
     setFormError("");
   };
 
@@ -317,16 +498,29 @@ const BugReportPage: React.FC = () => {
     window.setTimeout(() => descriptionInputRef.current?.focus(), 0);
   };
 
-  const selectAttachment = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const selectAttachments = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(event.target.files || []);
     event.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+    if (picked.length === 0) return;
+    const accepted = picked.filter(
+      (file) => file.type.startsWith("image/") && file.size <= MAX_IMAGE_BYTES
+    );
+    const remainingSlots = MAX_REPORT_IMAGES - attachments.length;
+    const added = accepted.slice(0, Math.max(0, remainingSlots));
+    if (added.length > 0) setAttachments((current) => [...current, ...added]);
+    // Both limits can trip at once, so report whichever actually dropped files
+    // rather than assuming a single cause.
+    if (accepted.length < picked.length) {
       setFormError("5MB 이하의 이미지 파일만 첨부할 수 있어요.");
-      return;
+    } else if (added.length < accepted.length) {
+      setFormError(`사진은 최대 ${MAX_REPORT_IMAGES}장까지 첨부할 수 있어요.`);
+    } else {
+      setFormError("");
     }
-    setAttachment(file);
-    setAttachmentPreview(URL.createObjectURL(file));
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((current) => current.filter((_, item) => item !== index));
     setFormError("");
   };
 
@@ -340,12 +534,7 @@ const BugReportPage: React.FC = () => {
     setSubmitting(true);
     setFormError("");
     try {
-      const attachmentUrl = attachment
-        ? await uploadPublicImage(
-            `profiles/${user.uid}/bug-reports`,
-            attachment
-          )
-        : "";
+      const attachmentUrls = await uploadReportImages(user.uid, attachments);
       await submitBugReport({
         uid: user.uid,
         reporterEmail: user.email || "",
@@ -357,7 +546,8 @@ const BugReportPage: React.FC = () => {
         expectedResult: "",
         actualResult: "",
         sourceUrl,
-        attachmentUrl,
+        attachmentUrl: attachmentUrls[0] || "",
+        attachmentUrls,
         userAgent: navigator.userAgent,
         viewport: `${window.innerWidth}×${window.innerHeight} @${
           window.devicePixelRatio || 1
@@ -452,44 +642,79 @@ const BugReportPage: React.FC = () => {
 
   const openReportImagePicker = (report: BugReportRecord) => {
     if (!user || report.uid !== user.uid) return;
+    if (reportImageUrls(report).length >= MAX_REPORT_IMAGES) {
+      window.alert(`사진은 최대 ${MAX_REPORT_IMAGES}장까지 첨부할 수 있어요.`);
+      return;
+    }
     imageTargetReportIdRef.current = report.id;
     reportImageInputRef.current?.click();
   };
 
-  const replaceReportImage = async (
+  // The update rule only accepts a report whose category is one of the four
+  // known values, so a legacy or unexpected value has to be normalized before
+  // any image write — otherwise the write is rejected outright.
+  const categoryForWrite = (report: BugReportRecord): BugReportCategory =>
+    reportCategories.includes(report.category as BugReportCategory)
+      ? (report.category as BugReportCategory)
+      : "버그";
+
+  const appendReportImages = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0];
+    const picked = Array.from(event.target.files || []);
     event.target.value = "";
     const reportId = imageTargetReportIdRef.current;
-    if (!file || !reportId || !user || uploadingReportId) return;
+    imageTargetReportIdRef.current = "";
+    if (picked.length === 0 || !reportId || !user || uploadingReportId) return;
     const targetReport = reports.find((report) => report.id === reportId);
     if (!targetReport || targetReport.uid !== user.uid) return;
-    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+    const accepted = picked.filter(
+      (file) => file.type.startsWith("image/") && file.size <= MAX_IMAGE_BYTES
+    );
+    if (accepted.length < picked.length) {
       window.alert("5MB 이하의 이미지 파일만 첨부할 수 있어요.");
-      return;
     }
+    const currentUrls = reportImageUrls(targetReport);
+    const added = accepted.slice(0, MAX_REPORT_IMAGES - currentUrls.length);
+    if (added.length === 0) return;
     setUploadingReportId(reportId);
     try {
-      const attachmentUrl = await uploadPublicImage(
-        `profiles/${user.uid}/bug-reports`,
-        file
-      );
-      const currentCategory = reports.find(
-        (report) => report.id === reportId
-      )?.category;
-      const category = reportCategories.includes(
-        currentCategory as BugReportCategory
-      )
-        ? (currentCategory as BugReportCategory)
-        : "버그";
-      await updateBugReportDetails(reportId, { attachmentUrl, category });
+      const uploadedUrls = await uploadReportImages(user.uid, added);
+      const attachmentUrls = [...currentUrls, ...uploadedUrls];
+      await updateBugReportDetails(reportId, {
+        attachmentUrl: attachmentUrls[0] || "",
+        attachmentUrls,
+        category: categoryForWrite(targetReport),
+      });
     } catch (error) {
       console.error("Bug report image update failed", error);
       window.alert("이미지를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setUploadingReportId("");
-      imageTargetReportIdRef.current = "";
+    }
+  };
+
+  const removeReportImage = async (
+    report: BugReportRecord,
+    imageUrl: string
+  ) => {
+    // BugReportGallery already confirmed with its own in-page prompt.
+    if (!user || report.uid !== user.uid || uploadingReportId) return;
+    const attachmentUrls = reportImageUrls(report).filter(
+      (url) => url !== imageUrl
+    );
+    setUploadingReportId(report.id);
+    try {
+      await updateBugReportDetails(report.id, {
+        attachmentUrl: attachmentUrls[0] || "",
+        attachmentUrls,
+        category: categoryForWrite(report),
+      });
+    } catch (error) {
+      console.error("Bug report image removal failed", error);
+      window.alert("사진을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setUploadingReportId("");
     }
   };
 
@@ -592,7 +817,8 @@ const BugReportPage: React.FC = () => {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={selectAttachment}
+                            multiple
+                            onChange={selectAttachments}
                             className="hidden"
                           />
                         </label>
@@ -615,31 +841,39 @@ const BugReportPage: React.FC = () => {
                       className="mt-4 min-h-52 w-full resize-y border-0 bg-transparent p-0 text-base font-semibold leading-6 outline-none placeholder:text-black/30"
                       placeholder="발견한 오류를 자유롭게 적어주세요."
                     />
-                    {attachmentPreview ? (
-                      <div className="relative mt-3 overflow-hidden bg-white/35">
-                        <img
-                          src={attachmentPreview}
-                          alt="첨부 미리보기"
-                          className="max-h-64 w-full object-contain"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAttachment(null);
-                            setAttachmentPreview("");
-                          }}
-                          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white shadow"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                    {attachmentPreviews.length > 0 && (
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        {attachmentPreviews.map((preview, index) => (
+                          <div
+                            key={preview}
+                            className="relative aspect-square overflow-hidden bg-white/35"
+                          >
+                            <img
+                              src={preview}
+                              alt={`첨부 미리보기 ${index + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeAttachment(index)}
+                              aria-label={`${index + 1}번째 사진 빼기`}
+                              className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-white shadow"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ) : (
+                    )}
+                    {attachments.length < MAX_REPORT_IMAGES && (
                       <label className="mt-3 flex min-h-16 cursor-pointer items-center justify-center gap-2 border border-dashed border-black/20 bg-white/20 text-[10px] font-black hover:bg-white/35">
-                        <ImagePlus className="h-4 w-4" /> 스크린샷 추가
+                        <ImagePlus className="h-4 w-4" />
+                        스크린샷 추가 ({attachments.length}/{MAX_REPORT_IMAGES})
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={selectAttachment}
+                          multiple
+                          onChange={selectAttachments}
                           className="hidden"
                         />
                       </label>
@@ -828,11 +1062,8 @@ const BugReportPage: React.FC = () => {
                               type="button"
                               onClick={() => openReportImagePicker(report)}
                               disabled={uploadingReportId === report.id}
-                              aria-label={
-                                report.attachmentUrl
-                                  ? "제보 이미지 교체"
-                                  : "제보 이미지 추가"
-                              }
+                              aria-label="제보 사진 추가"
+                              title={`사진 추가 (${reportImageUrls(report).length}/${MAX_REPORT_IMAGES})`}
                               className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/8 text-black/45 transition hover:bg-black hover:text-white disabled:cursor-wait disabled:opacity-50"
                             >
                               <ImagePlus className="h-3.5 w-3.5" />
@@ -893,27 +1124,6 @@ const BugReportPage: React.FC = () => {
                           rows={8}
                           className="min-h-40 w-full resize-y border border-black/20 bg-white/35 p-3 text-xs font-semibold leading-5 outline-none focus:border-black/50"
                         />
-                        <div className="mt-2 flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={cancelEditing}
-                            disabled={Boolean(savingReportId)}
-                            className="flex h-8 cursor-pointer items-center gap-1 rounded-full bg-black/10 px-3 text-[10px] font-black disabled:opacity-50"
-                          >
-                            <X className="h-3 w-3" /> 취소
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void saveEditing(report.id)}
-                            disabled={
-                              !editingDescription.trim() ||
-                              Boolean(savingReportId)
-                            }
-                            className="flex h-8 cursor-pointer items-center gap-1 rounded-full bg-[#171714] px-3 text-[10px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <Check className="h-3 w-3" /> 저장
-                          </button>
-                        </div>
                       </div>
                     ) : (
                       <p className="mt-2 whitespace-pre-wrap text-xs font-semibold leading-5 text-black/75">
@@ -931,14 +1141,39 @@ const BugReportPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  {report.attachmentUrl && (
-                    <div className="flex aspect-[4/3] max-h-72 w-full items-center justify-center overflow-hidden border-y border-black/10 bg-white/25">
-                      <img
-                        src={report.attachmentUrl}
-                        alt="오류 제보 첨부"
-                        loading="lazy"
-                        className="h-full w-full object-contain"
-                      />
+                  <BugReportGallery
+                    images={reportImageUrls(report)}
+                    // Only while the card is in edit mode: otherwise a delete
+                    // button sits over every screenshot during normal reading.
+                    canEdit={editingReportId === report.id}
+                    busy={uploadingReportId === report.id}
+                    onRemove={(imageUrl) =>
+                      void removeReportImage(report, imageUrl)
+                    }
+                  />
+                  {/* Sits below the screenshots as a full-width bar, matching the
+                      card's own footer — placed next to the textarea it read as a
+                      stray pair of buttons floating mid-card. */}
+                  {editingReportId === report.id && (
+                    <div className="flex items-center justify-end gap-2 border-t border-black/10 bg-white/20 px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={cancelEditing}
+                        disabled={Boolean(savingReportId)}
+                        className="flex h-8 cursor-pointer items-center gap-1 rounded-full bg-black/10 px-3 text-[10px] font-black disabled:opacity-50"
+                      >
+                        <X className="h-3 w-3" /> 취소
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void saveEditing(report.id)}
+                        disabled={
+                          !editingDescription.trim() || Boolean(savingReportId)
+                        }
+                        className="flex h-8 cursor-pointer items-center gap-1 rounded-full bg-[#171714] px-3 text-[10px] font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Check className="h-3 w-3" /> 저장
+                      </button>
                     </div>
                   )}
                   <BugReportReplies
@@ -978,7 +1213,8 @@ const BugReportPage: React.FC = () => {
         ref={reportImageInputRef}
         type="file"
         accept="image/*"
-        onChange={replaceReportImage}
+        multiple
+        onChange={appendReportImages}
         className="hidden"
       />
 
