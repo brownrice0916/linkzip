@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   buildReplyText,
   decryptSecret,
+  describeInstagramWebhookPayload,
   encryptSecret,
   extractInstagramInboundEvents,
   matchingRule,
@@ -92,4 +93,53 @@ test("encrypts and decrypts an access token", () => {
   const encrypted = encryptSecret("secret-access-token", key);
   assert.notEqual(encrypted.ciphertext, "secret-access-token");
   assert.equal(decryptSecret(encrypted, key), "secret-access-token");
+});
+
+test("summarises what a webhook delivery contained", () => {
+  assert.deepEqual(
+    describeInstagramWebhookPayload({
+      object: "instagram",
+      entry: [
+        {id: "17841400000000000", changes: [{field: "comments", value: {}}]},
+        {
+          id: "17841400000000000",
+          messaging: [
+            {sender: {}, recipient: {}, timestamp: 1, message: {}},
+            {sender: {}, recipient: {}, timestamp: 2, read: {}},
+          ],
+          changes: [{field: "mentions", value: {}}],
+        },
+      ],
+    }),
+    {
+      object: "instagram",
+      entryIds: ["17841400000000000"],
+      fields: ["comments", "messaging.message", "messaging.read", "mentions"],
+    },
+  );
+
+  // A messaging entry carrying nothing but envelope fields still has to be
+  // reported, otherwise it is indistinguishable from no delivery at all.
+  assert.deepEqual(
+    describeInstagramWebhookPayload({
+      object: "instagram",
+      entry: [{id: "1", messaging: [{sender: {}, recipient: {}, timestamp: 1}]}],
+    }),
+    {object: "instagram", entryIds: ["1"], fields: ["messaging.messaging"]},
+  );
+
+  // A delivery that arrives with nothing we act on still has to be describable,
+  // because that is exactly the case the log line exists to identify.
+  assert.deepEqual(
+    describeInstagramWebhookPayload({object: "instagram", entry: []}),
+    {object: "instagram", entryIds: [], fields: []},
+  );
+  assert.deepEqual(
+    describeInstagramWebhookPayload({object: "instagram", entry: "not-a-list"}),
+    {object: "instagram", entryIds: [], fields: []},
+  );
+  assert.deepEqual(
+    describeInstagramWebhookPayload(null),
+    {object: "", entryIds: [], fields: []},
+  );
 });

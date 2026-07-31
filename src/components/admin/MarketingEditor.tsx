@@ -36,6 +36,13 @@ import {
 const INSTAGRAM_DM_AUTOMATION_PAUSED =
   import.meta.env.VITE_INSTAGRAM_DM_AUTOMATION !== 'on';
 
+// The Meta reviewer signs in as an ordinary user, so the pause overlay would
+// hide the exact feature under review. Unlocking per account keeps the build
+// flag paused for everyone else instead of shipping the feature to all users
+// for the length of the review. This only affects what the dashboard renders --
+// the callable functions were never gated on the flag.
+const INSTAGRAM_DM_AUTOMATION_REVIEWERS = ['brownrice0916@naver.com'];
+
 export const MarketingEditor: React.FC = () => {
   const state = useStore();
   const navigate = useNavigate();
@@ -68,9 +75,11 @@ export const MarketingEditor: React.FC = () => {
   const [monthlyDmUsage, setMonthlyDmUsage] = useState(0);
   const [monthlyDmLimit, setMonthlyDmLimit] = useState(planEntitlements.maxInstagramDeliveriesPerMonth);
   const instagramStatusLoaded = useRef(false);
+  const automationPaused = INSTAGRAM_DM_AUTOMATION_PAUSED
+    && !INSTAGRAM_DM_AUTOMATION_REVIEWERS.includes((state.user?.email ?? '').trim().toLowerCase());
 
   useEffect(() => {
-    if (INSTAGRAM_DM_AUTOMATION_PAUSED) {
+    if (automationPaused) {
       setIsInstagramLoading(false);
       return;
     }
@@ -153,10 +162,10 @@ export const MarketingEditor: React.FC = () => {
     };
     void loadConnection();
     return () => { active = false; };
-  }, [planEntitlements.maxInstagramDeliveriesPerMonth]);
+  }, [automationPaused, planEntitlements.maxInstagramDeliveriesPerMonth]);
 
   useEffect(() => {
-    if (INSTAGRAM_DM_AUTOMATION_PAUSED) return;
+    if (automationPaused) return;
     if (!instagramStatusLoaded.current || !instagramAccount) return;
     const timeout = window.setTimeout(async () => {
       setRulesSaveState('saving');
@@ -180,10 +189,10 @@ export const MarketingEditor: React.FC = () => {
       }
     }, 650);
     return () => window.clearTimeout(timeout);
-  }, [dmRules, instagramAccount]);
+  }, [automationPaused, dmRules, instagramAccount]);
 
   const handleInstagramConnect = async () => {
-    if (INSTAGRAM_DM_AUTOMATION_PAUSED) return;
+    if (automationPaused) return;
     setIsInstagramLoading(true);
     setInstagramError('');
     try {
@@ -199,7 +208,7 @@ export const MarketingEditor: React.FC = () => {
   };
 
   const handleInstagramDisconnect = async () => {
-    if (INSTAGRAM_DM_AUTOMATION_PAUSED) return;
+    if (automationPaused) return;
     setIsInstagramLoading(true);
     setInstagramError('');
     try {
@@ -245,7 +254,7 @@ export const MarketingEditor: React.FC = () => {
     <div className="space-y-6 animate-fade-in pb-20 font-sans max-w-4xl">
 
       {/* 1. Instagram DM Auto-Sending Section */}
-      <div className="relative overflow-hidden bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-6" aria-disabled={INSTAGRAM_DM_AUTOMATION_PAUSED}>
+      <div className="relative overflow-hidden bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-6" aria-disabled={automationPaused}>
         
         <div className="flex items-center justify-between border-b border-gray-100 pb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -464,7 +473,7 @@ export const MarketingEditor: React.FC = () => {
           </div>
         )}
 
-        {INSTAGRAM_DM_AUTOMATION_PAUSED && (
+        {automationPaused && (
           <div className="absolute inset-0 z-40 flex cursor-not-allowed items-center justify-center rounded-3xl bg-[#f4f1e8]/94 p-5 backdrop-blur-[2px]">
             <div className="w-full max-w-md rounded-[26px] border-2 border-[#171714] bg-[#fffdf8] px-7 py-8 text-center shadow-[6px_6px_0_#171714]">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-[#171714] bg-[#ffcf4a] shadow-[3px_3px_0_#ff5f35]">
@@ -738,7 +747,7 @@ export const MarketingEditor: React.FC = () => {
         onClose={() => setIsKakaoWizardOpen(false)}
       />
       <InstagramDmRuleCreateWizardModal
-        isOpen={!INSTAGRAM_DM_AUTOMATION_PAUSED && isInstagramRuleWizardOpen}
+        isOpen={!automationPaused && isInstagramRuleWizardOpen}
         editingRule={editingInstagramRule}
         onClose={() => {
           setIsInstagramRuleWizardOpen(false);

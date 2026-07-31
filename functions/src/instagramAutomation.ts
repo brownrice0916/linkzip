@@ -120,6 +120,55 @@ export function buildReplyText(rule: InstagramAutomationRule): string {
   return [rule.responseMessage, ...links].filter(Boolean).join("\n");
 }
 
+/**
+ * A one-line summary of what Meta actually delivered, for the receipt log.
+ *
+ * When an automation does not fire there are two very different causes -- the
+ * delivery never arrived, or it arrived carrying something we do not act on --
+ * and the raw payload is not in the logs to tell them apart. Recording the
+ * object, the entry ids and the change fields makes that visible without
+ * logging comment text or any other message content.
+ */
+export function describeInstagramWebhookPayload(payload: unknown): {
+  object: string;
+  entryIds: string[];
+  fields: string[];
+} {
+  const summary = {object: "", entryIds: [] as string[], fields: [] as string[]};
+  if (!payload || typeof payload !== "object") return summary;
+  summary.object = stringValue((payload as {object?: unknown}).object);
+
+  const entries = (payload as {entry?: unknown}).entry;
+  if (!Array.isArray(entries)) return summary;
+  for (const rawEntry of entries) {
+    if (!rawEntry || typeof rawEntry !== "object") continue;
+    const entry = rawEntry as Record<string, unknown>;
+    const entryId = stringValue(entry.id);
+    if (entryId && !summary.entryIds.includes(entryId)) summary.entryIds.push(entryId);
+    // A messaging entry can be a message, a read receipt, a reaction or a
+    // postback, and only the first is one we act on. Naming the payload key
+    // tells a "received: 0" apart from "nothing worth acting on arrived".
+    if (Array.isArray(entry.messaging)) {
+      for (const rawMessage of entry.messaging) {
+        if (!rawMessage || typeof rawMessage !== "object") continue;
+        const keys = Object.keys(rawMessage as Record<string, unknown>)
+          .filter((key) => !["sender", "recipient", "timestamp"].includes(key));
+        for (const key of keys.length ? keys : ["messaging"]) {
+          const field = `messaging.${key}`;
+          if (!summary.fields.includes(field)) summary.fields.push(field);
+        }
+      }
+    }
+    if (!Array.isArray(entry.changes)) continue;
+    for (const rawChange of entry.changes) {
+      if (!rawChange || typeof rawChange !== "object") continue;
+      const field = stringValue((rawChange as Record<string, unknown>).field);
+      if (field && !summary.fields.includes(field)) summary.fields.push(field);
+    }
+  }
+  return summary;
+}
+
 export function extractInstagramInboundEvents(
   payload: unknown,
 ): InstagramInboundEvent[] {

@@ -16,6 +16,7 @@ import {
   buildReplyText,
   decryptSecret,
   deliveryId,
+  describeInstagramWebhookPayload,
   encryptSecret,
   extractInstagramInboundEvents,
   hashOAuthState,
@@ -172,6 +173,7 @@ interface NaverProfileResponse {
 interface InstagramConnection {
   uid: string;
   instagramUserId: string;
+  instagramWebhookUserId?: string;
   username: string;
   name: string;
   profilePictureUrl: string;
@@ -2834,7 +2836,11 @@ export const metaInstagramWebhook = onRequest(
       });
     });
 
-    logger.info("Meta Instagram webhook received", {eventId, duplicate});
+    logger.info("Meta Instagram webhook received", {
+      eventId,
+      duplicate,
+      ...describeInstagramWebhookPayload(request.body),
+    });
     response.status(200).send("EVENT_RECEIVED");
   },
 );
@@ -2923,7 +2929,12 @@ export const instagramOAuthCallback = onRequest(
       await requireInstagramPlan(uid);
 
       const shortToken = await exchangeAuthorizationCode(code, instagramRedirectUri);
-      logger.info("Instagram OAuth short-lived token exchanged");
+      logger.info("Instagram OAuth short-lived token exchanged", {
+        grantedPermissions: shortToken.permissions,
+        deniedPermissions: instagramScopes.filter(
+          (scope) => shortToken.permissions.length && !shortToken.permissions.includes(scope),
+        ),
+      });
       const longToken = await exchangeLongLivedToken(shortToken.accessToken);
       logger.info("Instagram OAuth long-lived token exchanged");
       const profile = await fetchInstagramProfile(shortToken.userId, longToken.accessToken);
@@ -2937,6 +2948,9 @@ export const instagramOAuthCallback = onRequest(
       await connectionRef.set({
         uid,
         instagramUserId: shortToken.userId,
+        // The id webhook deliveries arrive under. Kept separate from
+        // instagramUserId because Graph calls still have to use that one.
+        instagramWebhookUserId: profile.webhookUserId,
         username: profile.username,
         name: profile.name,
         profilePictureUrl: profile.profilePictureUrl,
@@ -2944,7 +2958,9 @@ export const instagramOAuthCallback = onRequest(
         tokenExpiresAt: longToken.expiresIn
           ? Timestamp.fromMillis(Date.now() + longToken.expiresIn * 1000)
           : null,
-        scopes: instagramScopes,
+        // Fall back to the requested list only when Instagram sends nothing, so
+        // an unexpected response shape cannot make every scope look missing.
+        scopes: shortToken.permissions.length ? shortToken.permissions : instagramScopes,
         rules: existingRules,
         status: "connected",
         connectedAt: FieldValue.serverTimestamp(),
@@ -3015,6 +3031,13 @@ export const getInstagramConnectionStatus = onCall(
         name: stringField(profileResult, "name") || undefined,
         profilePictureUrl: stringField(profileResult, "profile_picture_url") || undefined,
       };
+      // Connections made before the webhook id was stored would otherwise need
+      // a reconnect before automation could match their deliveries. The call
+      // already has the value in hand, so fill it in once.
+      const webhookUserId = stringField(profileResult, "user_id");
+      if (webhookUserId && data.instagramWebhookUserId !== webhookUserId) {
+        await snapshot.ref.update({instagramWebhookUserId: webhookUserId});
+      }
       grantedScopes = Array.isArray(data.scopes)
         ? data.scopes.filter((scope): scope is string => typeof scope === "string")
         : [];
@@ -3041,6 +3064,16 @@ export const getInstagramConnectionStatus = onCall(
     const missingWebhookFields = diagnosticError
       ? []
       : ["comments", "messages"].filter((field) => !subscribedFields.includes(field));
+    // Subscribing succeeds even when Instagram then keeps none of the fields, so
+    // the POST returning OK at connect time proves nothing. What the GET reports
+    // back is the only account-level answer to "will a comment be delivered".
+    logger.info("Instagram connection diagnostics", {
+      instagramUserId: String(data.instagramUserId || ""),
+      subscribedFields,
+      missingWebhookFields,
+      missingScopes,
+      ruleCount: normalizeStoredRules(data.rules).length,
+    });
     return {
       connected: true,
       username: liveProfile.username
@@ -3086,13 +3119,65 @@ export const listInstagramMedia = onCall(
     );
     url.searchParams.set(
       "fields",
-      "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp",
+      "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,comments_count",
     );
     url.searchParams.set("limit", "60");
     const result = await metaFetch(url.toString(), {
       headers: {Authorization: `Bearer ${token}`},
     });
     const data = Array.isArray(result.data) ? result.data : [];
+    // A comment that never reaches the webhook has two possible explanations,
+    // and they need opposite fixes: the delivery was dropped, or the comment
+    // was never on this account's media at all. The comment counts on the most
+    // recent posts separate the two.
+    logger.info("Instagram media listed", {
+      instagramUserId: connection.instagramUserId,
+      mediaCount: data.length,
+      recent: data.slice(0, 5).map((item) => {
+        const media = (item || {}) as Record<string, unknown>;
+        return {
+          id: stringField(media, "id"),
+          timestamp: stringField(media, "timestamp"),
+          commentsCount: typeof media.comments_count === "number" ? media.comments_count : null,
+        };
+      }),
+    });
+    // Best effort, and deliberately isolated from the response: Meta does not
+    // send comment webhooks for comments the media owner leaves on their own
+    // post, so who wrote the newest comments decides whether a missing
+    // notification is a bug or the documented behaviour. Only the author and
+    // time are read -- never the comment text.
+    void (async () => {
+      for (const item of data.slice(0, 2)) {
+        const mediaId = stringField((item || {}) as Record<string, unknown>, "id");
+        if (!mediaId) continue;
+        try {
+          const commentsUrl = new URL(
+            `https://graph.instagram.com/${instagramGraphVersion}/${encodeURIComponent(mediaId)}/comments`,
+          );
+          commentsUrl.searchParams.set("fields", "username,timestamp");
+          commentsUrl.searchParams.set("limit", "5");
+          const comments = await metaFetch(commentsUrl.toString(), {
+            headers: {Authorization: `Bearer ${token}`},
+          });
+          const rows = Array.isArray(comments.data) ? comments.data : [];
+          logger.info("Instagram media comments sampled", {
+            mediaId,
+            // An empty result and a result we failed to parse look identical in
+            // the authors list, and only one of them is Meta's doing.
+            responseKeys: Object.keys(comments),
+            dataIsArray: Array.isArray(comments.data),
+            dataLength: rows.length,
+            authors: rows.map((row) => {
+              const comment = (row || {}) as Record<string, unknown>;
+              return `${stringField(comment, "username")}@${stringField(comment, "timestamp")}`;
+            }),
+          });
+        } catch (sampleError) {
+          logger.warn("Instagram comment sample failed", {mediaId, error: sampleError});
+        }
+      }
+    })();
     return {
       media: data.flatMap((item) => {
         if (!item || typeof item !== "object") return [];
@@ -3326,12 +3411,29 @@ export const refreshInstagramAccessTokens = onSchedule(
 async function processInboundEvent(
   inboundEvent: InstagramInboundEvent,
 ): Promise<"sent" | "skipped"> {
-  const connections = await db.collection("instagramConnections")
-    .where("instagramUserId", "==", inboundEvent.recipientId)
+  // Deliveries identify the account by its Instagram-scoped id, but connections
+  // made before that id was stored only have the app-scoped one. Try the
+  // delivery id first and fall back, so old connections keep working without a
+  // reconnect and new ones match on the first query.
+  let connections = await db.collection("instagramConnections")
+    .where("instagramWebhookUserId", "==", inboundEvent.recipientId)
     .limit(1)
     .get();
   if (connections.empty) {
-    logger.info("Instagram automation skipped", {reason: "connection_not_found"});
+    connections = await db.collection("instagramConnections")
+      .where("instagramUserId", "==", inboundEvent.recipientId)
+      .limit(1)
+      .get();
+  }
+  if (connections.empty) {
+    // The recipient id is the account the automation is meant to run as, so
+    // logging it is what distinguishes "Meta sent a sample payload" from "the
+    // account we stored is not the one that received the comment".
+    logger.info("Instagram automation skipped", {
+      reason: "connection_not_found",
+      recipientId: inboundEvent.recipientId,
+      kind: inboundEvent.kind,
+    });
     return "skipped";
   }
 
@@ -4417,7 +4519,7 @@ function safeHttpUrl(value: string | undefined): string | undefined {
 async function exchangeAuthorizationCode(
   code: string,
   redirectUri: string,
-): Promise<{accessToken: string; userId: string}> {
+): Promise<{accessToken: string; userId: string; permissions: string[]}> {
   const body = new FormData();
   body.set("client_id", metaInstagramAppId.value());
   body.set("client_secret", metaInstagramAppSecret.value());
@@ -4434,7 +4536,22 @@ async function exchangeAuthorizationCode(
   const accessToken = stringField(nested, "access_token");
   const userId = String(nested.user_id ?? nested.id ?? "");
   if (!accessToken || !userId) throw new Error("Instagram did not return an access token");
-  return {accessToken, userId};
+  // The scopes we asked for are not necessarily the ones granted -- the consent
+  // screen lets people drop individual permissions and still finish. This list
+  // is what Instagram actually approved, and it is the only trustworthy source
+  // for that; storing the requested constant instead made the connection status
+  // report a clean bill of health it had never checked.
+  // Instagram has shipped this field as both a comma-separated string and a
+  // list, so accept either rather than silently reading it as empty.
+  const rawPermissions = nested.permissions;
+  const permissions = (Array.isArray(rawPermissions)
+    ? rawPermissions.map((permission) => String(permission))
+    : String(rawPermissions ?? "").split(","))
+    .map((permission) => permission.trim())
+    .filter(Boolean);
+  // Only the key names, never the values -- the same object carries the token.
+  logger.info("Instagram token exchange fields", {keys: Object.keys(nested)});
+  return {accessToken, userId, permissions};
 }
 
 async function exchangeLongLivedToken(
@@ -4453,10 +4570,22 @@ async function exchangeLongLivedToken(
   };
 }
 
+/**
+ * Returns `webhookUserId` alongside the display fields because Instagram hands
+ * out two different ids for the same account: the app-scoped id the token
+ * exchange returns (used for Graph calls) and the Instagram-scoped id that
+ * webhook deliveries carry in `entry.id`. Storing only the first meant every
+ * real comment and message looked like it belonged to an unknown account.
+ */
 async function fetchInstagramProfile(
   userId: string,
   accessToken: string,
-): Promise<{username: string; name: string; profilePictureUrl: string}> {
+): Promise<{
+  webhookUserId: string;
+  username: string;
+  name: string;
+  profilePictureUrl: string;
+}> {
   const url = new URL(
     `https://graph.instagram.com/${instagramGraphVersion}/${encodeURIComponent(userId)}`,
   );
@@ -4465,6 +4594,7 @@ async function fetchInstagramProfile(
     headers: {Authorization: `Bearer ${accessToken}`},
   });
   return {
+    webhookUserId: stringField(result, "user_id"),
     username: stringField(result, "username"),
     name: stringField(result, "name"),
     profilePictureUrl: stringField(result, "profile_picture_url"),
