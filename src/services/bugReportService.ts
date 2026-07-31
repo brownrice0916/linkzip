@@ -1,4 +1,4 @@
-import { collection, doc, limit, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch, type Timestamp } from 'firebase/firestore';
+import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch, type Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export interface BugReportInput {
@@ -106,10 +106,17 @@ export async function deleteBugReportReply(reportId: string, replyId: string): P
 }
 
 export async function deleteBugReport(reportId: string): Promise<void> {
-  const batch = writeBatch(db);
-  batch.delete(doc(db, 'bugReports', reportId));
-  batch.delete(doc(db, 'bugReportPrivate', reportId));
-  await batch.commit();
+  // Deliberately not a batch. The delete rule on bugReportPrivate reads
+  // resource.data.uid, which errors -- and therefore denies -- when the
+  // document does not exist. Reports written before bugReportPrivate was
+  // introduced have no such document, so batching the two made their own
+  // report undeletable: the atomic commit failed on the missing half.
+  await deleteDoc(doc(db, 'bugReports', reportId));
+  try {
+    await deleteDoc(doc(db, 'bugReportPrivate', reportId));
+  } catch (error) {
+    console.warn('Bug report private metadata was not removed', error);
+  }
 }
 
 export async function updateBugReportDescription(reportId: string, description: string): Promise<void> {

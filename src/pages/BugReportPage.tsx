@@ -418,6 +418,7 @@ const BugReportPage: React.FC = () => {
   const [draftColor, setDraftColor] = useState(cardColors[0]);
   const [draftCategory, setDraftCategory] = useState<BugReportCategory>("버그");
   const [deletingReportId, setDeletingReportId] = useState("");
+  const [pendingDeleteReportId, setPendingDeleteReportId] = useState("");
   const [editingReportId, setEditingReportId] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
   const [editingCategory, setEditingCategory] =
@@ -566,12 +567,12 @@ const BugReportPage: React.FC = () => {
     }
   };
 
+  // Confirmed by an in-page prompt rather than window.confirm, which embedded
+  // browsers and in-app webviews suppress -- it then returns false and the
+  // delete silently does nothing.
   const handleDelete = async (report: BugReportRecord) => {
+    setPendingDeleteReportId("");
     if (!user || report.uid !== user.uid || deletingReportId) return;
-    if (
-      !window.confirm("이 오류 제보를 삭제할까요? 삭제하면 되돌릴 수 없습니다.")
-    )
-      return;
     setDeletingReportId(report.id);
     try {
       await deleteBugReport(report.id);
@@ -1081,7 +1082,7 @@ const BugReportPage: React.FC = () => {
                         {report.uid === user?.uid && (
                           <button
                             type="button"
-                            onClick={() => void handleDelete(report)}
+                            onClick={() => setPendingDeleteReportId(report.id)}
                             disabled={Boolean(deletingReportId)}
                             aria-label="내 제보 삭제"
                             className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/8 text-black/45 transition hover:bg-red-500 hover:text-white disabled:cursor-wait disabled:opacity-50"
@@ -1091,6 +1092,34 @@ const BugReportPage: React.FC = () => {
                         )}
                       </div>
                     </div>
+                    {pendingDeleteReportId === report.id && (
+                      <div
+                        role="alertdialog"
+                        aria-label="제보 삭제 확인"
+                        className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#171714] px-3 py-2"
+                      >
+                        <span className="text-[10px] font-black leading-4 text-white">
+                          이 제보를 삭제할까요? 되돌릴 수 없어요.
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPendingDeleteReportId("")}
+                            className="cursor-pointer rounded-full bg-white/25 px-2.5 py-1 text-[10px] font-black text-white transition hover:bg-white/40"
+                          >
+                            취소
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(report)}
+                            disabled={Boolean(deletingReportId)}
+                            className="cursor-pointer rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black text-white transition hover:bg-red-600 disabled:cursor-wait disabled:opacity-50"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {report.title && (
                       <h2 className="mt-3 whitespace-pre-wrap text-base font-black leading-snug">
                         {report.title}
