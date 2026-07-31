@@ -4,7 +4,14 @@ export type MembershipPlan = "basic" | "standard" | "premium";
 
 export const BETA_LIFETIME_PREMIUM_GRANT = "beta_lifetime_premium";
 export const BETA_SHARED_FILE_UPLOAD_BYTES_PER_DAY = 100 * 1024 * 1024;
-export const BETA_SHARED_FILE_DOWNLOADS_PER_DAY = 100;
+// Beta accounts resolve to the premium plan, so without these overrides they
+// would inherit premium's shared-file allowances (100MB per file, 500 downloads
+// per file per day) for free. Cap them well below that instead.
+export const BETA_SHARED_FILE_BYTES = 10 * 1024 * 1024;
+export const BETA_SHARED_FILE_DOWNLOADS_PER_DAY = 10;
+// Per-file limit above; this one bounds the beta owner's whole library for the
+// day so a page full of files cannot multiply the per-file cap without bound.
+export const BETA_SHARED_FILE_OWNER_DOWNLOADS_PER_DAY = 100;
 
 export interface PlanEntitlements {
   maxProfiles: number;
@@ -121,4 +128,9 @@ export const isBetaLifetimePremium = (data: FirebaseFirestore.DocumentData | und
 export const sharedFileDownloadsPerDayForUser = (data: FirebaseFirestore.DocumentData | undefined) => {
   if (isBetaLifetimePremium(data)) return BETA_SHARED_FILE_DOWNLOADS_PER_DAY;
   return entitlementsForUser(data).entitlements.maxSharedFileDownloadsPerDay;
+};
+
+export const sharedFileBytesForUser = (data: FirebaseFirestore.DocumentData | undefined) => {
+  if (isBetaLifetimePremium(data)) return BETA_SHARED_FILE_BYTES;
+  return entitlementsForUser(data).entitlements.maxSharedFileBytes;
 };

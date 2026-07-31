@@ -261,6 +261,21 @@ export const resolveActiveMembershipPlan = (
 
 export const entitlementsForPlan = (plan: MembershipPlan): PlanEntitlements => PLAN_ENTITLEMENTS[plan];
 
+// Beta accounts resolve to the premium plan, so their shared-file allowances
+// have to be pulled back explicitly. Mirrors the server caps in
+// functions/src/planEntitlements.ts — keep the two in step.
+export const BETA_SHARED_FILE_BYTES = 10 * MB;
+export const BETA_SHARED_FILE_DOWNLOADS_PER_DAY = 10;
+
+export const entitlementsForMember = (plan: MembershipPlan, membershipGrant?: unknown): PlanEntitlements =>
+  membershipGrant === BETA_LIFETIME_PREMIUM_GRANT
+    ? {
+      ...PLAN_ENTITLEMENTS[plan],
+      maxSharedFileBytes: BETA_SHARED_FILE_BYTES,
+      maxSharedFileDownloadsPerDay: BETA_SHARED_FILE_DOWNLOADS_PER_DAY,
+    }
+    : PLAN_ENTITLEMENTS[plan];
+
 type EntitlementLink = {
   type?: string;
   links?: EntitlementLink[];

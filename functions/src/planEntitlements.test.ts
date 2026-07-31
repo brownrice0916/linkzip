@@ -4,10 +4,13 @@ import {Timestamp} from "firebase-admin/firestore";
 
 import {
   BETA_LIFETIME_PREMIUM_GRANT,
+  BETA_SHARED_FILE_BYTES,
   BETA_SHARED_FILE_DOWNLOADS_PER_DAY,
+  BETA_SHARED_FILE_OWNER_DOWNLOADS_PER_DAY,
   BETA_SHARED_FILE_UPLOAD_BYTES_PER_DAY,
   PLAN_ENTITLEMENTS,
   resolveActiveMembershipPlan,
+  sharedFileBytesForUser,
   sharedFileDownloadsPerDayForUser,
 } from "./planEntitlements.js";
 
@@ -70,10 +73,24 @@ test("beta lifetime premium uses a cost-controlled daily shared-file quota", () 
     membershipGrant: BETA_LIFETIME_PREMIUM_GRANT,
   };
   assert.equal(BETA_SHARED_FILE_UPLOAD_BYTES_PER_DAY, 100 * 1024 * 1024);
-  assert.equal(BETA_SHARED_FILE_DOWNLOADS_PER_DAY, 100);
-  assert.equal(sharedFileDownloadsPerDayForUser(betaUser), 100);
+  assert.equal(BETA_SHARED_FILE_DOWNLOADS_PER_DAY, 10);
+  assert.equal(BETA_SHARED_FILE_OWNER_DOWNLOADS_PER_DAY, 100);
+  assert.equal(sharedFileDownloadsPerDayForUser(betaUser), 10);
   assert.equal(sharedFileDownloadsPerDayForUser({
     membershipPlan: "premium",
     membershipPeriodEndsAt: Timestamp.fromDate(new Date("2099-01-01T00:00:00.000Z")),
   }), 500);
+});
+
+test("beta lifetime premium caps per-file upload size below the premium plan", () => {
+  assert.equal(BETA_SHARED_FILE_BYTES, 10 * 1024 * 1024);
+  assert.equal(sharedFileBytesForUser({
+    membershipPlan: "premium",
+    membershipGrant: BETA_LIFETIME_PREMIUM_GRANT,
+  }), 10 * 1024 * 1024);
+  assert.equal(sharedFileBytesForUser({
+    membershipPlan: "premium",
+    membershipPeriodEndsAt: Timestamp.fromDate(new Date("2099-01-01T00:00:00.000Z")),
+  }), 100 * 1024 * 1024);
+  assert.equal(sharedFileBytesForUser({membershipPlan: "basic"}), 5 * 1024 * 1024);
 });

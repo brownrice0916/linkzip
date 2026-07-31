@@ -40,11 +40,13 @@ import {
 } from "./betaAccess.js";
 import {
   BETA_LIFETIME_PREMIUM_GRANT,
-  BETA_SHARED_FILE_DOWNLOADS_PER_DAY,
+  BETA_SHARED_FILE_OWNER_DOWNLOADS_PER_DAY,
   BETA_SHARED_FILE_UPLOAD_BYTES_PER_DAY,
   PLAN_ENTITLEMENTS,
   entitlementsForUser,
   isBetaLifetimePremium,
+  resolveActiveMembershipPlan,
+  sharedFileBytesForUser,
   sharedFileDownloadsPerDayForUser,
   type MembershipPlan,
 } from "./planEntitlements.js";
@@ -582,6 +584,25 @@ const syncProfilePlanVisibility = async (uid: string, plan: MembershipPlan) => {
   await batch.commit();
 };
 
+// Clients cannot write planPaused/forceWatermark — the rules reject them on
+// create — so a profile created from the editor starts without any enforcement
+// fields. Stamp them here from the owner's current plan.
+export const applyPlanVisibilityOnProfileCreate = onDocumentCreated(
+  {region: "asia-northeast3", document: "publicProfiles/{profileId}"},
+  async (event) => {
+    const created = event.data?.data();
+    const ownerUid = created?.ownerUid;
+    if (typeof ownerUid !== "string" || !ownerUid) return;
+    // syncProfilePlanVisibility itself creates any missing profile document,
+    // and those already carry both fields. Skipping them stops the recursion.
+    if (created?.planPaused !== undefined && created?.forceWatermark !== undefined) return;
+
+    const userSnapshot = await db.collection("users").doc(ownerUid).get();
+    if (!userSnapshot.exists) return;
+    await syncProfilePlanVisibility(ownerUid, resolveActiveMembershipPlan(userSnapshot.data()));
+  },
+);
+
 interface BankTransferAccount {
   bankName: string;
   accountNumber: string;
@@ -933,9 +954,12 @@ export const reserveSharedFileUpload = onCall(betaCallableOptions, async (reques
 
   const userSnapshot = await db.collection("users").doc(uid).get();
   const userData = userSnapshot.data();
-  const {entitlements} = entitlementsForUser(userData);
-  if (size > entitlements.maxSharedFileBytes) {
-    throw new HttpsError("resource-exhausted", "현재 플랜의 파일당 업로드 용량을 초과했습니다.");
+  const maxBytes = sharedFileBytesForUser(userData);
+  if (size > maxBytes) {
+    throw new HttpsError(
+      "resource-exhausted",
+      `파일당 업로드 용량(${Math.round(maxBytes / 1024 / 1024)}MB)을 초과했습니다.`,
+    );
   }
 
   const fileName = `${Date.now()}_${randomUUID()}_${safeStorageFileName(request.data?.fileName)}`;
@@ -982,8 +1006,10 @@ export const reserveSharedFileUpload = onCall(betaCallableOptions, async (reques
   };
 });
 
+// Storage triggers must sit in the default bucket's region, not the region the
+// rest of this codebase uses. Deploying the whole codebase fails otherwise.
 export const finalizeSharedFileUpload = onObjectFinalized(
-  {region: "asia-northeast3"},
+  {region: "us-east1"},
   async (event) => {
     const filePath = event.data.name || "";
     if (!filePath.startsWith("shared-files/")) return;
@@ -2252,6 +2278,9 @@ export const downloadSharedFile = onRequest(
 
     const [metadata] = await file.getMetadata();
     const fileSize = Number(metadata.size || 0);
+    // Deliberately the plan allowance, not the tighter beta upload cap: this
+    // guard runs on every download, so applying the beta cap here would stop
+    // serving files that were legitimately uploaded before the cap existed.
     const maxSharedFileBytes = ownerEntitlements.maxSharedFileBytes;
     if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > maxSharedFileBytes) {
       response.status(413).send("현재 플랜에서 허용된 파일 크기를 초과했습니다.");
@@ -2292,7 +2321,7 @@ export const downloadSharedFile = onRequest(
         if (fileCount >= maxFileDownloadsPerDay) {
           throw new Error("FILE_DAILY_LIMIT");
         }
-        if (betaLifetimeOwner && ownerCount >= BETA_SHARED_FILE_DOWNLOADS_PER_DAY) {
+        if (betaLifetimeOwner && ownerCount >= BETA_SHARED_FILE_OWNER_DOWNLOADS_PER_DAY) {
           throw new Error("BETA_OWNER_DAILY_LIMIT");
         }
         if (globalCount >= maxGlobalDownloadsPerDay || globalBytes + fileSize > maxGlobalBytesPerDay) {
@@ -2329,7 +2358,7 @@ export const downloadSharedFile = onRequest(
         return;
       }
       if (reason === "BETA_OWNER_DAILY_LIMIT") {
-        response.status(429).send("베타 계정의 오늘 전체 파일 다운로드 한도(100회)를 모두 사용했습니다. 내일 다시 시도해주세요.");
+        response.status(429).send(`베타 계정의 오늘 전체 파일 다운로드 한도(${BETA_SHARED_FILE_OWNER_DOWNLOADS_PER_DAY}회)를 모두 사용했습니다. 내일 다시 시도해주세요.`);
         return;
       }
       if (reason === "GLOBAL_DAILY_LIMIT") {

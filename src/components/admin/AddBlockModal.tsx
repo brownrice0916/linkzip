@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { useStore } from '../../store/useStore';
-import { entitlementsForPlan, workspaceUsage } from '../../domain/membershipPlans';
+import { entitlementsForMember, workspaceUsage } from '../../domain/membershipPlans';
 import { requestUpgradePrompt } from '../UpgradePromptHost';
 import { STOREFRONT_AVAILABLE } from '../../config/featureFlags';
 
@@ -47,9 +47,11 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
 }) => {
   const language = useStore((state) => state.language);
   const membershipPlan = useStore((state) => state.membershipPlan);
+  const membershipGrant = useStore((state) => state.membershipGrant);
   const customLinks = useStore((state) => state.customLinks);
   const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
-  const entitlements = entitlementsForPlan(membershipPlan);
+  const entitlements = entitlementsForMember(membershipPlan, membershipGrant);
+  const sharedFileMb = Math.round(entitlements.maxSharedFileBytes / 1024 / 1024);
   const usage = workspaceUsage({ customLinks });
 
   useEffect(() => {
@@ -97,7 +99,10 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
         },
         {
           id: 'file', label: tr('파일 공유', 'File sharing'),
-          desc: tr('최대 5MB · 파일당 하루 20회까지 내려받을 수 있습니다.', 'Up to 5MB · 20 downloads per file each day.'),
+          desc: tr(
+            `최대 ${sharedFileMb}MB · 파일당 하루 ${entitlements.maxSharedFileDownloadsPerDay}회까지 내려받을 수 있습니다.`,
+            `Up to ${sharedFileMb}MB · ${entitlements.maxSharedFileDownloadsPerDay} downloads per file each day.`,
+          ),
           icon: FileDown, bgColor: 'bg-cyan-600', iconColor: 'text-white',
           locked: usage.sharedFileBlocks >= entitlements.maxSharedFileBlocks,
         },

@@ -41,9 +41,12 @@ service firebase.storage {
         && firestore.get(reservationPath).data.expiresAt > request.time;
     }
 
+    // Beta is checked first: those accounts also satisfy premiumMembershipActive,
+    // and the beta cap has to win over the premium allowance it grants.
     function sharedFileLimit(uid) {
-      return premiumMembershipActive(uid) ? 100 * 1024 * 1024
-        : (paidMembershipActive(uid) ? 20 * 1024 * 1024 : 5 * 1024 * 1024);
+      return betaLifetimePremium(uid) ? 10 * 1024 * 1024
+        : (premiumMembershipActive(uid) ? 100 * 1024 * 1024
+        : (paidMembershipActive(uid) ? 20 * 1024 * 1024 : 5 * 1024 * 1024));
     }
 
     match /avatars/{uid}/{fileName} {

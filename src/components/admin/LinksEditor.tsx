@@ -68,7 +68,7 @@ import type {
 import { BlockList } from "./BlockList";
 import { ColorPickerPopover } from "./ColorPickerPopover";
 import { deletePublicFile, uploadPublicFile, uploadPublicImage } from "../../services/storageService";
-import { BETA_LIFETIME_PREMIUM_GRANT, entitlementsForPlan, workspaceUsage } from "../../domain/membershipPlans";
+import { BETA_LIFETIME_PREMIUM_GRANT, entitlementsForMember, workspaceUsage } from "../../domain/membershipPlans";
 import { requestUpgradePrompt } from "../UpgradePromptHost";
 import { useNavigate } from "react-router-dom";
 import { STOREFRONT_AVAILABLE } from "../../config/featureFlags";
@@ -183,7 +183,7 @@ const LinksEditor = () => {
     membershipGrant,
   } = useStore();
   const isKo = language === 'ko';
-  const planEntitlements = entitlementsForPlan(membershipPlan);
+  const planEntitlements = entitlementsForMember(membershipPlan, membershipGrant);
   const currentUsage = workspaceUsage({ customLinks });
 
   const focusPreviewBlock = (blockId: string) => {
@@ -1656,6 +1656,14 @@ const LinksEditor = () => {
       if (!file || !user?.uid) return;
       if (file.size > planEntitlements.maxSharedFileBytes) {
         const maxMb = Math.round(planEntitlements.maxSharedFileBytes / 1024 / 1024);
+        // Beta accounts are already on the top plan, so the upgrade prompt has
+        // nothing to offer them — state the cap instead.
+        if (membershipGrant === BETA_LIFETIME_PREMIUM_GRANT) {
+          alert(isKo
+            ? `베타 기간에는 파일당 최대 ${maxMb}MB까지 업로드할 수 있습니다.`
+            : `During beta you can upload up to ${maxMb}MB per file.`);
+          return;
+        }
         requestUpgradePrompt({
           featureLabel: isKo ? '파일 업로드 용량' : 'File upload size',
           title: isKo ? '더 큰 파일을 공유해 보세요' : 'Share larger files',
