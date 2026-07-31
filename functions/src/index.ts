@@ -2981,6 +2981,11 @@ export const getInstagramConnectionStatus = onCall(
     let grantedScopes: string[] = [];
     let subscribedFields: string[] = [];
     let diagnosticError = "";
+    // profile_picture_url is a CDN link that stops resolving after a while, so
+    // the copy saved at connect time is only a fallback for when Graph is
+    // unreachable. The status call already fetches the profile, so ask it for
+    // the display fields too and prefer what it returns.
+    let liveProfile: {username?: string; name?: string; profilePictureUrl?: string} = {};
     try {
       const token = decryptSecret(
         data.accessToken as EncryptedSecret,
@@ -2990,11 +2995,11 @@ export const getInstagramConnectionStatus = onCall(
       const profileUrl = new URL(
         `https://graph.instagram.com/${instagramGraphVersion}/${instagramUserId}`,
       );
-      profileUrl.searchParams.set("fields", "user_id,username");
+      profileUrl.searchParams.set("fields", "user_id,username,name,profile_picture_url");
       const subscriptionUrl = new URL(
         `https://graph.instagram.com/${instagramGraphVersion}/${instagramUserId}/subscribed_apps`,
       );
-      const [, subscriptionResult] = await Promise.all([
+      const [profileResult, subscriptionResult] = await Promise.all([
         metaFetch(profileUrl.toString(), {
           headers: {Authorization: `Bearer ${token}`},
         }),
@@ -3002,6 +3007,11 @@ export const getInstagramConnectionStatus = onCall(
           headers: {Authorization: `Bearer ${token}`},
         }),
       ]);
+      liveProfile = {
+        username: stringField(profileResult, "username") || undefined,
+        name: stringField(profileResult, "name") || undefined,
+        profilePictureUrl: stringField(profileResult, "profile_picture_url") || undefined,
+      };
       grantedScopes = Array.isArray(data.scopes)
         ? data.scopes.filter((scope): scope is string => typeof scope === "string")
         : [];
@@ -3030,11 +3040,11 @@ export const getInstagramConnectionStatus = onCall(
       : ["comments", "messages"].filter((field) => !subscribedFields.includes(field));
     return {
       connected: true,
-      username: typeof data.username === "string" ? data.username : "",
-      name: typeof data.name === "string" ? data.name : "",
-      profilePictureUrl: typeof data.profilePictureUrl === "string"
-        ? data.profilePictureUrl
-        : "",
+      username: liveProfile.username
+        || (typeof data.username === "string" ? data.username : ""),
+      name: liveProfile.name || (typeof data.name === "string" ? data.name : ""),
+      profilePictureUrl: liveProfile.profilePictureUrl
+        || (typeof data.profilePictureUrl === "string" ? data.profilePictureUrl : ""),
       rules: normalizeStoredRules(data.rules),
       tokenExpiresAt: data.tokenExpiresAt instanceof Timestamp
         ? data.tokenExpiresAt.toDate().toISOString()

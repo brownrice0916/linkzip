@@ -57,6 +57,11 @@ export const MarketingEditor: React.FC = () => {
   const [isSyncingTemplates, setIsSyncingTemplates] = useState(false);
   const [isInstagramLoading, setIsInstagramLoading] = useState(true);
   const [instagramError, setInstagramError] = useState('');
+  // Shown so the owner can tell at a glance which account is linked -- and so the
+  // Meta app review screencast demonstrates what instagram_business_basic is
+  // actually used for, which is what the submitted justification claims.
+  const [instagramProfile, setInstagramProfile] = useState({ name: '', profilePictureUrl: '' });
+  const [isProfileImageBroken, setIsProfileImageBroken] = useState(false);
   const [instagramConnectionIssue, setInstagramConnectionIssue] = useState('');
   const [rulesSaveState, setRulesSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
   const [rulesSaveError, setRulesSaveError] = useState('');
@@ -122,6 +127,10 @@ export const MarketingEditor: React.FC = () => {
             console.warn('Failed to load Instagram thumbnails', mediaError);
           }
         }
+        setInstagramProfile(status.connected
+          ? { name: status.name || '', profilePictureUrl: status.profilePictureUrl || '' }
+          : { name: '', profilePictureUrl: '' });
+        setIsProfileImageBroken(false);
         useStore.setState({
           instagramAccount: status.connected ? status.username || '연결된 계정' : '',
           dmRules: loadedRules,
@@ -199,6 +208,7 @@ export const MarketingEditor: React.FC = () => {
     setInstagramError('');
     try {
       await disconnectInstagramConnection();
+      setInstagramProfile({ name: '', profilePictureUrl: '' });
       useStore.setState({ instagramAccount: '' });
     } catch (error) {
       // 'internal' is what a callable reports for anything it did not raise as an
@@ -229,6 +239,9 @@ export const MarketingEditor: React.FC = () => {
   };
 
   const isKakaoConnected = alimtalkSettings?.isEnabled && (alimtalkSettings?.senderPhone || alimtalkSettings?.apiKey);
+  const showInstagramAvatar = Boolean(
+    instagramAccount && instagramProfile.profilePictureUrl && !isProfileImageBroken,
+  );
 
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans max-w-4xl">
@@ -238,8 +251,28 @@ export const MarketingEditor: React.FC = () => {
         
         <div className="flex items-center justify-between border-b border-gray-100 pb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gray-950 text-white flex items-center justify-center font-bold">
-              <FaInstagram className="w-5 h-5" />
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 overflow-hidden rounded-xl bg-gray-950 text-white flex items-center justify-center font-bold">
+                {showInstagramAvatar ? (
+                  <img
+                    src={instagramProfile.profilePictureUrl}
+                    alt={`@${instagramAccount} 프로필 사진`}
+                    // Instagram's CDN rejects requests that carry our origin.
+                    referrerPolicy="no-referrer"
+                    onError={() => setIsProfileImageBroken(true)}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <FaInstagram className="w-5 h-5" />
+                )}
+              </div>
+              {showInstagramAvatar && (
+                // The avatar takes over the slot that carried the Instagram mark,
+                // so keep the mark as a corner badge.
+                <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gray-950 text-white ring-2 ring-white">
+                  <FaInstagram className="h-2.5 w-2.5" />
+                </span>
+              )}
             </div>
             <div>
               <h3 className="font-extrabold text-base text-gray-900 flex items-center gap-2">
@@ -248,7 +281,9 @@ export const MarketingEditor: React.FC = () => {
                   "px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1",
                   instagramAccount ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-500"
                 )}>
-                  {instagramAccount ? `🟢 @${instagramAccount} 연동 완료` : "⚪ 연동 필요"}
+                  {instagramAccount
+                    ? `🟢 @${instagramAccount}${instagramProfile.name ? ` · ${instagramProfile.name}` : ''} 연동 완료`
+                    : "⚪ 연동 필요"}
                 </span>
               </h3>
               <p className="text-xs text-gray-500 font-medium">특정 키워드가 포함된 댓글이나 DM에 설정한 답장 메시지와 링크를 자동으로 즉시 발송합니다.</p>
