@@ -50,6 +50,52 @@ export function webhookEventId(rawBody: Buffer): string {
   return createHash("sha256").update(rawBody).digest("hex");
 }
 
+export type SignedRequestPayload = {
+  user_id?: string;
+  algorithm?: string;
+  issued_at?: number;
+};
+
+/**
+ * Verifies a Meta `signed_request` (the deauthorize and data-deletion pings)
+ * and returns its payload, or null if it does not check out.
+ *
+ * Accepts a list of secrets because the same callback URL can be registered
+ * under the Facebook app or the Instagram app, and each signs with its own
+ * secret — trying both avoids silently rejecting every ping when the URL was
+ * filed under the other product.
+ */
+export function parseSignedRequest(
+  signedRequest: string | undefined,
+  appSecrets: string[],
+): SignedRequestPayload | null {
+  if (!signedRequest) return null;
+  const [encodedSignature, encodedPayload] = signedRequest.split(".");
+  if (!encodedSignature || !encodedPayload) return null;
+
+  // Meta signs the still-encoded payload string, so verify before decoding.
+  const provided = base64UrlDecode(encodedSignature);
+  const signed = appSecrets.some((secret) => {
+    if (!secret) return false;
+    const expected = createHmac("sha256", secret).update(encodedPayload).digest();
+    return expected.length === provided.length && timingSafeEqual(expected, provided);
+  });
+  if (!signed) return null;
+
+  try {
+    const payload = JSON.parse(
+      base64UrlDecode(encodedPayload).toString("utf8"),
+    ) as SignedRequestPayload;
+    return payload?.algorithm?.toUpperCase() === "HMAC-SHA256" ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function base64UrlDecode(value: string): Buffer {
+  return Buffer.from(value.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+}
+
 function safeEqual(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);

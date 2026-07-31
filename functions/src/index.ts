@@ -28,6 +28,7 @@ import {
 } from "./instagramAutomation.js";
 
 import {
+  parseSignedRequest,
   verifyMetaSignature,
   verifyWebhookChallenge,
   webhookEventId,
@@ -3144,6 +3145,64 @@ export const disconnectInstagram = onCall(
     }
     await connectionRef.delete();
     return {disconnected: true};
+  },
+);
+
+// Meta pings this when someone removes the app from their Instagram or
+// Facebook settings. The access token is already dead by that point, so the
+// unsubscribe is best effort — dropping the stored connection is the part that
+// has to happen, otherwise the app keeps a token it is no longer entitled to.
+export const metaInstagramDeauthorize = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    invoker: "public",
+    secrets: [metaAppSecret, metaInstagramAppSecret, metaTokenEncryptionKey],
+  },
+  async (request, response) => {
+    if (request.method !== "POST") {
+      response.set("Allow", "POST").status(405).send("Method not allowed");
+      return;
+    }
+
+    const signedRequest = typeof request.body?.signed_request === "string"
+      ? request.body.signed_request
+      : undefined;
+    const payload = parseSignedRequest(signedRequest, [
+      metaAppSecret.value(),
+      metaInstagramAppSecret.value(),
+    ]);
+    if (!payload?.user_id) {
+      logger.warn("Instagram deauthorize rejected", {
+        hasSignedRequest: Boolean(signedRequest),
+      });
+      response.status(400).send("Invalid signed_request");
+      return;
+    }
+
+    const matches = await db.collection("instagramConnections")
+      .where("instagramUserId", "==", payload.user_id)
+      .get();
+
+    for (const match of matches.docs) {
+      const connection = match.data() as InstagramConnection;
+      try {
+        const token = decryptSecret(connection.accessToken, metaTokenEncryptionKey.value());
+        await metaFetch(
+          `https://graph.instagram.com/${instagramGraphVersion}/${encodeURIComponent(connection.instagramUserId)}/subscribed_apps`,
+          {method: "DELETE", headers: {Authorization: `Bearer ${token}`}},
+        );
+      } catch (unsubscribeError) {
+        logger.warn("Instagram unsubscribe failed during deauthorize", unsubscribeError);
+      }
+      await match.ref.delete();
+    }
+
+    logger.info("Instagram deauthorize processed", {removed: matches.size});
+    // Meta retries on a non-2xx, and an unknown user_id is not a failure we can
+    // recover from by retrying, so acknowledge either way.
+    response.status(200).send("OK");
   },
 );
 

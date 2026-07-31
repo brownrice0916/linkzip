@@ -90,6 +90,13 @@
         }
       },
       {
+        "source": "/api/meta/instagram/deauthorize",
+        "function": {
+          "functionId": "metaInstagramDeauthorize",
+          "region": "asia-northeast3"
+        }
+      },
+      {
         "source": "/auth/instagram/callback",
         "function": {
           "functionId": "instagramOAuthCallback",
