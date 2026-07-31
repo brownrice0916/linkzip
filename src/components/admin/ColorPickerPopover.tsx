@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { Check, Pipette, X } from 'lucide-react';
 
 interface ColorPickerPopoverProps {
@@ -11,6 +11,7 @@ interface ColorPickerPopoverProps {
 }
 
 const DEFAULT_COLORS = ['#022B49', '#FFFFFF', '#FDEBDB', '#000000', '#7C3AED', '#EC4899'];
+const COLOR_PICKER_OPEN_EVENT = 'linkzip:color-picker-open';
 const normalizeHex = (value: string) => /^#[0-9A-F]{6}$/i.test(value) ? value.toUpperCase() : '#FFFFFF';
 
 const hexToHsv = (hex: string) => {
@@ -41,6 +42,7 @@ const hsvToHex = (h: number, s: number, v: number) => {
 };
 
 export const ColorPickerPopover: React.FC<ColorPickerPopoverProps> = ({ label, value, onChange, opacity, onOpacityChange, suggested = DEFAULT_COLORS }) => {
+  const pickerId = useId();
   const normalized = normalizeHex(value);
   const initialHsv = useMemo(() => hexToHsv(normalized), [normalized]);
   const [isOpen, setIsOpen] = useState(false);
@@ -56,6 +58,24 @@ export const ColorPickerPopover: React.FC<ColorPickerPopoverProps> = ({ label, v
     setBrightness(next.v);
     setHexDraft(normalized);
   }, [normalized]);
+
+  useEffect(() => {
+    const closeWhenAnotherPickerOpens = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== pickerId) setIsOpen(false);
+    };
+    window.addEventListener(COLOR_PICKER_OPEN_EVENT, closeWhenAnotherPickerOpens);
+    return () => window.removeEventListener(COLOR_PICKER_OPEN_EVENT, closeWhenAnotherPickerOpens);
+  }, [pickerId]);
+
+  const togglePicker = () => {
+    setIsOpen((open) => {
+      const nextOpen = !open;
+      if (nextOpen) {
+        window.dispatchEvent(new CustomEvent<string>(COLOR_PICKER_OPEN_EVENT, { detail: pickerId }));
+      }
+      return nextOpen;
+    });
+  };
 
   const updateSaturationAndBrightness = (event: React.PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -74,7 +94,7 @@ export const ColorPickerPopover: React.FC<ColorPickerPopoverProps> = ({ label, v
 
   return (
     <div className="relative min-w-0">
-      <button type="button" onClick={() => setIsOpen((open) => !open)} className="w-full flex items-center gap-2.5 border border-gray-200 rounded-xl p-2 bg-white hover:border-purple-400 transition cursor-pointer" aria-label={`${label} 색상 선택`}>
+      <button type="button" onClick={togglePicker} className="w-full flex items-center gap-2.5 border border-gray-200 rounded-xl p-2 bg-white hover:border-[#ff5f35] transition cursor-pointer" aria-label={`${label} 색상 선택`}>
         <span className="w-8 h-8 rounded-lg border border-black/10 shadow-inner shrink-0" style={{ backgroundColor: normalized, opacity: (opacity ?? 100) / 100 }} />
         <span className="font-mono text-[11px] font-black text-gray-800 truncate">{normalized}</span>
       </button>
@@ -92,10 +112,10 @@ export const ColorPickerPopover: React.FC<ColorPickerPopoverProps> = ({ label, v
           </div>
           <input type="range" min="0" max="360" value={Math.round(hue)} onChange={(event) => { const nextHue = Number(event.target.value); setHue(nextHue); onChange(hsvToHex(nextHue, saturation, brightness)); }} className="color-hue-slider w-full h-3 rounded-full appearance-none cursor-pointer" aria-label="색상 계열" />
           <div className="grid grid-cols-[1fr_52px] gap-2">
-            <input type="text" value={hexDraft} onChange={(event) => handleHex(event.target.value)} className="w-full rounded-xl border border-gray-200 px-4 py-3 font-mono text-sm font-black uppercase focus:outline-none focus:ring-2 focus:ring-purple-200" aria-label={`${label} HEX`} />
+            <input type="text" value={hexDraft} onChange={(event) => handleHex(event.target.value)} className="w-full rounded-xl border border-gray-200 px-4 py-3 font-mono text-sm font-black uppercase focus:outline-none focus:ring-2 focus:ring-[#ff5f35]/25" aria-label={`${label} HEX`} />
             <label className="rounded-xl border border-gray-200 hover:bg-gray-50 flex items-center justify-center cursor-pointer" title="시스템 색상 선택기"><Pipette className="w-5 h-5" /><input type="color" value={normalized} onChange={(event) => onChange(event.target.value.toUpperCase())} className="sr-only" /></label>
           </div>
-          {onOpacityChange && <label className="block space-y-2 text-xs font-bold text-gray-600"><span className="flex justify-between"><span>투명도</span><span className="font-black text-purple-700">{opacity ?? 100}%</span></span><input type="range" min="0" max="100" value={opacity ?? 100} onChange={(event) => onOpacityChange(Number(event.target.value))} className="w-full accent-purple-600" /></label>}
+          {onOpacityChange && <label className="block space-y-2 text-xs font-bold text-gray-600"><span className="flex justify-between"><span>투명도</span><span className="font-black text-[#ff5f35]">{opacity ?? 100}%</span></span><input type="range" min="0" max="100" value={opacity ?? 100} onChange={(event) => onOpacityChange(Number(event.target.value))} className="w-full accent-[#ff5f35]" /></label>}
           <div className="border-t border-gray-100 pt-4"><p className="text-xs font-black text-gray-700 mb-3">추천 색상</p><div className="flex flex-wrap gap-2.5">{suggested.map((color) => <button key={color} type="button" onClick={() => onChange(color)} className="relative w-9 h-9 rounded-full border border-gray-300 shadow-sm hover:scale-110 transition cursor-pointer" style={{ backgroundColor: color }}>{normalizeHex(color) === normalized && <Check className={['#FFFFFF', '#FDEBDB'].includes(normalized) ? 'absolute inset-0 m-auto w-4 h-4 text-black' : 'absolute inset-0 m-auto w-4 h-4 text-white'} />}</button>)}</div></div>
         </div>
       )}

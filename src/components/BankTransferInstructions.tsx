@@ -37,7 +37,7 @@ const BankTransferInstructions: React.FC<Props> = ({ orderNumber, amount, instru
     <div className="space-y-4 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-left">
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-amber-950"><Landmark className="h-5 w-5" /></span>
-        <div><h3 className="text-sm font-black text-gray-950">주문이 접수되었습니다</h3><p className="mt-1 text-[11px] font-semibold leading-relaxed text-gray-600">아래 계좌로 정확한 금액을 입금해주세요. 관리자 확인 후 주문 상태가 자동으로 변경됩니다.</p></div>
+        <div><h3 className="text-sm font-black text-gray-950">주문이 접수되었습니다</h3><p className="mt-1 text-[11px] font-semibold leading-relaxed text-gray-600">아래 계좌로 정확한 금액을 입금해주세요. 입금 후에는 반드시 아래의 <strong className="font-black text-gray-950">‘입금했어요’</strong> 버튼을 눌러야 확인 요청이 전달됩니다.</p></div>
       </div>
       <dl className="space-y-2 rounded-2xl bg-white p-4 text-xs">
         <div className="flex justify-between gap-4"><dt className="font-bold text-gray-500">은행</dt><dd className="font-black text-gray-950">{instructions.bankName}</dd></div>
@@ -54,10 +54,13 @@ const BankTransferInstructions: React.FC<Props> = ({ orderNumber, amount, instru
           <p className="mt-1 text-[10px] font-semibold leading-relaxed text-emerald-700">관리자가 실제 입금을 확인한 뒤 파일 다운로드 또는 플랜 이용이 활성화됩니다.</p>
         </div>
       ) : (
-        <button type="button" onClick={() => void reportDeposit()} disabled={reporting} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gray-950 py-3 text-xs font-black text-white disabled:cursor-wait disabled:opacity-60">
-          {reporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          {reporting ? '요청 접수 중...' : '입금했어요'}
-        </button>
+        <div className="space-y-2">
+          <p className="rounded-xl bg-amber-100 px-3 py-2 text-center text-[10px] font-black text-amber-900">입금을 마쳤다면 아래 버튼을 꼭 눌러주세요.</p>
+          <button type="button" onClick={() => void reportDeposit()} disabled={reporting} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gray-950 py-3 text-xs font-black text-white disabled:cursor-wait disabled:opacity-60">
+            {reporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            {reporting ? '요청 접수 중...' : '입금했어요 · 확인 요청하기'}
+          </button>
+        </div>
       )}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-[10px] font-bold text-red-600">{error}</p>}
       {onDone && <button type="button" onClick={onDone} className="w-full cursor-pointer rounded-2xl border border-gray-200 bg-white py-3 text-xs font-black text-gray-600 transition hover:bg-gray-50">{reported ? '확인' : '나중에 확인하기'}</button>}

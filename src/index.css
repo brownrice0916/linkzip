@@ -2,8 +2,196 @@
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  /* Keep every interactive affordance consistent across the app. Text fields
+     intentionally retain the I-beam cursor, while controls and clickable
+     surfaces use the standard hand cursor. */
+  :where(
+    a[href],
+    button:not(:disabled),
+    select:not(:disabled),
+    summary,
+    label[for],
+    input[type="button"]:not(:disabled),
+    input[type="submit"]:not(:disabled),
+    input[type="reset"]:not(:disabled),
+    input[type="checkbox"]:not(:disabled),
+    input[type="radio"]:not(:disabled),
+    input[type="file"]:not(:disabled),
+    [role="button"]:not([aria-disabled="true"]),
+    [role="link"]:not([aria-disabled="true"]),
+    [role="tab"]:not([aria-disabled="true"]),
+    [role="switch"]:not([aria-disabled="true"]),
+    [role="checkbox"]:not([aria-disabled="true"]),
+    [role="radio"]:not([aria-disabled="true"]),
+    [role="menuitem"]:not([aria-disabled="true"]),
+    [role="option"]:not([aria-disabled="true"]),
+    [onclick],
+    [data-clickable="true"],
+    [tabindex]:not([tabindex="-1"]):not(input):not(textarea)
+  ) {
+    cursor: pointer;
+  }
+
+  :where(
+    button:disabled,
+    select:disabled,
+    input:disabled,
+    [aria-disabled="true"]
+  ) {
+    cursor: not-allowed;
+  }
+}
+
+/* iOS Safari automatically zooms the page when a focused form control uses a
+   computed font size below 16px. Keep text-entry controls readable on touch
+   devices without changing the size of switches, sliders, or upload inputs. */
+@media (max-width: 1024px), (pointer: coarse) {
+  input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Keep iPhone Safari from zooming the whole editor when any text field is
+   focused. Explicit selectors cover controls rendered inside portals/modals. */
+@supports (-webkit-touch-callout: none) {
+  input[type='text'],
+  input[type='email'],
+  input[type='url'],
+  input[type='tel'],
+  input[type='number'],
+  input[type='password'],
+  input[type='search'],
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='time'],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Public pages can contain many rich blocks. Paint only the blocks approaching
+   the viewport so long profiles stay smooth on mid-range phones. */
+[data-public-profile='true'] [data-preview-block-id] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 112px;
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  /* Repeated backdrop filters force expensive repaints while scrolling on
+     phones. The translucent color remains, so the design keeps its glass look
+     without the scroll hitching. */
+  [data-public-profile='true'] [class*='backdrop-blur'] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  [data-public-profile='true'] [class*='hover:scale'] {
+    transition-duration: 120ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Sortable block handles must win over the browser's pan gesture on touch devices. */
+[data-sortable-block] [data-drag-handle],
+[data-sortable-block] .cursor-grab {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+@media (max-width: 1024px), (pointer: coarse) {
+  [data-sortable-block] [data-drag-handle],
+  [data-sortable-block] .cursor-grab {
+    box-sizing: content-box;
+    padding: 10px;
+    margin: -10px;
+  }
+}
+
+.image-card-media {
+  position: relative;
+  isolation: isolate;
+  background: rgb(255 255 255 / 0.56);
+}
+
+.image-card-media::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgb(23 23 20 / 0.04);
+  content: '';
+  pointer-events: none;
+}
+
+.image-card-caption {
+  background: rgb(255 255 255 / 0.14);
+  color: inherit;
+}
+
+/* LinkZip premium marker: compact like a utility badge, with the product's
+   lime/orange neo-pop accent instead of a generic lock. */
+.design-premium-badge {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 255 255 / 0.85);
+  border-radius: 999px;
+  background: #e7e5e1;
+  color: #e89a25;
+  box-shadow: 0 1px 3px rgb(23 23 20 / 0.08);
+  font-size: 8px;
+  font-weight: 950;
+  line-height: 1;
+  z-index: 3;
+}
+
+.design-premium-badge svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+}
+
+.font-option-card {
+  padding-right: 26px !important;
+  padding-left: 8px !important;
+}
+
+.font-option-card .design-premium-badge {
+  top: 5px !important;
+  right: 5px !important;
 }
 
 /* Block headers keep their collapse action with the destructive action on the right. */
@@ -287,7 +475,13 @@
     overflow: hidden;
   }
 
-  .linkzip-admin .admin-live-preview > div {
+  .linkzip-admin .admin-preview-stack {
+    width: 100%;
+    height: 100%;
+    justify-content: flex-start;
+  }
+
+  .linkzip-admin .admin-preview-device {
     width: min(340px, calc(100vw - 40px));
     height: 100%;
     border-radius: 28px;
@@ -300,7 +494,7 @@
     padding: 12px 0 calc(var(--mobile-sheet-height) + 12px);
   }
 
-  .linkzip-admin.mobile-editor-open .admin-live-preview > div {
+  .linkzip-admin.mobile-editor-open .admin-preview-device {
     width: auto;
     max-width: calc(100vw - 56px);
     height: min(560px, calc(100dvh - 72px - var(--mobile-sheet-height) - 28px));
@@ -310,17 +504,63 @@
   }
 
   .linkzip-admin.mobile-editor-closed .admin-live-preview {
-    align-items: stretch;
-    padding: 12px 12px 0;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 16px;
+    background: rgb(17 24 39 / 0.58);
+    backdrop-filter: blur(3px);
   }
 
-  .linkzip-admin.mobile-editor-closed .admin-live-preview > div {
-    width: 100%;
-    max-width: none;
-    height: 100%;
-    max-height: none;
-    border-radius: 28px 28px 0 0;
-    box-shadow: none;
+  .linkzip-admin.mobile-editor-closed .admin-preview-stack {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    justify-content: center;
+  }
+
+  .linkzip-admin.mobile-editor-closed .admin-preview-device {
+    width: auto;
+    max-width: calc(100vw - 32px);
+    height: min(780px, calc(100dvh - 36px), calc((100vw - 32px) * 2)) !important;
+    max-height: calc(100dvh - 36px);
+    aspect-ratio: 1 / 2;
+    border-radius: 34px;
+    box-shadow: 0 24px 70px rgb(0 0 0 / 0.35);
+  }
+
+  .linkzip-admin .mobile-preview-close {
+    position: fixed;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    left: 50%;
+    z-index: 57;
+    display: flex;
+    height: 48px;
+    transform: translateX(-50%);
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background: white;
+    padding: 0 20px;
+    color: #111827;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.22);
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .linkzip-admin .mobile-preview-close svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .linkzip-admin .admin-preview-url {
+    display: none;
   }
 
   .linkzip-admin .admin-top-nav,
@@ -366,6 +606,77 @@
   .linkzip-admin .mobile-toolbar-icon svg {
     width: 24px;
     height: 24px;
+  }
+
+  .linkzip-admin .mobile-toolbar-logo {
+    margin-left: 4px;
+  }
+
+  .linkzip-admin .mobile-toolbar-account {
+    margin-left: 6px;
+  }
+
+  .linkzip-admin .mobile-toolbar-avatar {
+    display: flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #6b7280;
+    cursor: pointer;
+  }
+
+  .linkzip-admin .mobile-toolbar-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .linkzip-admin .mobile-toolbar-avatar svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .linkzip-admin .mobile-account-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 230px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background: white;
+    box-shadow: 0 18px 45px rgb(15 23 42 / 0.2);
+  }
+
+  .linkzip-admin .mobile-account-menu > button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .linkzip-admin .mobile-account-menu > button:hover {
+    background: #f5f5f4;
+  }
+
+  .linkzip-admin .mobile-account-menu > button.logout {
+    border-top: 1px solid #f3f4f6;
+    color: #dc2626;
+  }
+
+  .linkzip-admin .mobile-account-menu > button svg {
+    width: 17px;
+    height: 17px;
   }
 
   .linkzip-admin .mobile-toolbar-title {
@@ -427,12 +738,13 @@
     transition: transform 180ms ease, opacity 180ms ease;
   }
 
-  /* Links use the entire editor viewport. Preview is available only from the Preview action. */
-  .linkzip-admin.admin-tab-links.mobile-editor-open .admin-live-preview {
+  /* Links, analytics, and audience use the entire mobile editor viewport.
+     Preview remains available only from the explicit Preview action. */
+  .linkzip-admin.mobile-standalone-page.mobile-editor-open .admin-live-preview {
     display: none;
   }
 
-  .linkzip-admin.admin-tab-links.mobile-editor-open .admin-main-panel {
+  .linkzip-admin.mobile-standalone-page.mobile-editor-open .admin-main-panel {
     top: 72px;
     height: calc(100dvh - 72px);
     max-height: none;
@@ -441,17 +753,232 @@
     box-shadow: none;
   }
 
-  .linkzip-admin.admin-tab-links.mobile-editor-open .mobile-sheet-header {
+  .linkzip-admin.mobile-standalone-page.mobile-editor-open .mobile-sheet-header {
     display: none;
   }
 
-  .linkzip-admin.admin-tab-links.mobile-editor-open .admin-editor-body {
-    padding: 12px 12px 20px;
+  .linkzip-admin.mobile-standalone-page.mobile-editor-open .admin-editor-body {
+    padding: 8px 10px 16px;
     background: #fff;
   }
 
-  .linkzip-admin.admin-tab-links.mobile-editor-open .admin-editor-canvas {
-    padding-top: 12px;
+  .linkzip-admin.mobile-standalone-page.mobile-editor-open .admin-editor-canvas {
+    padding: 8px 2px 24px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 60px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-editor > :not([hidden]) {
+    margin-block: 0;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-profile {
+    padding-block: 0;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-profile > div:first-child > button {
+    gap: 10px;
+    padding: 2px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-profile-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-actions {
+    gap: 8px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-actions > button {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-blocks > :not([hidden]) {
+    margin-block: 0;
+  }
+
+  .linkzip-admin.admin-tab-links .collection-card-shell.mb-4 {
+    margin-bottom: 7px;
+    margin-block-end: 7px;
+  }
+
+  .linkzip-admin.admin-tab-links [data-collapsed="true"] {
+    padding: 10px 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .linkzip-admin.admin-tab-links [data-sortable-block] [data-collapsed="true"] > div:first-child {
+    min-height: 36px;
+    gap: 6px;
+  }
+
+  .linkzip-admin.admin-tab-links .block-identity {
+    gap: 8px;
+  }
+
+  .linkzip-admin.admin-tab-links .block-identity-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .linkzip-admin.admin-tab-links .block-identity-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .linkzip-admin.admin-tab-links .block-identity-copy {
+    flex: 1;
+    gap: 7px;
+    overflow: hidden;
+  }
+
+  .linkzip-admin.admin-tab-links .block-identity-title {
+    font-size: 13px;
+  }
+
+  .linkzip-admin.admin-tab-links .block-identity-summary {
+    min-width: 0;
+    font-size: 11px;
+  }
+
+  .linkzip-admin.admin-tab-links [data-sortable-block] [role="switch"],
+  .linkzip-admin.admin-tab-links [data-sortable-block] button[class~="w-10"][class~="h-5"][class~="rounded-full"][class~="transition-colors"] {
+    display: none;
+  }
+
+  .linkzip-admin.admin-tab-links .sns-block-card[data-collapsed="false"] {
+    gap: 10px;
+    padding: 14px !important;
+    border-radius: 20px;
+  }
+
+  .linkzip-admin.admin-tab-links .sns-block-card[data-collapsed="false"] > div:first-child {
+    padding-bottom: 10px !important;
+  }
+
+  .linkzip-admin.admin-tab-links .sns-block-body,
+  .linkzip-admin.admin-tab-links .sns-block-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-block: 0;
+    padding-top: 0;
+  }
+
+  .linkzip-admin.admin-tab-links .sns-block-items > :not([hidden]) {
+    margin-block: 0;
+  }
+
+  .linkzip-admin.admin-tab-links .sns-block-platform {
+    width: 38px;
+    height: 38px;
+  }
+
+  .linkzip-admin.admin-tab-links .sns-block-input {
+    min-width: 0;
+    padding: 10px 12px;
+  }
+
+  .linkzip-admin.admin-tab-links .sns-block-add {
+    padding-top: 2px;
+  }
+
+  .linkzip-admin.admin-tab-links .sns-block-add > button {
+    padding-block: 12px;
+    border-radius: 14px;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-card {
+    padding: 12px !important;
+    border-radius: 18px;
+  }
+
+  .linkzip-admin.admin-tab-links .group-card[data-collapsed="false"] {
+    padding: 14px !important;
+    border-radius: 20px;
+  }
+
+  .linkzip-admin.admin-tab-links .group-card[data-collapsed="false"] > div:first-child {
+    padding-bottom: 10px !important;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-form > :not([hidden]) {
+    margin-block: 0;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-title-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 8px;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-field-label {
+    width: auto;
+    grid-column: 1 / -1;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-title-row > input {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 12px;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-title-row > div {
+    grid-column: 2;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-url-row {
+    display: block;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-url-row > .nested-link-field-label {
+    display: block;
+    margin-bottom: 7px;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-url-controls {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .linkzip-admin.admin-tab-links .nested-link-url-controls > input {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 12px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-mobile-bottom-nav {
+    padding: 8px 6px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .linkzip-admin.admin-tab-links .admin-editor-body {
+    scrollbar-gutter: auto;
+    scrollbar-width: none;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-editor-body::-webkit-scrollbar {
+    display: none;
   }
 
   .linkzip-admin.admin-tab-appearance .admin-main-panel {
@@ -459,6 +986,41 @@
     left: 12px;
     width: auto;
     border-radius: 30px 30px 0 0;
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), visibility 280ms;
+  }
+
+  /* Sticker browsing is a dedicated, nearly full-screen mobile sheet. Keeping
+     one scroll container also avoids animated-image tearing in iOS Safari. */
+  .linkzip-admin.admin-tab-appearance.mobile-editor-open.mobile-appearance-stickers .admin-main-panel {
+    top: max(8px, env(safe-area-inset-top));
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 70;
+    width: 100%;
+    height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    max-height: none;
+    min-height: 0;
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -18px 52px rgb(15 23 42 / 0.22);
+  }
+
+  .linkzip-admin.mobile-appearance-stickers .giphy-picker-grid {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .linkzip-admin.mobile-appearance-stickers .giphy-picker-item {
+    position: relative;
+    isolation: isolate;
+    contain: layout paint;
+    transform: translateZ(0);
+  }
+
+  .linkzip-admin.mobile-appearance-stickers .giphy-picker-item img {
+    backface-visibility: hidden;
+    transform: translateZ(0);
   }
 
   .linkzip-admin.admin-tab-appearance.mobile-editor-open .admin-live-preview {
@@ -466,14 +1028,69 @@
     padding: 12px 12px 0;
   }
 
-  .linkzip-admin.admin-tab-appearance.mobile-editor-open .admin-live-preview > div {
-    width: 70%;
+  .linkzip-admin.admin-tab-appearance.mobile-editor-open .admin-preview-stack {
+    align-items: center;
+    justify-content: flex-start;
+    overflow: visible;
+  }
+
+  .linkzip-admin.admin-tab-appearance.mobile-editor-open .admin-preview-device {
+    width: 390px;
+    min-width: 390px;
     max-width: none;
-    height: auto;
+    height: 780px !important;
     max-height: none;
     aspect-ratio: 1 / 2;
+    transform: scale(0.48);
+    transform-origin: top center;
     border-radius: 28px 28px 0 0;
     box-shadow: 0 14px 36px rgba(15, 23, 42, 0.12);
+  }
+
+  /* On the design tab, closing means dismissing the bottom sheet—not opening
+     the generic full-screen preview overlay used by the other tabs. */
+  .linkzip-admin.admin-tab-appearance.mobile-editor-closed .admin-main-panel.mobile-sheet-closed {
+    display: flex;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(calc(100% + 24px));
+  }
+
+  .linkzip-admin.admin-tab-appearance.mobile-editor-closed .admin-live-preview {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    grid-column: 1;
+    grid-row: 2;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 12px 12px 0;
+    background: #fff;
+    backdrop-filter: none;
+  }
+
+  .linkzip-admin.admin-tab-appearance.mobile-editor-closed .admin-preview-stack {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: visible;
+  }
+
+  .linkzip-admin.admin-tab-appearance.mobile-editor-closed .admin-preview-device {
+    width: 390px;
+    min-width: 390px;
+    max-width: none;
+    height: 920px !important;
+    max-height: none;
+    aspect-ratio: 1 / 2;
+    transform: scale(0.9);
+    transform-origin: top center;
+    border-radius: 28px;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.12);
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .linkzip-admin .mobile-sheet-closed {
@@ -601,6 +1218,70 @@
     box-shadow: none;
   }
 
+  /* Keep the mobile design sheet dense enough to browse without wasting
+     phone-width space on desktop-sized card padding. */
+  .linkzip-admin.admin-tab-appearance .admin-editor-body {
+    padding: 46px 4px 0;
+  }
+
+  .linkzip-admin.admin-tab-appearance .admin-editor-canvas {
+    padding: 10px 8px 16px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor {
+    padding-bottom: 68px !important;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor > * + * {
+    margin-top: 12px !important;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor .p-6 {
+    padding: 12px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor .p-5 {
+    padding: 13px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor .p-4 {
+    padding: 11px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor .p-3 {
+    padding: 9px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor .gap-4 {
+    gap: 10px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor .gap-3 {
+    gap: 8px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor-theme .grid {
+    gap: 10px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor-theme .h-24 {
+    height: 82px;
+    margin-bottom: 6px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .appearance-editor-theme > div:first-child button:last-child {
+    padding: 7px 10px;
+  }
+
+  .linkzip-admin.admin-tab-appearance .admin-mobile-bottom-nav {
+    min-height: 58px;
+    padding: 7px 10px max(7px, env(safe-area-inset-bottom));
+  }
+
+  .linkzip-admin.admin-tab-appearance .admin-mobile-bottom-nav button {
+    gap: 2px;
+  }
+
   .linkzip-admin .admin-section-header {
     display: none;
   }
@@ -630,6 +1311,10 @@
     width: 38px;
   }
 
+  .linkzip-admin .mobile-toolbar-logo > span:last-child {
+    display: none;
+  }
+
   .linkzip-admin .mobile-toolbar-title {
     max-width: 29vw;
     font-size: 14px;
@@ -646,4 +1331,167 @@
     height: 100%;
   }
 
+  .linkzip-admin.mobile-standalone-page .mobile-admin-toolbar {
+    height: 60px;
+    padding-block: 6px;
+  }
+
+  .linkzip-admin.mobile-standalone-page.mobile-editor-open .admin-main-panel {
+    top: 60px;
+    height: calc(100dvh - 60px);
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-editor {
+    gap: 10px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-profile-avatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-profile [class*="text-lg"] {
+    font-size: 16px;
+  }
+
+  .linkzip-admin.admin-tab-links .admin-link-actions > button {
+    min-height: 42px;
+    padding-inline: 12px;
+  }
+
+  .linkzip-admin.admin-tab-links [data-collapsed="true"] {
+    padding: 9px 10px !important;
+  }
+
+  .linkzip-admin.admin-tab-links .block-identity-copy {
+    gap: 5px;
+  }
+
+  .linkzip-admin.admin-tab-links .block-identity-title {
+    font-size: 12px;
+  }
+
 }
+
+@media (max-width: 640px) {
+  .thumbnail-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .thumbnail-modal-panel {
+    width: 100%;
+    max-width: none;
+    max-height: min(88dvh, 760px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 24px 24px 0 0;
+  }
+
+  .thumbnail-modal-header {
+    padding: 13px 16px 11px;
+  }
+
+  .thumbnail-modal-title {
+    font-size: 18px;
+  }
+
+  .thumbnail-modal-description {
+    max-width: calc(100vw - 76px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .thumbnail-modal-header > button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .thumbnail-modal-tabs {
+    padding: 10px 16px 0;
+  }
+
+  .thumbnail-modal-tabs button {
+    padding-block: 8px;
+  }
+
+  .thumbnail-modal-body {
+    padding: 12px 16px 14px;
+    overscroll-behavior: contain;
+  }
+
+  .thumbnail-crop-frame {
+    max-height: 48dvh;
+    touch-action: none;
+  }
+
+  .thumbnail-icon-search input {
+    height: 42px;
+  }
+
+  .thumbnail-icon-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .thumbnail-icon-option {
+    min-height: 62px;
+    padding: 5px;
+    border-radius: 14px;
+  }
+
+  .thumbnail-icon-option svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .thumbnail-icon-option span {
+    font-size: 8px;
+  }
+
+  .thumbnail-modal-footer {
+    gap: 8px;
+    padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .thumbnail-modal-footer > button {
+    height: 44px;
+    border-radius: 14px;
+  }
+}
+
+.thumbnail-crop-box {
+  cursor: move;
+  background-repeat: no-repeat;
+  touch-action: none;
+}
+
+.thumbnail-crop-handle {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  touch-action: none;
+}
+
+.thumbnail-crop-handle::after {
+  content: '';
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-color: #fff;
+  border-style: solid;
+}
+
+.thumbnail-crop-handle-nw { top: -15px; left: -15px; cursor: nwse-resize; }
+.thumbnail-crop-handle-ne { top: -15px; right: -15px; cursor: nesw-resize; }
+.thumbnail-crop-handle-sw { bottom: -15px; left: -15px; cursor: nesw-resize; }
+.thumbnail-crop-handle-se { right: -15px; bottom: -15px; cursor: nwse-resize; }
+.thumbnail-crop-handle-nw::after { right: 2px; bottom: 2px; border-width: 3px 0 0 3px; }
+.thumbnail-crop-handle-ne::after { bottom: 2px; left: 2px; border-width: 3px 3px 0 0; }
+.thumbnail-crop-handle-sw::after { top: 2px; right: 2px; border-width: 0 0 3px 3px; }
+.thumbnail-crop-handle-se::after { top: 2px; left: 2px; border-width: 0 3px 3px 0; }

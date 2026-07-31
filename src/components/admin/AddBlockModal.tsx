@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Link2, 
@@ -7,21 +9,35 @@ import {
   ShoppingBag, 
   Heart, 
   CalendarCheck, 
-  Phone,
   Download,
   FileDown,
   MessageSquareText,
   BadgeDollarSign,
   MapPinned,
-  Image
+  Lock
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { useStore } from '../../store/useStore';
+import { entitlementsForPlan, workspaceUsage } from '../../domain/membershipPlans';
+import { requestUpgradePrompt } from '../UpgradePromptHost';
+import { STOREFRONT_AVAILABLE } from '../../config/featureFlags';
 
 interface AddBlockModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectBlock: (blockType: string) => void;
+}
+
+interface AddBlockOption {
+  id: string;
+  label: string;
+  desc: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  customIcon?: React.ReactNode;
+  bgColor: string;
+  iconColor?: string;
+  disabled?: boolean;
+  locked?: boolean;
 }
 
 export const AddBlockModal: React.FC<AddBlockModalProps> = ({
@@ -30,11 +46,22 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
   onSelectBlock
 }) => {
   const language = useStore((state) => state.language);
+  const membershipPlan = useStore((state) => state.membershipPlan);
+  const customLinks = useStore((state) => state.customLinks);
   const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
+  const entitlements = entitlementsForPlan(membershipPlan);
+  const usage = workspaceUsage({ customLinks });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const categories = [
+  const categories: Array<{ title: string; blocks: AddBlockOption[] }> = [
     {
       title: tr('링크와 위치', 'Links & location'),
       blocks: [
@@ -45,14 +72,6 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           icon: Link2, 
           bgColor: 'bg-emerald-500', 
           iconColor: 'text-white' 
-        },
-        {
-          id: 'image',
-          label: tr('이미지 링크', 'Image link'),
-          desc: tr('큰 이미지를 올리고 원하는 주소로 연결합니다.', 'Upload a large image and link it to a URL.'),
-          icon: Image,
-          bgColor: 'bg-cyan-500',
-          iconColor: 'text-white'
         },
         { 
           id: 'sns', 
@@ -66,11 +85,6 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           desc: tr('한글 장소명이나 주소를 검색해 지도를 표시합니다.', 'Search a place or address and display a map.'),
           icon: MapPinned, bgColor: 'bg-sky-600', iconColor: 'text-white'
         },
-        {
-          id: 'contact', label: tr('비즈니스 연락처', 'Contact'),
-          desc: tr('비즈니스 이메일이나 담당자 연락처를 표시합니다.', 'Display a business email or contact person.'),
-          icon: Phone, bgColor: 'bg-stone-600', iconColor: 'text-white'
-        },
       ]
     },
     {
@@ -83,8 +97,9 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
         },
         {
           id: 'file', label: tr('파일 공유', 'File sharing'),
-          desc: tr('PDF, 이미지, 문서 등을 방문자가 무료로 내려받게 합니다.', 'Let visitors download a file for free.'),
-          icon: FileDown, bgColor: 'bg-cyan-600', iconColor: 'text-white'
+          desc: tr('최대 5MB · 파일당 하루 20회까지 내려받을 수 있습니다.', 'Up to 5MB · 20 downloads per file each day.'),
+          icon: FileDown, bgColor: 'bg-cyan-600', iconColor: 'text-white',
+          locked: usage.sharedFileBlocks >= entitlements.maxSharedFileBlocks,
         },
         {
           id: 'reservation', label: tr('캘린더', 'Calendar'),
@@ -109,8 +124,17 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           label: tr('익명 메시지 보내기', 'Anonymous messages'),
           desc: tr('방문자가 이름 없이 비공개 메시지를 보냅니다.', 'Let visitors send you private anonymous messages.'),
           icon: MessageSquareText,
-          bgColor: 'bg-violet-600',
+          bgColor: 'bg-[#ff5f35]',
           iconColor: 'text-white'
+        },
+        {
+          id: 'store',
+          label: tr('스토어', 'Store'),
+          desc: tr('내 스토어로 이동하는 링크 블록을 추가합니다.', 'Add a link block that opens your store.'),
+          icon: ShoppingBag,
+          bgColor: 'bg-[#171714]',
+          iconColor: 'text-white',
+          disabled: !STOREFRONT_AVAILABLE,
         },
         { 
           id: 'customer_info', 
@@ -118,7 +142,8 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           desc: tr('방문자의 이메일이나 연락처를 수집합니다.', 'Collect visitor email addresses or contact details.'),
           icon: ClipboardList,
           bgColor: 'bg-blue-500', 
-          iconColor: 'text-white' 
+          iconColor: 'text-white',
+          locked: !entitlements.canUseCustomerForms,
         },
       ]
     },
@@ -146,8 +171,9 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
           label: tr('어필리에이트 상품', 'Affiliate product'),
           desc: tr('상품 이미지, 제휴 링크와 가격을 등록합니다.', 'Add a product image, affiliate link, and price.'),
           icon: BadgeDollarSign,
-          bgColor: 'bg-fuchsia-600',
-          iconColor: 'text-white'
+          bgColor: 'bg-[#ffcf4a] text-[#171714]',
+          iconColor: 'text-white',
+          disabled: true
         },
         { 
           id: 'donation', 
@@ -161,9 +187,9 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
     }
   ];
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 border border-gray-200 my-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/60 p-4 font-sans backdrop-blur-xs max-sm:items-stretch max-sm:p-0">
+      <div className="relative my-auto flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 max-sm:my-0 max-sm:max-h-none max-sm:h-[100dvh] max-sm:rounded-none max-sm:border-0">
         
         {/* Modal Header */}
         <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
@@ -190,18 +216,33 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {cat.blocks.map((b) => {
                   const IconComp = b.icon;
+                  const locked = b.locked || (entitlements.maxBlocksPerProfile !== null && usage.blocks >= entitlements.maxBlocksPerProfile);
                   return (
                     <button
                       key={b.id}
+                      type="button"
+                      disabled={b.disabled}
                       onClick={() => {
+                        if (b.disabled) return;
+                        if (locked) {
+                          onClose();
+                          requestUpgradePrompt({
+                            featureLabel: b.label,
+                            title: `${b.label} 사용 한도를 늘려보세요`,
+                            description: b.id === 'customer_info'
+                              ? tr('고객 정보 수집 블록은 스탠다드 플랜부터 이용할 수 있습니다.', 'Customer forms are available from the Standard plan.')
+                              : tr('현재 플랜의 블록 사용 한도에 도달했습니다. 업그레이드하면 더 많은 파일 공유 블록과 넉넉한 용량을 사용할 수 있어요.', 'You reached this plan limit. Upgrade for more file blocks and storage.'),
+                          });
+                          return;
+                        }
                         onSelectBlock(b.id);
                         onClose();
                       }}
-                      className="p-4 rounded-2xl border border-gray-200 hover:border-black hover:shadow-md transition-all text-left flex items-center gap-4 group cursor-pointer bg-white"
+                      className={`p-4 rounded-2xl border text-left flex items-center gap-4 group bg-white transition-all ${b.disabled ? 'cursor-not-allowed border-gray-100 opacity-45' : locked ? 'cursor-pointer border-amber-200 bg-amber-50/40 hover:border-amber-400' : 'cursor-pointer border-gray-200 hover:border-black hover:shadow-md'}`}
                     >
                       {/* Left Block Icon Badge */}
-                      <div className={`w-12 h-12 rounded-2xl ${b.bgColor} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}>
-                        {b.customIcon ? (
+                      <div className={`w-12 h-12 rounded-2xl ${b.bgColor} flex items-center justify-center shrink-0 shadow-2xs transition-transform ${b.disabled ? '' : 'group-hover:scale-105'}`}>
+                          {locked ? <Lock className="h-5 w-5 text-white" /> : b.customIcon ? (
                           b.customIcon
                         ) : IconComp ? (
                           <IconComp className={`w-6 h-6 ${b.iconColor}`} />
@@ -210,8 +251,10 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
 
                       {/* Right Block Name & Description */}
                       <div className="min-w-0 flex-1 space-y-1">
-                        <h4 className="text-xs font-black text-gray-900 group-hover:text-black truncate">
-                          {b.label}
+                        <h4 className="flex items-center gap-2 text-xs font-black text-gray-900 group-hover:text-black">
+                          <span className="truncate">{b.label}</span>
+                          {b.disabled && <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[9px] font-black text-gray-600">{tr('준비 중', 'Coming soon')}</span>}
+                          {locked && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black text-amber-700">{tr('업그레이드', 'Upgrade')}</span>}
                         </h4>
                         <p className="text-[11px] font-semibold text-gray-500 leading-relaxed line-clamp-2">
                           {b.desc}
@@ -226,6 +269,7 @@ export const AddBlockModal: React.FC<AddBlockModalProps> = ({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

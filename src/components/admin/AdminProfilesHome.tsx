@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Plus, Settings, X } from 'lucide-react';
+import { Bug, Plus, Trash2, X } from 'lucide-react';
 import LinkTreePreview from '../LinkTreePreview';
 import { useStore, type ProfileWorkspace } from '../../store/useStore';
 import { normalizeUsername } from '../../domain/profileData';
 import PrivateBetaBadge from '../PrivateBetaBadge';
+import { entitlementsForPlan } from '../../domain/membershipPlans';
+import { saveUserProfilesData } from '../../services/userService';
+import { requestUpgradePrompt } from '../UpgradePromptHost';
 
 const profilePreviewBackdrop = (workspace: ProfileWorkspace) => {
   if (workspace.templateType === 'color') {
@@ -49,6 +52,7 @@ const workspaceFromCurrentState = (state: ReturnType<typeof useStore.getState>):
     sticker: state.sticker,
     stickerX: state.stickerX,
     stickerY: state.stickerY,
+    stickers: state.stickers,
   },
 });
 
@@ -60,11 +64,20 @@ const AdminProfilesHome: React.FC = () => {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
+  const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null);
 
   const workspaces = useMemo(
     () => state.profileWorkspaces.length > 0 ? state.profileWorkspaces : [workspaceFromCurrentState(state)],
-    [state.profileWorkspaces, state.activeProfileId, state.profile, state.templateType, state.templateValue, state.socialLinks, state.customLinks, state.buttonStyle, state.buttonRoundness, state.buttonShadow, state.buttonColor, state.buttonTextColor, state.buttonOpacity, state.buttonTextOpacity, state.fontFamily, state.titleFontFamily, state.pageTextColor, state.pageTextOpacity, state.backgroundOpacity, state.sticker, state.stickerX, state.stickerY],
+    [state.profileWorkspaces, state.activeProfileId, state.profile, state.templateType, state.templateValue, state.socialLinks, state.customLinks, state.buttonStyle, state.buttonRoundness, state.buttonShadow, state.buttonColor, state.buttonTextColor, state.buttonOpacity, state.buttonTextOpacity, state.fontFamily, state.titleFontFamily, state.pageTextColor, state.pageTextOpacity, state.backgroundOpacity, state.sticker, state.stickerX, state.stickerY, state.stickers],
   );
+  const maxProfiles = entitlementsForPlan(state.membershipPlan).maxProfiles;
+  const showProfileUpgrade = () => requestUpgradePrompt({
+    featureLabel: isKo ? '프로필 추가' : 'More profiles',
+    title: isKo ? '프로필을 더 만들어 보세요' : 'Create more profiles',
+    description: isKo
+      ? `현재 플랜은 프로필을 최대 ${maxProfiles}개까지 만들 수 있습니다. 스탠다드는 3개, 프리미엄은 5개까지 운영할 수 있어요.`
+      : `Your plan supports ${maxProfiles} profile(s). Standard supports 3 and Premium supports 5.`,
+  });
 
   const openWorkspace = (workspace: ProfileWorkspace) => {
     state.syncActiveProfileWorkspace();
@@ -72,7 +85,54 @@ const AdminProfilesHome: React.FC = () => {
     navigate('/admin/content');
   };
 
+  const handleDelete = async (event: React.MouseEvent, workspace: ProfileWorkspace) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (workspaces.length <= 1) {
+      window.alert(isKo ? '마지막 프로필은 삭제할 수 없습니다.' : 'You cannot delete your last profile.');
+      return;
+    }
+    const displayName = workspace.profile.name || workspace.profile.username;
+    const confirmed = window.confirm(isKo
+      ? `“${displayName}” (linkzip.kr/${workspace.profile.username}) 프로필을 정말 영구 삭제할까요?\n\n링크, 디자인, 공개 페이지가 모두 삭제되며 되돌릴 수 없습니다.`
+      : `Permanently delete “${displayName}” (linkzip.kr/${workspace.profile.username})?\n\nIts links, design, and public page will be deleted and cannot be restored.`);
+    if (!confirmed) return;
+
+    setDeletingProfileId(workspace.id);
+    try {
+      useStore.getState().syncActiveProfileWorkspace();
+      const latestState = useStore.getState();
+      const remainingWorkspaces = latestState.profileWorkspaces.filter((candidate) => candidate.id !== workspace.id);
+      const nextActiveProfileId = latestState.activeProfileId === workspace.id
+        ? remainingWorkspaces[0].id
+        : latestState.activeProfileId;
+      if (latestState.user?.uid) {
+        await saveUserProfilesData(latestState.user.uid, remainingWorkspaces, nextActiveProfileId, {
+          teamMembers: latestState.teamMembers,
+          dmRules: latestState.dmRules,
+          alimtalkSettings: latestState.alimtalkSettings,
+          instagramAccount: latestState.instagramAccount,
+          pageViews: latestState.pageViews,
+        });
+      }
+      useStore.getState().deleteProfileWorkspace(workspace.id);
+      useStore.getState().markSaved();
+    } catch (deleteError) {
+      console.error('Failed to delete profile', deleteError);
+      window.alert(deleteError instanceof Error
+        ? deleteError.message
+        : (isKo ? '프로필 삭제에 실패했습니다.' : 'Failed to delete the profile.'));
+    } finally {
+      setDeletingProfileId(null);
+    }
+  };
+
   const handleCreate = () => {
+    if (workspaces.length >= maxProfiles) {
+      setIsCreateOpen(false);
+      showProfileUpgrade();
+      return;
+    }
     const cleanUsername = normalizeUsername(username);
     if (!name.trim() || !cleanUsername) {
       setError(isKo ? '프로필 이름과 주소를 모두 입력해 주세요.' : 'Enter a profile name and username.');
@@ -86,47 +146,69 @@ const AdminProfilesHome: React.FC = () => {
       setError(isKo ? '이미 목록에 있는 프로필 주소입니다.' : 'That username is already in your profiles.');
       return;
     }
-    state.createProfileWorkspace(name.trim(), cleanUsername);
+    const createdProfileId = state.createProfileWorkspace(name.trim(), cleanUsername);
+    if (!createdProfileId) {
+      setIsCreateOpen(false);
+      showProfileUpgrade();
+      return;
+    }
     setIsCreateOpen(false);
     navigate('/admin/header');
   };
 
   return (
     <div className="admin-profiles-home min-h-screen bg-[#f5f5f3] text-gray-950">
-      <header className="sticky top-0 z-20 flex h-20 items-center border-b border-gray-200 bg-white/95 px-5 backdrop-blur sm:px-8">
+      <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-gray-200 bg-white/95 px-5 backdrop-blur sm:px-8">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-600">LinkZip</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff5f35]">LinkZip</p>
             <PrivateBetaBadge language={state.language} compact />
           </div>
           <h1 className="text-xl font-black tracking-tight sm:text-2xl">{isKo ? '내 프로필' : 'My profiles'}</h1>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <button type="button" className="admin-home-icon" aria-label={isKo ? '알림' : 'Notifications'}><Bell /></button>
-          <button type="button" onClick={() => navigate('/admin/settings')} className="admin-home-icon" aria-label={isKo ? '설정' : 'Settings'}><Settings /></button>
-        </div>
+        <button type="button" onClick={() => navigate('/admin/bug-report', { state: { sourceUrl: window.location.href } })} className="flex h-12 cursor-pointer items-center gap-2 rounded-full border-2 border-[#171714] bg-[#ffcf4a] px-5 text-sm font-black text-[#171714] shadow-[4px_4px_0_#171714] transition hover:-translate-y-0.5 hover:bg-[#d9ff67] sm:h-13 sm:px-6 sm:text-base">
+          <Bug className="h-5 w-5" /> 오류 제보
+        </button>
       </header>
 
       <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-center px-4 py-10 sm:px-8">
         <div className="mb-7 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-3xl font-black tracking-[-0.04em] sm:text-5xl">{isKo ? '링크집을 관리하세요' : 'Manage your LinkZips'}</h2>
-            <p className="mt-2 text-sm font-medium text-gray-500">{isKo ? '프로필마다 링크와 디자인을 독립적으로 설정할 수 있습니다.' : 'Each profile has its own links and design.'}</p>
+            <p className="mt-2 text-sm font-medium text-gray-500">{isKo ? '프로필마다 링크와 디자인을 독립적으로 설정할 수 있습니다.' : 'Give every profile its own links and design.'}</p>
           </div>
-          <button type="button" onClick={() => { setError(''); setIsCreateOpen(true); }} className="flex shrink-0 items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-gray-800 cursor-pointer">
+          <button type="button" onClick={() => { setError(''); if (workspaces.length >= maxProfiles) showProfileUpgrade(); else setIsCreateOpen(true); }} className="flex shrink-0 items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-gray-800 cursor-pointer">
             <Plus className="h-5 w-5" /> {isKo ? '프로필 추가' : 'Add profile'}
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-5">
-          {workspaces.map((workspace) => (
-            <article key={workspace.id} className="group overflow-hidden rounded-[20px] border border-gray-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(15,23,42,0.11)]">
-              <div role="button" tabIndex={0} onClick={() => openWorkspace(workspace)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') openWorkspace(workspace); }} className="block w-full cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500">
+          {workspaces.map((workspace, workspaceIndex) => {
+            const isOverPlanLimit = workspaceIndex >= maxProfiles;
+            return (
+            <article key={workspace.id} className="group relative overflow-hidden rounded-[20px] border border-gray-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(15,23,42,0.11)]">
+              <button
+                type="button"
+                onClick={() => openWorkspace(workspace)}
+                className="absolute inset-0 z-10 cursor-pointer rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#ff5f35]"
+                aria-label={isKo ? `${workspace.profile.name || workspace.profile.username} 프로필 편집` : `Edit ${workspace.profile.name || workspace.profile.username}`}
+              />
+              <button
+                type="button"
+                onClick={(event) => void handleDelete(event, workspace)}
+                disabled={deletingProfileId !== null}
+                className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/90 text-gray-500 shadow-md backdrop-blur transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label={isKo ? `${workspace.profile.name || workspace.profile.username} 프로필 삭제` : `Delete ${workspace.profile.name || workspace.profile.username}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <div className="pointer-events-none block w-full text-left" aria-hidden="true">
                 <div className="admin-profile-card-preview relative h-52 overflow-hidden sm:h-80" style={{ background: profilePreviewBackdrop(workspace) }}>
                   <div className="admin-profile-card-scale" aria-hidden="true">
                     <LinkTreePreview profile={workspace.profile} templateType={workspace.templateType} templateValue={workspace.templateValue} socialLinks={workspace.socialLinks} customLinks={workspace.customLinks} design={workspace.design} />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/16 to-transparent opacity-0 transition group-hover:opacity-100" />
+                  {isOverPlanLimit && <div className="absolute inset-0 flex items-center justify-center bg-black/50"><span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-gray-950">{isKo ? '플랜 한도 초과 · 비공개' : 'Over plan limit · Unpublished'}</span></div>}
                 </div>
                 <div className="flex items-center gap-2.5 p-3 sm:p-4">
                   <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 sm:h-10 sm:w-10">
@@ -139,7 +221,8 @@ const AdminProfilesHome: React.FC = () => {
                 </div>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       </main>
 

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { User } from 'firebase/auth';
 import { applyLinkClicks } from '../domain/profileData.ts';
 import { getThemeDesignPreset } from '../domain/themePresets.ts';
-import type { MembershipPlan } from '../domain/membershipPlans.ts';
+import { entitlementsForPlan, type MembershipPlan } from '../domain/membershipPlans.ts';
 
 export interface SocialLink {
   id: string;
@@ -28,6 +28,7 @@ export interface FileConfig {
   title: string;
   description?: string;
   fileUrl?: string;
+  filePath?: string;
   fileName?: string;
   fileSize?: string;
 }
@@ -40,6 +41,7 @@ export interface SNSItem {
 }
 
 export interface NoticeConfig {
+  id?: string;
   title: string;
   content: string;
   date?: string;
@@ -49,6 +51,7 @@ export interface NoticeConfig {
 export interface CustomerInfoConfig {
   mainText: string;
   detailText?: string;
+  displayMode?: 'header' | 'block';
   receiveEmail?: boolean;
   receivePhone?: boolean;
   receiveName?: boolean;
@@ -76,6 +79,7 @@ export interface ProductItem {
   discountPrice?: number;
   stock?: number;
   orderNote?: string;
+  shippingFee?: number;
 }
 
 export interface SalesConfig {
@@ -130,17 +134,25 @@ export interface MapConfig {
 export interface CustomLink {
   id: string;
   type?: 'link' | 'image' | 'collection' | 'donation' | 'file' | 'sns' | 'notice' | 'customer_info' | 'anonymous_message' | 'sales' | 'reservation' | 'affiliate_product' | 'map';
+  blockKind?: string; // Block picker identity used by the admin card header.
   title: string;
   publicTitle?: string;
   url?: string;
   clicks?: number; // Total clicks counter for analytics
   layout?: 'list' | 'grid' | 'carousel';
+  collectionStyle?: 'classic' | 'image';
+  collectionColumns?: 2 | 3;
   hideTitle?: boolean;
   links?: CustomLink[]; // For collections
   isVisible?: boolean;
   icon?: string; // image thumbnail URL
   thumbnailType?: 'image' | 'icon' | 'none'; // thumbnail mode
   iconName?: string; // selected icon key e.g. 'link', 'globe', 'instagram', etc.
+  linkLayout?: 'classic' | 'image';
+  imageAspectRatio?: string;
+  imagePositionX?: number;
+  imagePositionY?: number;
+  imageZoom?: number;
   buttonColor?: string; // Custom button background color
   buttonTextColor?: string; // Custom button text color
   customStyle?: LinkButtonStyle;
@@ -148,6 +160,7 @@ export interface CustomLink {
   fileConfig?: FileConfig;
   snsLinks?: SNSItem[];
   noticeConfig?: NoticeConfig;
+  notices?: NoticeConfig[];
   customerInfoConfig?: CustomerInfoConfig;
   salesConfig?: SalesConfig;
   reservationConfig?: ReservationConfig;
@@ -179,6 +192,16 @@ export interface AnalyticsDailyItem {
   date: string;
   views: number;
   clicks: number;
+  linkClicks?: Record<string, number>;
+}
+
+export interface PageSticker {
+  id: string;
+  value: string;
+  x: number;
+  y: number;
+  size?: number;
+  animated?: boolean;
 }
 
 export interface DesignSettings {
@@ -196,9 +219,12 @@ export interface DesignSettings {
   pageTextColor?: string;
   pageTextOpacity?: number;
   backgroundOpacity?: number;
+  backgroundImageUrl?: string;
+  backgroundImageFit?: 'cover' | 'contain' | 'tile';
   sticker?: string;
   stickerX?: number;
   stickerY?: number;
+  stickers?: PageSticker[];
 }
 
 export interface VerifiedAccountInfo {
@@ -207,6 +233,42 @@ export interface VerifiedAccountInfo {
   accountOwnerName: string;
   accountNumber: string;
   accountConnected: boolean;
+}
+
+export interface StorefrontSettings {
+  enabled: boolean;
+  showOnProfile?: boolean;
+  name: string;
+  description?: string;
+  announcement?: string;
+  sellerName?: string;
+  sellerType?: 'business' | 'individual_creator';
+  representativeName?: string;
+  businessRegistrationNumber?: string;
+  businessAddress?: string;
+  mailOrderRegistrationNumber?: string;
+  mailOrderExemptionReason?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  shippingPolicy?: string;
+  thumbnailUrl?: string;
+  accentColor?: string;
+  backgroundColor?: string;
+  cardStyle?: 'soft' | 'outlined' | 'bold';
+  checkoutAvailability?: 'external_only' | 'internal';
+  products?: StorefrontProductItem[];
+}
+
+export interface StorefrontProductItem {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+  imageUrl?: string;
+  stock?: number;
+  shippingFee?: number;
+  externalPurchaseUrl?: string;
+  productType?: 'digital_file' | 'product';
 }
 
 export interface UserProfile {
@@ -226,6 +288,7 @@ export interface UserProfile {
   bannerUrl?: string;
   hideWatermark?: boolean;
   verifiedAccount?: VerifiedAccountInfo;
+  storefront?: StorefrontSettings;
 }
 
 export interface TeamMember {
@@ -239,8 +302,17 @@ export interface TeamMember {
 export interface DMAutomationRule {
   id: string;
   keyword: string;
+  keywords?: string[];
   responseMessage: string;
   targetLinkUrl: string;
+  postIds?: string[];
+  applyToAllPosts?: boolean;
+  targetMode?: 'selected' | 'next';
+  excludedPostIds?: string[];
+  postThumbnailUrl?: string;
+  postCaption?: string;
+  buttons?: Array<{ label: string; url: string }>;
+  commentReplies?: string[];
   isActive: boolean;
 }
 
@@ -273,9 +345,12 @@ export interface AppStateSnapshot {
   pageTextColor?: string;
   pageTextOpacity?: number;
   backgroundOpacity?: number;
+  backgroundImageUrl?: string;
+  backgroundImageFit?: 'cover' | 'contain' | 'tile';
   sticker?: string;
   stickerX?: number;
   stickerY?: number;
+  stickers?: PageSticker[];
   teamMembers?: TeamMember[];
   dmRules?: DMAutomationRule[];
   alimtalkSettings?: AlimtalkSettings;
@@ -300,6 +375,8 @@ interface AppState {
   user: User | null;
   setUser: (user: User | null) => void;
   membershipPlan: MembershipPlan;
+  membershipPeriodEndsAt: string | null;
+  membershipGrant: string | null;
 
   // Onboarding & Profile Data
   templateType: 'color' | 'preset';
@@ -325,9 +402,12 @@ interface AppState {
   pageTextColor?: string;
   pageTextOpacity?: number;
   backgroundOpacity?: number;
+  backgroundImageUrl?: string;
+  backgroundImageFit?: 'cover' | 'contain' | 'tile';
   sticker?: string;
   stickerX?: number;
   stickerY?: number;
+  stickers?: PageSticker[];
 
   // Growth & Enterprise Data
   teamMembers: TeamMember[];
@@ -357,7 +437,7 @@ interface AppState {
   updateCustomLink: (id: string, updates: Partial<CustomLink>) => void;
   removeCustomLink: (id: string) => void;
   setProfile: (profile: UserProfile) => void;
-  createProfileWorkspace: (name: string, username: string) => string;
+  createProfileWorkspace: (name: string, username: string) => string | null;
   switchProfileWorkspace: (id: string) => void;
   deleteProfileWorkspace: (id: string) => void;
   syncActiveProfileWorkspace: () => void;
@@ -420,9 +500,12 @@ const getSnapshotFromState = (state: any): AppStateSnapshot => ({
   pageTextColor: state.pageTextColor,
   pageTextOpacity: state.pageTextOpacity,
   backgroundOpacity: state.backgroundOpacity,
+  backgroundImageUrl: state.backgroundImageUrl,
+  backgroundImageFit: state.backgroundImageFit,
   sticker: state.sticker,
   stickerX: state.stickerX,
   stickerY: state.stickerY,
+  stickers: JSON.parse(JSON.stringify(state.stickers || [])),
   teamMembers: JSON.parse(JSON.stringify(state.teamMembers || [])),
   dmRules: JSON.parse(JSON.stringify(state.dmRules || [])),
   alimtalkSettings: JSON.parse(JSON.stringify(state.alimtalkSettings || {})),
@@ -452,12 +535,25 @@ const getWorkspaceFromState = (state: any, id = state.activeProfileId || 'primar
     pageTextColor: state.pageTextColor,
     pageTextOpacity: state.pageTextOpacity,
     backgroundOpacity: state.backgroundOpacity,
+    backgroundImageUrl: state.backgroundImageUrl,
+    backgroundImageFit: state.backgroundImageFit,
     sticker: state.sticker,
     stickerX: state.stickerX,
     stickerY: state.stickerY,
+    stickers: JSON.parse(JSON.stringify(state.stickers || [])),
   },
   createdAt: state.profileWorkspaces?.find((workspace: ProfileWorkspace) => workspace.id === id)?.createdAt || new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+});
+
+const clearLegacyDemoLinks = (links: CustomLink[]): CustomLink[] => links.map((link) => {
+  const isLegacyOfficialSite = link.title === '내 공식 사이트 바로가기'
+    && /^https?:\/\/(?:www\.)?naver\.com\/?$/i.test(link.url || '');
+  return {
+    ...link,
+    ...(isLegacyOfficialSite ? { title: '새 링크', url: '' } : {}),
+    ...(link.links ? { links: clearLegacyDemoLinks(link.links) } : {}),
+  };
 });
 
 const getStateFromWorkspace = (workspace: ProfileWorkspace) => {
@@ -470,7 +566,7 @@ const getStateFromWorkspace = (workspace: ProfileWorkspace) => {
   templateType: workspace.templateType || 'preset',
   templateValue: workspace.templateValue || 'minimalist',
   socialLinks: JSON.parse(JSON.stringify(workspace.socialLinks || [])),
-  customLinks: JSON.parse(JSON.stringify(workspace.customLinks || [])),
+  customLinks: clearLegacyDemoLinks(JSON.parse(JSON.stringify(workspace.customLinks || []))),
   buttonStyle: usePresetDefaults ? preset.buttonStyle : (workspace.design?.buttonStyle ?? preset.buttonStyle),
   buttonRoundness: usePresetDefaults ? preset.buttonRoundness : (workspace.design?.buttonRoundness ?? preset.buttonRoundness),
   buttonShadow: usePresetDefaults ? preset.buttonShadow : (workspace.design?.buttonShadow ?? preset.buttonShadow),
@@ -485,9 +581,23 @@ const getStateFromWorkspace = (workspace: ProfileWorkspace) => {
   pageTextColor: usePresetDefaults ? preset.pageTextColor : (workspace.design?.pageTextColor || preset.pageTextColor),
   pageTextOpacity: usePresetDefaults ? preset.pageTextOpacity : (workspace.design?.pageTextOpacity ?? preset.pageTextOpacity),
   backgroundOpacity: usePresetDefaults ? preset.backgroundOpacity : (workspace.design?.backgroundOpacity ?? preset.backgroundOpacity),
+  backgroundImageUrl: workspace.design?.backgroundImageUrl || '',
+  backgroundImageFit: workspace.design?.backgroundImageFit || 'cover',
   sticker: usePresetDefaults ? preset.sticker : (workspace.design?.sticker ?? preset.sticker),
   stickerX: workspace.design?.stickerX ?? 62,
   stickerY: workspace.design?.stickerY ?? 22,
+  stickers: Array.isArray(workspace.design?.stickers)
+    ? JSON.parse(JSON.stringify(workspace.design.stickers))
+    : workspace.design?.sticker
+      ? [{
+          id: 'legacy-sticker',
+          value: workspace.design.sticker,
+          x: workspace.design.stickerX ?? 62,
+          y: workspace.design.stickerY ?? 22,
+          size: 18,
+          animated: /^https?:\/\//.test(workspace.design.sticker),
+        }]
+      : [],
   });
 };
 
@@ -540,6 +650,8 @@ export const useStore = create<AppState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
   membershipPlan: 'basic',
+  membershipPeriodEndsAt: null,
+  membershipGrant: null,
 
   templateType: 'preset',
   templateValue: 'minimalist',
@@ -558,11 +670,14 @@ export const useStore = create<AppState>((set) => ({
   buttonTextOpacity: 100,
   pageTextOpacity: 100,
   backgroundOpacity: 100,
+  backgroundImageUrl: '',
+  backgroundImageFit: 'cover',
   fontFamily: 'Inter',
   titleFontFamily: '',
   sticker: '',
   stickerX: 62,
   stickerY: 22,
+  stickers: [],
 
   teamMembers: [],
   dmRules: [],
@@ -602,6 +717,7 @@ export const useStore = create<AppState>((set) => ({
       templateValue: value,
       ...(type === 'preset' ? {
         ...presetDesign,
+        stickers: [],
         buttonBorderColor: preset.buttonTextColor,
         buttonBorderWidth: preset.buttonStyle === 'outline' ? 2 : 0,
         profile: { ...state.profile, titleColor: preset.pageTextColor },
@@ -735,11 +851,15 @@ export const useStore = create<AppState>((set) => ({
 
   createProfileWorkspace: (name, username) => {
     const id = `profile-${Date.now()}`;
+    let created = false;
     set((state) => {
       const currentWorkspace = getWorkspaceFromState(state);
       const existing = state.profileWorkspaces.length > 0
         ? state.profileWorkspaces.map((workspace) => workspace.id === currentWorkspace.id ? currentWorkspace : workspace)
         : [currentWorkspace];
+      if (existing.length >= entitlementsForPlan(state.membershipPlan).maxProfiles) {
+        return state;
+      }
       const workspace: ProfileWorkspace = {
         id,
         profile: { name, username, bio: '', avatarUrl: '', hideWatermark: false, showBio: true },
@@ -757,13 +877,15 @@ export const useStore = create<AppState>((set) => ({
           buttonTextOpacity: 100,
           pageTextOpacity: 100,
           backgroundOpacity: 100,
+          backgroundImageUrl: '',
+          backgroundImageFit: 'cover',
           fontFamily: 'Inter',
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       const workspaceState = getStateFromWorkspace(workspace);
-      return {
+      const nextState = {
         ...workspaceState,
         profileWorkspaces: [...existing, workspace],
         activeProfileId: id,
@@ -772,8 +894,10 @@ export const useStore = create<AppState>((set) => ({
         redoStack: [],
         isDirty: true,
       };
+      created = true;
+      return nextState;
     });
-    return id;
+    return created ? id : null;
   },
 
   switchProfileWorkspace: (id) => set((state) => {
@@ -823,10 +947,20 @@ export const useStore = create<AppState>((set) => ({
   }),
 
   loadData: (data) => set((state) => {
-    const requestedWorkspaces = data.profileWorkspaces as ProfileWorkspace[] | undefined;
+    const requestedWorkspaces = (data.profileWorkspaces as ProfileWorkspace[] | undefined)?.map((workspace) => ({
+      ...workspace,
+      customLinks: clearLegacyDemoLinks(workspace.customLinks || []),
+    }));
     const activeId = data.activeProfileId || requestedWorkspaces?.[0]?.id || state.activeProfileId || 'primary';
     const activeWorkspace = requestedWorkspaces?.find((workspace) => workspace.id === activeId) || requestedWorkspaces?.[0];
-    const newState = { ...state, ...data, ...(activeWorkspace ? getStateFromWorkspace(activeWorkspace) : {}), activeProfileId: activeWorkspace?.id || activeId };
+    const newState = {
+      ...state,
+      ...data,
+      ...(data.customLinks ? { customLinks: clearLegacyDemoLinks(data.customLinks as CustomLink[]) } : {}),
+      ...(requestedWorkspaces ? { profileWorkspaces: requestedWorkspaces } : {}),
+      ...(activeWorkspace ? getStateFromWorkspace(activeWorkspace) : {}),
+      activeProfileId: activeWorkspace?.id || activeId,
+    };
     const snap = getSnapshotFromState(newState);
     return {
       ...newState,

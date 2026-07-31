@@ -229,7 +229,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
 
                     {/* 2. Content Post Thumbnail */}
                     <div className="col-span-2">
-                      <div className="w-24 h-24 rounded-2xl overflow-hidden border border-gray-200 relative bg-gradient-to-tr from-purple-600 to-indigo-600 shadow-2xs">
+                      <div className="relative h-24 w-24 overflow-hidden rounded-2xl border-2 border-[#171714] bg-gradient-to-tr from-[#ffcf4a] to-[#ff5f35] shadow-[3px_3px_0_#171714]">
                         <img 
                           src="https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80" 
                           alt="post"
@@ -246,7 +246,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
                     <div className="col-span-4 space-y-1 text-xs text-left">
                       <p className="font-extrabold text-gray-900 text-xs">Send immediately</p>
                       <p className="font-bold text-gray-800">
-                        Keywords: <span className="font-extrabold text-indigo-600">{rule.keyword}</span>
+                        Keywords: <span className="font-extrabold text-[#e94f2b]">{rule.keyword}</span>
                       </p>
                       <p className="font-semibold text-gray-700 truncate">
                         DM : {rule.responseMessage}
@@ -328,16 +328,16 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
                 {/* Card 1 */}
                 <div className="bg-[#1E1B4B] rounded-3xl p-6 text-white flex flex-col justify-between space-y-6 shadow-xl relative overflow-hidden">
                   <div className="bg-white text-black p-4 rounded-2xl space-y-2 shadow-md">
-                    <div className="w-16 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto border border-indigo-200">
+                    <div className="mx-auto flex h-12 w-16 items-center justify-center rounded-lg border border-[#e7dfcf] bg-[#f4f1e8]">
                       <span className="text-xl">💻</span>
                     </div>
                     <div className="text-xs font-bold text-gray-900 text-left pt-2">
-                      <span className="font-extrabold text-indigo-600">littly</span> 댓글에 <span className="bg-yellow-200 px-1 rounded">“파일”</span>을 적어 주시면 자료를 전달 드려요!
+                      <span className="font-extrabold text-[#e94f2b]">LinkZip</span> 댓글에 <span className="bg-yellow-200 px-1 rounded">“파일”</span>을 적어 주시면 자료를 전달 드려요!
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#171714] text-base font-extrabold text-white">
                       1
                     </div>
                     <p className="text-xs sm:text-sm font-bold leading-snug">
@@ -376,7 +376,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#171714] text-base font-extrabold text-white">
                       2
                     </div>
                     <p className="text-xs sm:text-sm font-bold leading-snug">
@@ -407,7 +407,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-indigo-400/30 text-white font-extrabold text-base flex items-center justify-center shrink-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#171714] text-base font-extrabold text-white">
                       3
                     </div>
                     <p className="text-xs sm:text-sm font-bold leading-snug">
@@ -450,7 +450,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
 
               {/* Mascot Graphic Illustration */}
               <div className="w-36 h-36 mx-auto relative flex items-center justify-center">
-                <div className="w-28 h-28 bg-gradient-to-tr from-amber-400 via-pink-500 to-purple-600 rounded-3xl p-4 shadow-xl flex items-center justify-center text-white">
+                <div className="flex h-28 w-28 items-center justify-center rounded-3xl border-2 border-[#171714] bg-[#ff5f35] p-4 text-white shadow-[5px_5px_0_#171714]">
                   <FaInstagram className="w-16 h-16" />
                 </div>
                 <div className="absolute -bottom-2 -right-2 bg-black text-white p-2.5 rounded-full shadow-lg">
@@ -485,7 +485,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
               </div>
 
               {/* Phone Graphic Banner (SMS Theme) */}
-              <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 text-center relative overflow-hidden border border-blue-200">
+              <div className="relative overflow-hidden rounded-2xl border border-[#e7dfcf] bg-[#f4f1e8] p-6 text-center">
                 <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto shadow-md mb-2">
                   <Smartphone className="w-9 h-9" />
                 </div>
@@ -562,7 +562,7 @@ export const InstagramDmWizardModal: React.FC<InstagramDmWizardModalProps> = ({
               </div>
 
               <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 text-xs font-semibold text-gray-800">
-                <span className="font-bold text-indigo-600">LinkZip-IG</span> is requesting access to: <span className="font-bold">grain.toon</span>. If you select Allow, LinkZip-IG will be able to:
+                <span className="font-bold text-[#e94f2b]">LinkZip-IG</span> is requesting access to: <span className="font-bold">grain.toon</span>. If you select Allow, LinkZip-IG will be able to:
               </div>
 
               {/* Permission List Toggles */}

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../../store/useStore';
+import { entitlementsForPlan, isAdvancedTheme } from '../../domain/membershipPlans';
 import { 
   ArrowLeft, 
   Shuffle, 
   Check, 
-  Sparkles, 
   ChevronRight, 
   ChevronDown,
   X,
@@ -12,23 +13,29 @@ import {
   Smile, 
   Palette, 
   Type,
-  Layers
+  Layers,
+  Image as ImageIcon,
+  Zap,
+  LoaderCircle,
+  Trash2,
+  UploadCloud
 } from 'lucide-react';
 import clsx from 'clsx';
 import { ColorPickerPopover } from './ColorPickerPopover';
 import { getThemeDesignPreset, getThemeWallpaperStyle } from '../../domain/themePresets';
-import { designFonts as fonts } from '../../domain/designFonts';
+import { designFonts as fonts, isPremiumDesignFont } from '../../domain/designFonts';
 import { GiphyPicker } from './GiphyPicker';
+import { uploadPublicImage } from '../../services/storageService';
 
 const themes = [
   { id: 'minimalist', nameKo: '미니멀', nameEn: 'Minimalist', classes: 'bg-[#FAF9F6] border-gray-200 text-gray-900' },
   { id: 'neon-dark', nameKo: '네온 다크', nameEn: 'Neon Dark', classes: 'bg-gray-900 border-indigo-500 text-white' },
   { id: 'soft-gradient', nameKo: '소프트 그라데이션', nameEn: 'Soft Gradient', classes: 'bg-gradient-to-r from-pink-200 via-purple-200 to-indigo-300 border-transparent text-indigo-950' },
   { id: 'air', nameKo: '에어', nameEn: 'Air', classes: 'bg-gray-100 border-gray-300 text-gray-900' },
-  { id: 'neo-pop', nameKo: '네오 팝 ⚡', nameEn: 'Neo Pop ⚡', classes: 'bg-gradient-to-tr from-yellow-300 via-pink-400 to-indigo-500 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
-  { id: 'neo-sunshine', nameKo: '네오 선샤인 ⚡', nameEn: 'Neo Sunshine ⚡', classes: 'bg-amber-400 border-2 border-[#18120B] text-[#18120B] shadow-[3px_3px_0px_0px_rgba(24,18,11,1)]' },
-  { id: 'neo-cyber', nameKo: '네오 사이버 ⚡', nameEn: 'Neo Cyber ⚡', classes: 'bg-slate-950 border-2 border-cyan-300 text-cyan-100 shadow-[3px_3px_0px_0px_rgba(34,211,238,.65)]' },
-  { id: 'neo-mint', nameKo: '네오 민트 ⚡', nameEn: 'Neo Mint ⚡', classes: 'bg-emerald-300 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
+  { id: 'neo-pop', nameKo: '네오 팝', nameEn: 'Neo Pop', classes: 'bg-gradient-to-tr from-yellow-300 via-pink-400 to-indigo-500 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
+  { id: 'neo-sunshine', nameKo: '네오 선샤인', nameEn: 'Neo Sunshine', classes: 'bg-amber-400 border-2 border-[#18120B] text-[#18120B] shadow-[3px_3px_0px_0px_rgba(24,18,11,1)]' },
+  { id: 'neo-cyber', nameKo: '네오 사이버', nameEn: 'Neo Cyber', classes: 'bg-slate-950 border-2 border-cyan-300 text-cyan-100 shadow-[3px_3px_0px_0px_rgba(34,211,238,.65)]' },
+  { id: 'neo-mint', nameKo: '네오 민트', nameEn: 'Neo Mint', classes: 'bg-emerald-300 border-2 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' },
   { id: 'bloom', nameKo: '블룸', nameEn: 'Bloom', classes: 'bg-gradient-to-br from-pink-400 to-rose-600 text-rose-950' },
   { id: 'sunbloom', nameKo: '선블룸', nameEn: 'Sunbloom', classes: 'bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400 border-amber-300 text-amber-950' },
   { id: 'blocks', nameKo: '블록', nameEn: 'Blocks', classes: 'bg-purple-600 border-purple-800 text-white' },
@@ -36,6 +43,8 @@ const themes = [
   { id: 'lake', nameKo: '레이크', nameEn: 'Lake', classes: 'bg-slate-800 border-slate-700 text-white' },
   { id: 'nourish', nameKo: '너리시', nameEn: 'Nourish', classes: 'bg-emerald-700 border-emerald-900 text-white' },
 ];
+
+const DEFAULT_STICKER_SIZE = 18;
 
 const stickers = [
   { id: '', label: 'None', emoji: '🚫' },
@@ -54,6 +63,8 @@ const stickers = [
 const AppearanceEditor = () => {
   const { 
     profile,
+    user,
+    activeProfileId,
     setProfile,
     templateType, 
     templateValue, 
@@ -71,10 +82,17 @@ const AppearanceEditor = () => {
     pageTextColor,
     pageTextOpacity,
     backgroundOpacity,
+    backgroundImageUrl,
+    backgroundImageFit,
     sticker,
+    stickers: placedStickers,
     language,
+    membershipPlan,
     setDesignSettings 
   } = useStore();
+  const entitlements = entitlementsForPlan(membershipPlan);
+  const maxPageStickers = entitlements.maxPageStickers;
+  const maxAnimatedStickers = entitlements.maxAnimatedStickers;
   const tr = (ko: string, en: string) => language === 'ko' ? ko : en;
   const stickerLabel = (id: string, fallback: string) => language === 'ko' ? ({
     '': '없음', cat: '고양이', flower: '꽃', bolt: '번개', heart: '반짝이는 하트',
@@ -86,6 +104,80 @@ const AppearanceEditor = () => {
 
   const [currentView, setCurrentView] = useState<'main' | 'theme' | 'buttons' | 'colors' | 'stickers'>('main');
   const [activeFontModal, setActiveFontModal] = useState<'page' | 'title' | null>(null);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
+  const activeStickers = Array.isArray(placedStickers)
+    ? placedStickers
+    : sticker
+      ? [{ id: 'legacy-sticker', value: sticker, x: 62, y: 22, size: DEFAULT_STICKER_SIZE, animated: /^https?:\/\//.test(sticker) }]
+      : [];
+  const dismissMobileStickerSheet = () => {
+    if (window.matchMedia('(max-width: 900px), (pointer: coarse)').matches) {
+      window.dispatchEvent(new CustomEvent('linkzip:close-mobile-appearance-sheet'));
+    }
+  };
+
+  const addSticker = (value: string, animated = false) => {
+    if (activeStickers.length >= maxPageStickers) {
+      alert(tr(`현재 플랜에서는 스티커를 최대 ${maxPageStickers}개까지 붙일 수 있어요.`, `Your current plan allows up to ${maxPageStickers} stickers.`));
+      return;
+    }
+    if (animated && activeStickers.filter((item) => item.animated).length >= maxAnimatedStickers) {
+      alert(maxAnimatedStickers === 0
+        ? tr('움직이는 스티커는 스탠다드 플랜부터 사용할 수 있어요.', 'Animated stickers are available from Standard.')
+        : tr(`현재 플랜에서는 움직이는 스티커를 최대 ${maxAnimatedStickers}개까지 붙일 수 있어요.`, `Your current plan allows up to ${maxAnimatedStickers} animated stickers.`));
+      return;
+    }
+    const offset = activeStickers.length % 5;
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `sticker-${Date.now()}`;
+    setDesignSettings({
+      sticker: '',
+      stickers: [
+        ...activeStickers,
+        {
+          id,
+          value,
+          x: 50 + (offset - 2) * 8,
+          y: 24 + offset * 7,
+          size: DEFAULT_STICKER_SIZE,
+          animated,
+        },
+      ],
+    });
+    dismissMobileStickerSheet();
+  };
+
+  const clearAllStickers = () => {
+    setDesignSettings({ sticker: '', stickers: [] });
+    dismissMobileStickerSheet();
+  };
+
+  const handleBackgroundImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!user?.uid) {
+      alert(tr('로그인 후 배경 이미지를 업로드해 주세요.', 'Sign in to upload a background image.'));
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      alert(tr('이미지 파일만 업로드할 수 있습니다.', 'Only image files can be uploaded.'));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert(tr('배경 이미지는 5MB 이하만 업로드할 수 있습니다.', 'Background images must be 5MB or smaller.'));
+      return;
+    }
+    setUploadingBackground(true);
+    try {
+      const url = await uploadPublicImage(`profiles/${user.uid}/backgrounds/${activeProfileId || 'primary'}`, file);
+      setDesignSettings({ backgroundImageUrl: url, backgroundImageFit: 'cover' });
+    } catch (error) {
+      console.error('Background image upload failed', error);
+      alert(tr('배경 이미지 업로드에 실패했습니다.', 'Failed to upload the background image.'));
+    } finally {
+      setUploadingBackground(false);
+    }
+  };
 
   useEffect(() => {
     const handleExternalView = (event: Event) => {
@@ -96,16 +188,21 @@ const AppearanceEditor = () => {
     return () => window.removeEventListener('linkzip:appearance-view', handleExternalView);
   }, []);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('linkzip:appearance-view-changed', { detail: currentView }));
+  }, [currentView]);
+
   const handleShuffleTheme = () => {
-    const randomIndex = Math.floor(Math.random() * themes.length);
-    const randomTheme = themes[randomIndex];
+    const availableThemes = entitlements.canUseAdvancedDesign ? themes : themes.slice(0, 4);
+    const randomIndex = Math.floor(Math.random() * availableThemes.length);
+    const randomTheme = availableThemes[randomIndex];
     setTemplate('preset', randomTheme.id);
   };
 
   // Render Sub-Views
   if (currentView === 'theme') {
     return (
-      <div className="space-y-6 animate-fade-in pb-20 font-sans">
+      <div className="appearance-editor appearance-editor-theme space-y-6 animate-fade-in pb-20 font-sans">
         {/* Sub-Header */}
         <div className="flex items-center justify-between">
           <button 
@@ -128,6 +225,7 @@ const AppearanceEditor = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {themes.map((t) => {
               const isSelected = templateType === 'preset' && templateValue === t.id;
+              const isLocked = !entitlements.canUseAdvancedDesign && isAdvancedTheme('preset', t.id);
               return (
                 <button
                   key={t.id}
@@ -147,6 +245,7 @@ const AppearanceEditor = () => {
                       <Check className="w-3 h-3" />
                     </div>
                   )}
+                  {isLocked && <span className="design-premium-badge absolute right-3 top-3" aria-label={tr('유료 디자인', 'Premium design')}><Zap aria-hidden="true" /></span>}
                 </button>
               );
             })}
@@ -173,7 +272,7 @@ const AppearanceEditor = () => {
 
   if (currentView === 'buttons') {
     return (
-      <div className="space-y-6 animate-fade-in pb-20 font-sans">
+      <div className="appearance-editor appearance-editor-buttons space-y-6 animate-fade-in pb-20 font-sans">
         <button 
           onClick={() => setCurrentView('main')}
           className="flex items-center gap-3 text-xl font-bold text-gray-900 hover:text-indigo-600 transition"
@@ -190,7 +289,10 @@ const AppearanceEditor = () => {
               
               {/* Solid */}
               <button
-                onClick={() => setDesignSettings({ buttonStyle: 'solid' })}
+                onClick={() => setDesignSettings({
+                  buttonStyle: 'solid',
+                  buttonBorderWidth: 0,
+                })}
                 className={clsx(
                   "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 bg-white",
                   buttonStyle === 'solid' ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-300"
@@ -212,9 +314,6 @@ const AppearanceEditor = () => {
               >
                 <div className="w-full h-16 bg-gray-300 rounded-xl flex items-center justify-center relative">
                   <div className="w-14 h-6 bg-white/40 border border-white/60 rounded-full" />
-                  <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs">
-                    ⚡
-                  </div>
                 </div>
                 <span className="text-xs font-bold text-gray-900 mt-1">{tr('유리', 'Glass')}</span>
               </button>
@@ -343,7 +442,7 @@ const AppearanceEditor = () => {
 
   if (currentView === 'colors') {
     return (
-      <div className="space-y-6 animate-fade-in pb-20 font-sans">
+      <div className="appearance-editor appearance-editor-colors space-y-6 animate-fade-in pb-20 font-sans">
         <button 
           onClick={() => setCurrentView('main')}
           className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-indigo-600 transition"
@@ -382,9 +481,9 @@ const AppearanceEditor = () => {
           </div>
 
           {/* Modal Overlay */}
-          {activeFontModal && (
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl w-full max-w-md max-h-[85vh] flex flex-col p-6 shadow-2xl relative animate-in fade-in zoom-in-95">
+          {activeFontModal && createPortal(
+            <div className="fixed inset-0 z-[30000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+              <div className="relative flex max-h-[85vh] w-full max-w-md flex-col rounded-[24px] border border-[#d8d2c7] bg-[#fffdf8] p-5 shadow-[0_22px_65px_rgba(0,0,0,0.30)] animate-in fade-in zoom-in-95 sm:p-6">
                 
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4 shrink-0 relative">
@@ -419,7 +518,7 @@ const AppearanceEditor = () => {
 
                   {/* Korean Fonts Section */}
                   <div>
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 mb-2 px-1">
+                    <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-[#b45309]">
                       🇰🇷 한글 추천 폰트
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -427,6 +526,7 @@ const AppearanceEditor = () => {
                         const isSelected = activeFontModal === 'page' 
                           ? (fontFamily === f.font || fontFamily === f.id)
                           : (titleFontFamily === f.font);
+                        const isLocked = !entitlements.canUseAdvancedDesign && isPremiumDesignFont(f.font);
                         return (
                           <button
                             key={f.id}
@@ -439,7 +539,7 @@ const AppearanceEditor = () => {
                               setActiveFontModal(null);
                             }}
                             className={clsx(
-                              "h-14 px-3 rounded-2xl flex items-center justify-center text-sm transition-all relative overflow-hidden cursor-pointer",
+                              "font-option-card h-14 px-3 rounded-2xl flex items-center justify-center text-sm transition-all relative overflow-hidden cursor-pointer",
                               isSelected 
                                 ? "border-2 border-black bg-[#F5F5F0] shadow-xs font-bold text-gray-900" 
                                 : "bg-[#F7F7F5] hover:bg-gray-200 text-gray-800 font-medium border border-transparent"
@@ -448,11 +548,7 @@ const AppearanceEditor = () => {
                             <span className="truncate pr-1 mx-auto text-center" style={{ fontFamily: `'${f.font}', sans-serif` }}>
                               {f.name.split(' (')[0]}
                             </span>
-                            {f.badge && (
-                              <span className="w-5 h-5 rounded-full bg-stone-400/50 text-white flex items-center justify-center text-[10px] shrink-0 absolute right-2">
-                                ⚡
-                              </span>
-                            )}
+                            {isLocked && <span className="design-premium-badge absolute right-2" aria-label={tr('유료 글꼴', 'Premium font')}><Zap aria-hidden="true" /></span>}
                           </button>
                         );
                       })}
@@ -461,7 +557,7 @@ const AppearanceEditor = () => {
 
                   {/* Global Fonts Section */}
                   <div>
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-purple-600 mb-2 px-1">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#ff5f35] mb-2 px-1">
                       🌐 글로벌 폰트
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -469,6 +565,7 @@ const AppearanceEditor = () => {
                         const isSelected = activeFontModal === 'page' 
                           ? (fontFamily === f.font || fontFamily === f.id)
                           : (titleFontFamily === f.font);
+                        const isLocked = !entitlements.canUseAdvancedDesign && isPremiumDesignFont(f.font);
                         return (
                           <button
                             key={f.id}
@@ -481,7 +578,7 @@ const AppearanceEditor = () => {
                               setActiveFontModal(null);
                             }}
                             className={clsx(
-                              "h-14 px-3 rounded-2xl flex items-center justify-center text-sm transition-all relative overflow-hidden cursor-pointer",
+                              "font-option-card h-14 px-3 rounded-2xl flex items-center justify-center text-sm transition-all relative overflow-hidden cursor-pointer",
                               isSelected 
                                 ? "border-2 border-black bg-[#F5F5F0] shadow-xs font-bold text-gray-900" 
                                 : "bg-[#F7F7F5] hover:bg-gray-200 text-gray-800 font-medium border border-transparent"
@@ -490,11 +587,7 @@ const AppearanceEditor = () => {
                             <span className="truncate pr-1 mx-auto text-center" style={{ fontFamily: `'${f.font}', sans-serif` }}>
                               {f.name}
                             </span>
-                            {f.badge && (
-                              <span className="w-5 h-5 rounded-full bg-stone-400/50 text-white flex items-center justify-center text-[10px] shrink-0 absolute right-2">
-                                ⚡
-                              </span>
-                            )}
+                            {isLocked && <span className="design-premium-badge absolute right-2" aria-label={tr('유료 글꼴', 'Premium font')}><Zap aria-hidden="true" /></span>}
                           </button>
                         );
                       })}
@@ -503,7 +596,8 @@ const AppearanceEditor = () => {
 
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body,
           )}
 
           <hr className="border-gray-100" />
@@ -533,6 +627,53 @@ const AppearanceEditor = () => {
               suggested={['#FAF9F6', '#FFFFFF', '#FDEBDB', '#022B49', '#000000', '#C9CBEE']}
             />
           </div>
+
+          <hr className="border-gray-100" />
+
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-gray-900">{tr('배경 이미지 직접 업로드', 'Upload a background image')}</span>
+                  {!entitlements.canUseAdvancedDesign && <span className="design-premium-badge" aria-label={tr('유료 기능', 'Premium feature')}><Zap aria-hidden="true" /></span>}
+                </div>
+                <p className="mt-1 text-[11px] font-medium leading-relaxed text-gray-400">{tr('모든 플랜에서 미리볼 수 있고, 저장은 스탠다드부터 가능합니다.', 'Preview on every plan. Saving requires Standard or above.')}</p>
+              </div>
+            </div>
+
+            {backgroundImageUrl ? (
+              <div className="overflow-hidden rounded-2xl border-2 border-[#171714] bg-[#f4f1e8]">
+                <div className="relative aspect-[16/9] overflow-hidden">
+                  <img src={backgroundImageUrl} alt={tr('업로드한 배경 미리보기', 'Uploaded background preview')} className={clsx('h-full w-full', backgroundImageFit === 'contain' ? 'object-contain' : backgroundImageFit === 'tile' ? 'object-none' : 'object-cover')} />
+                  <div className="absolute right-3 top-3 flex gap-2">
+                    <label className="flex cursor-pointer items-center gap-1.5 rounded-full border-2 border-[#171714] bg-white px-3 py-2 text-[10px] font-black text-[#171714] shadow-[2px_2px_0_#171714]">
+                      <UploadCloud className="h-3.5 w-3.5" /> {tr('교체', 'Replace')}
+                      <input type="file" accept="image/*" onChange={handleBackgroundImageUpload} disabled={uploadingBackground} className="hidden" />
+                    </label>
+                    <button type="button" onClick={() => setDesignSettings({ backgroundImageUrl: '' })} className="flex cursor-pointer items-center gap-1.5 rounded-full border-2 border-[#171714] bg-[#ff5f35] px-3 py-2 text-[10px] font-black text-[#171714] shadow-[2px_2px_0_#171714]"><Trash2 className="h-3.5 w-3.5" /> {tr('제거', 'Remove')}</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-1 border-t-2 border-[#171714] bg-white p-2">
+                  {([
+                    ['cover', tr('화면 채우기', 'Cover')],
+                    ['contain', tr('전체 보기', 'Contain')],
+                    ['tile', tr('반복', 'Tile')],
+                  ] as const).map(([fit, label]) => (
+                    <button key={fit} type="button" onClick={() => setDesignSettings({ backgroundImageFit: fit })} className={clsx('cursor-pointer rounded-xl px-2 py-2.5 text-[10px] font-black transition', (backgroundImageFit || 'cover') === fit ? 'bg-[#171714] text-white' : 'text-gray-500 hover:bg-[#f4f1e8]')}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <label className={clsx('flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-5 py-8 text-center transition', uploadingBackground ? 'cursor-wait border-gray-300 bg-gray-50' : 'border-[#171714] bg-[#fffdf8] hover:-translate-y-0.5 hover:bg-[#ffcf4a]/20')}>
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#171714] bg-[#ffcf4a] text-[#171714] shadow-[3px_3px_0_#ff5f35]">
+                  {uploadingBackground ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
+                </span>
+                <strong className="mt-4 text-xs font-black text-gray-950">{uploadingBackground ? tr('업로드 중...', 'Uploading...') : tr('배경 이미지 선택', 'Choose a background image')}</strong>
+                <span className="mt-1 text-[10px] font-semibold text-gray-400">JPG, PNG, WEBP · {tr('최대 5MB', 'up to 5MB')}</span>
+                <input type="file" accept="image/*" onChange={handleBackgroundImageUpload} disabled={uploadingBackground} className="hidden" />
+              </label>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -540,7 +681,7 @@ const AppearanceEditor = () => {
 
   if (currentView === 'stickers') {
     return (
-      <div className="space-y-6 animate-fade-in pb-20 font-sans">
+      <div className="appearance-editor appearance-editor-stickers space-y-6 animate-fade-in pb-20 font-sans">
         <button 
           onClick={() => setCurrentView('main')}
           className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-indigo-600 transition"
@@ -551,19 +692,21 @@ const AppearanceEditor = () => {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <div>
             <h3 className="text-sm font-bold text-gray-900 mb-1">{tr('페이지 꾸미기', 'Decorate your page')}</h3>
-            <p className="text-xs text-gray-400">{tr('스티커를 선택한 뒤 왼쪽 미리보기에서 직접 드래그해 위치를 옮기세요.', 'Choose a sticker, then drag it directly in the preview.')}</p>
+            <p className="text-xs text-gray-400">{tr('드래그로 이동하고, PC에서는 모서리 핸들을 끌거나 모바일에서는 두 손가락으로 크기를 조절하세요.', 'Drag to move. Resize with the corner handle on desktop or pinch with two fingers on mobile.')}</p>
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-4">
             {stickers.map((s) => {
-              const isSelected = sticker === s.emoji || (s.emoji === '🚫' && !sticker);
+              const isSelected = s.emoji === '🚫' ? activeStickers.length === 0 : activeStickers.some((item) => item.value === s.emoji);
               return (
                 <button
                   key={s.id}
-                  onClick={() => setDesignSettings({ sticker: s.emoji === '🚫' ? '' : s.emoji })}
+                  onClick={() => s.emoji === '🚫' ? clearAllStickers() : addSticker(s.emoji)}
+                  disabled={s.emoji !== '🚫' && activeStickers.length >= maxPageStickers}
                   className={clsx(
                     "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-1 aspect-square",
-                    isSelected ? "border-black bg-gray-50 ring-2 ring-black scale-105" : "border-gray-200 hover:bg-gray-50"
+                    isSelected ? "border-black bg-gray-50 ring-2 ring-black scale-105" : "border-gray-200 hover:bg-gray-50",
+                    s.emoji !== '🚫' && activeStickers.length >= maxPageStickers && "cursor-not-allowed opacity-45"
                   )}
                 >
                   {/^(?:https?:\/\/|\/)/.test(s.emoji) ? <img src={s.emoji} alt="" className="h-12 w-12 object-contain" /> : <span className="text-3xl">{s.emoji}</span>}
@@ -572,10 +715,13 @@ const AppearanceEditor = () => {
               );
             })}
           </div>
-          {sticker && <button type="button" onClick={() => setDesignSettings({ stickerX: 62, stickerY: 22 })} className="w-full rounded-2xl border border-gray-200 py-3 text-xs font-black text-gray-700 transition hover:bg-gray-50">스티커 위치 초기화</button>}
+          {activeStickers.length > 0 && <button type="button" onClick={() => setDesignSettings({ stickers: activeStickers.map((item, index) => ({ ...item, x: 50 + ((index % 5) - 2) * 8, y: 24 + (index % 5) * 7 })) })} className="w-full rounded-2xl border border-gray-200 py-3 text-xs font-black text-gray-700 transition hover:bg-gray-50">{tr('전체 위치 초기화', 'Reset all positions')}</button>}
           <div className="border-t border-gray-100 pt-5">
-            <div className="mb-3"><h3 className="text-sm font-black text-gray-900">움직이는 스티커</h3><p className="mt-1 text-xs font-medium text-gray-400">한글로 검색해 선택할 수 있습니다.</p></div>
-            <GiphyPicker kind="stickers" onSelect={(url) => setDesignSettings({ sticker: url })} />
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div><h3 className="text-sm font-black text-gray-900">{tr('움직이는 스티커', 'Animated stickers')}</h3><p className="mt-1 text-xs font-medium text-gray-400">{maxAnimatedStickers === 0 ? tr('스탠다드 플랜부터 사용할 수 있습니다.', 'Available from Standard.') : tr(`현재 플랜에서 최대 ${maxAnimatedStickers}개까지 추가할 수 있습니다.`, `Add up to ${maxAnimatedStickers} on your plan.`)}</p></div>
+              {!entitlements.canUseAnimatedStickers && <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#171714] bg-[#d9ff67] px-2 py-1 text-[9px] font-black"><Zap className="h-3 w-3" /> {tr('스탠다드', 'Standard')}</span>}
+            </div>
+            <GiphyPicker kind="stickers" onSelect={(url) => addSticker(url, true)} />
           </div>
         </div>
       </div>
@@ -584,7 +730,7 @@ const AppearanceEditor = () => {
 
   // Main Design Menu Overview (Screenshot 1)
   return (
-    <div className="space-y-8 animate-fade-in pb-20 font-sans">
+    <div className="appearance-editor appearance-editor-main space-y-8 animate-fade-in pb-20 font-sans">
       
       {/* Top Theme Banner Card */}
       <div 
@@ -621,7 +767,7 @@ const AppearanceEditor = () => {
               <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center">
                 <Palette className="w-5 h-5 text-amber-700" />
               </div>
-              <span className="font-bold text-sm text-gray-900">{tr('색상 및 글꼴', 'Colors & Font')}</span>
+              <span className="font-bold text-sm text-gray-900">{tr('배경·색상·글꼴', 'Background, colors & font')}</span>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 group-hover:text-black">
               {fontFamily.toUpperCase()} <ChevronRight className="w-4 h-4" />
@@ -658,33 +804,6 @@ const AppearanceEditor = () => {
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 group-hover:text-black">
               {sticker ? sticker : tr('페이지 꾸미기', 'Decorate page')} <ChevronRight className="w-4 h-4" />
             </div>
-          </div>
-
-          {/* Branding Watermark Removal Toggle Card */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 border border-purple-200 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-purple-700" />
-              </div>
-              <div>
-                <span className="font-bold text-sm text-gray-900 block">{tr('LinkZip 브랜딩 숨기기', 'Hide LinkZip Branding')}</span>
-                <span className="text-xs text-gray-400">{tr('페이지에서 LinkZip 워터마크를 숨깁니다', 'Remove "Powered by LinkZip" watermark on your page')}</span>
-              </div>
-            </div>
-            <button
-              onClick={() => setProfile({ ...profile, hideWatermark: !profile?.hideWatermark })}
-              className={clsx(
-                "w-12 h-6 rounded-full transition-colors relative p-1 cursor-pointer",
-                profile.hideWatermark ? "bg-purple-600" : "bg-gray-300"
-              )}
-            >
-              <div
-                className={clsx(
-                  "w-4 h-4 rounded-full bg-white transition-transform shadow-xs",
-                  profile.hideWatermark ? "translate-x-6" : "translate-x-0"
-                )}
-              />
-            </button>
           </div>
 
         </div>

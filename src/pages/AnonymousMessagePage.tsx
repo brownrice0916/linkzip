@@ -74,7 +74,7 @@ const AnonymousMessagePage: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-[#F4F6F8] text-sm font-bold text-gray-400">메시지 페이지를 불러오는 중...</div>;
+    return null;
   }
 
   if (!profile || !ownerUid || !messageBlock) {
@@ -94,7 +94,7 @@ const AnonymousMessagePage: React.FC = () => {
 
         <section className="overflow-hidden rounded-[32px] border border-gray-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
           <div className="border-b border-gray-100 px-6 py-7 sm:px-8">
-            <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-700"><MessageCircle className="h-6 w-6" /></span>
+            <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#171714] bg-[#ffcf4a] text-[#171714]"><MessageCircle className="h-6 w-6" /></span>
             <h1 className="text-2xl font-black tracking-tight">{messageBlock.title || '익명 메시지 보내기'}</h1>
             <p className="mt-2 text-sm font-semibold leading-relaxed text-gray-500">이름이나 계정 정보 없이 익명으로 전달됩니다.</p>
           </div>
@@ -104,10 +104,10 @@ const AnonymousMessagePage: React.FC = () => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4 p-6 sm:p-8">
               <label htmlFor="anonymous-message" className="block text-sm font-black">보낼 사연</label>
-              <textarea id="anonymous-message" value={content} onChange={(event) => setContent(event.target.value.slice(0, 1000))} rows={10} placeholder="익명으로 전할 이야기를 편하게 적어주세요." className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm font-semibold leading-relaxed outline-none transition placeholder:text-gray-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100" autoFocus />
+              <textarea id="anonymous-message" value={content} onChange={(event) => setContent(event.target.value.slice(0, 1000))} rows={10} placeholder="익명으로 전할 이야기를 편하게 적어주세요." className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm font-semibold leading-relaxed outline-none transition placeholder:text-gray-400 focus:border-[#ff5f35] focus:bg-white focus:ring-4 focus:ring-[#ff5f35]/15" autoFocus />
               <div className="flex items-center justify-between px-1 text-[11px] font-bold text-gray-400"><span>개인정보는 적지 않는 것을 권장합니다.</span><span>{content.length}/1000</span></div>
               {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">{error}</p>}
-              <button type="submit" disabled={!content.trim() || submitting} className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:bg-gray-200 enabled:cursor-pointer enabled:bg-violet-600 enabled:hover:bg-violet-700"><Send className="h-4 w-4" />{submitting ? '보내는 중...' : '익명으로 보내기'}</button>
+              <button type="submit" disabled={!content.trim() || submitting} className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#171714] py-4 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-200 enabled:cursor-pointer enabled:bg-[#171714] enabled:shadow-[4px_4px_0_#ff5f35]"><Send className="h-4 w-4" />{submitting ? '보내는 중...' : '익명으로 보내기'}</button>
             </form>
           )}
         </section>

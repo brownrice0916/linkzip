@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /site-admin
+Disallow: /auth
+Disallow: /payment
+Disallow: /onboarding
+
+Sitemap: https://linkzip.kr/sitemap.xml

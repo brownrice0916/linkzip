@@ -8,24 +8,34 @@ import {
   Bell, 
   ExternalLink,
   Bot,
-  RotateCcw
+  RotateCcw,
+  Pencil
 } from 'lucide-react';
 import { FaInstagram } from 'react-icons/fa';
 import { KakaoAlimtalkWizardModal } from './KakaoAlimtalkWizardModal';
+import { InstagramDmRuleCreateWizardModal } from './InstagramDmRuleCreateWizardModal';
 import clsx from 'clsx';
+import { useNavigate } from 'react-router-dom';
+import { entitlementsForPlan } from '../../domain/membershipPlans';
 import {
   disconnectInstagramConnection,
   getInstagramConnection,
+  listInstagramMedia,
   saveInstagramRules,
   startInstagramConnection,
 } from '../../services/instagramService';
 
+// Temporary product switch. Keep connected accounts and saved rules intact
+// while preventing status sync, rule edits, and new OAuth connections.
+const INSTAGRAM_DM_AUTOMATION_PAUSED = true;
+
 export const MarketingEditor: React.FC = () => {
   const state = useStore();
+  const navigate = useNavigate();
+  const planEntitlements = entitlementsForPlan(state.membershipPlan);
   const { 
     instagramAccount, 
     dmRules, 
-    addDMRule, 
     updateDMRule, 
     removeDMRule, 
     alimtalkSettings, 
@@ -33,15 +43,25 @@ export const MarketingEditor: React.FC = () => {
   } = state;
 
   const [isKakaoWizardOpen, setIsKakaoWizardOpen] = useState(false);
+  const [isInstagramRuleWizardOpen, setIsInstagramRuleWizardOpen] = useState(false);
+  const [editingInstagramRule, setEditingInstagramRule] = useState<DMAutomationRule | null>(null);
   const [showAdvancedKakaoInput, setShowAdvancedKakaoInput] = useState(false);
   const [testKakaoSent, setTestKakaoSent] = useState(false);
   const [isSyncingTemplates, setIsSyncingTemplates] = useState(false);
   const [isInstagramLoading, setIsInstagramLoading] = useState(true);
   const [instagramError, setInstagramError] = useState('');
+  const [instagramConnectionIssue, setInstagramConnectionIssue] = useState('');
   const [rulesSaveState, setRulesSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [rulesSaveError, setRulesSaveError] = useState('');
+  const [monthlyDmUsage, setMonthlyDmUsage] = useState(0);
+  const [monthlyDmLimit, setMonthlyDmLimit] = useState(planEntitlements.maxInstagramDeliveriesPerMonth);
   const instagramStatusLoaded = useRef(false);
 
   useEffect(() => {
+    if (INSTAGRAM_DM_AUTOMATION_PAUSED) {
+      setIsInstagramLoading(false);
+      return;
+    }
     let active = true;
     const loadConnection = async () => {
       setIsInstagramLoading(true);
@@ -57,9 +77,47 @@ export const MarketingEditor: React.FC = () => {
       try {
         const status = await getInstagramConnection();
         if (!active) return;
+        setMonthlyDmUsage(status.monthlyUsage || 0);
+        setMonthlyDmLimit(status.monthlyLimit ?? planEntitlements.maxInstagramDeliveriesPerMonth);
+        if (status.connected) {
+          if (status.diagnosticError) {
+            setInstagramConnectionIssue(
+              `Meta 연결 상태를 확인하지 못했습니다: ${status.diagnosticError}`,
+            );
+          } else if (status.missingScopes?.length) {
+            setInstagramConnectionIssue(
+              `계정 토큰에 필요한 권한이 없습니다: ${status.missingScopes.join(', ')}. 계정 연동을 해제한 뒤 다시 연동해주세요.`,
+            );
+          } else if (status.missingWebhookFields?.length) {
+            setInstagramConnectionIssue(
+              `Meta 웹훅 구독이 빠져 있습니다: ${status.missingWebhookFields.join(', ')}. 계정 연동을 해제한 뒤 다시 연동해주세요.`,
+            );
+          } else {
+            setInstagramConnectionIssue('');
+          }
+        }
+        let loadedRules = status.connected ? status.rules || [] : [];
+        if (status.connected && loadedRules.some((rule) => (
+          rule.targetMode !== 'next' && rule.postIds?.length && !rule.postThumbnailUrl
+        ))) {
+          try {
+            const media = await listInstagramMedia();
+            const mediaById = new Map(media.map((item) => [item.id, item]));
+            loadedRules = loadedRules.map((rule) => {
+              const post = rule.postIds?.[0] ? mediaById.get(rule.postIds[0]) : undefined;
+              return post ? {
+                ...rule,
+                postThumbnailUrl: post.thumbnailUrl || post.mediaUrl,
+                postCaption: post.caption,
+              } : rule;
+            });
+          } catch (mediaError) {
+            console.warn('Failed to load Instagram thumbnails', mediaError);
+          }
+        }
         useStore.setState({
           instagramAccount: status.connected ? status.username || '연결된 계정' : '',
-          dmRules: status.connected ? status.rules || [] : [],
+          dmRules: loadedRules,
         });
         instagramStatusLoaded.current = true;
 
@@ -83,24 +141,37 @@ export const MarketingEditor: React.FC = () => {
     };
     void loadConnection();
     return () => { active = false; };
-  }, []);
+  }, [planEntitlements.maxInstagramDeliveriesPerMonth]);
 
   useEffect(() => {
+    if (INSTAGRAM_DM_AUTOMATION_PAUSED) return;
     if (!instagramStatusLoaded.current || !instagramAccount) return;
     const timeout = window.setTimeout(async () => {
       setRulesSaveState('saving');
+      setRulesSaveError('');
       try {
         await saveInstagramRules(dmRules);
         setRulesSaveState('idle');
       } catch (error) {
         console.error('Failed to save Instagram automation rules', error);
         setRulesSaveState('error');
+        const rawMessage = error instanceof Error ? error.message : '';
+        setRulesSaveError(
+          rawMessage.includes('Target URL')
+            ? '게시물 이미지 주소가 너무 길어 저장하지 못했습니다. 잠시 후 다시 시도해주세요.'
+            : rawMessage.includes('로그인이 필요') || rawMessage.includes('unauthenticated')
+              ? '로그인이 만료되었습니다. 다시 로그인해주세요.'
+              : rawMessage.includes('인스타그램 계정을 먼저 연결') || rawMessage.includes('failed-precondition')
+                ? '인스타그램 계정을 다시 연결해주세요.'
+                : '규칙을 서버에 저장하지 못했습니다. 잠시 후 다시 시도해주세요.',
+        );
       }
     }, 650);
     return () => window.clearTimeout(timeout);
   }, [dmRules, instagramAccount]);
 
   const handleInstagramConnect = async () => {
+    if (INSTAGRAM_DM_AUTOMATION_PAUSED) return;
     setIsInstagramLoading(true);
     setInstagramError('');
     try {
@@ -116,6 +187,7 @@ export const MarketingEditor: React.FC = () => {
   };
 
   const handleInstagramDisconnect = async () => {
+    if (INSTAGRAM_DM_AUTOMATION_PAUSED) return;
     if (!confirm('인스타그램 계정 연동을 해제하시겠습니까?')) return;
     setIsInstagramLoading(true);
     setInstagramError('');
@@ -132,7 +204,7 @@ export const MarketingEditor: React.FC = () => {
   const [syncedTemplates] = useState([
     { code: 'TP_LINKZIP_WELCOME_01', name: '👋 [기본] 회원가입 & 정보 등록 웰컴 알림톡', msg: '[LinkZip] 안녕하세요! 회원가입 및 정보 등록이 정상적으로 완료되었습니다.' },
     { code: 'TP_LINKZIP_DONATION_02', name: '🎁 [후원] 삼천원 후원 감사 알림톡', msg: '[LinkZip] 소중한 후원에 진심으로 감사드립니다! 따뜻한 마음 잊지 않겠습니다.' },
-    { code: 'TP_LINKZIP_ORDER_03', name: '🛍️ [결제/다운로드] 디지털 파일 전송 알림톡', msg: '[LinkZip] 주문하신 상품 다운로드 링크입니다: https://linkzip.kr/preview' },
+    { code: 'TP_LINKZIP_ORDER_03', name: '🛍️ [결제/다운로드] 디지털 파일 전송 알림톡', msg: '[LinkZip] 주문하신 상품의 다운로드 링크를 확인해주세요.' },
     { code: 'TP_LINKZIP_PROMO_04', name: '📢 [이벤트] 신규 프로모션 & 쿠폰 발송 알림톡', msg: '[LinkZip] 고객님을 위한 특별 쿠폰이 도착했습니다! 프로필 링크를 확인하세요.' }
   ]);
 
@@ -145,47 +217,11 @@ export const MarketingEditor: React.FC = () => {
 
   const isKakaoConnected = alimtalkSettings?.isEnabled && (alimtalkSettings?.senderPhone || alimtalkSettings?.apiKey);
 
-  // New Rule Quick Input
-  const [newKeyword, setNewKeyword] = useState('');
-  const [newResponseMessage, setNewResponseMessage] = useState('');
-  const [newTargetLink, setNewTargetLink] = useState('');
-  const [isAddingRule, setIsAddingRule] = useState(false);
-
-  const handleCreateRule = () => {
-    if (!newKeyword.trim() || !newResponseMessage.trim()) {
-      alert('키워드와 답장 문구를 입력해주세요.');
-      return;
-    }
-    if (newTargetLink.trim()) {
-      try {
-        const url = new URL(newTargetLink.trim());
-        if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error();
-      } catch {
-        alert('목표 URL은 http:// 또는 https://로 시작하는 올바른 주소를 입력해주세요.');
-        return;
-      }
-    }
-
-    const newRule: DMAutomationRule = {
-      id: `rule-${Date.now()}`,
-      keyword: newKeyword.trim(),
-      responseMessage: newResponseMessage.trim(),
-      targetLinkUrl: newTargetLink.trim(),
-      isActive: true,
-    };
-
-    addDMRule(newRule);
-    setNewKeyword('');
-    setNewResponseMessage('');
-    setNewTargetLink('');
-    setIsAddingRule(false);
-  };
-
   return (
     <div className="space-y-6 animate-fade-in pb-20 font-sans max-w-4xl">
 
       {/* 1. Instagram DM Auto-Sending Section */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-6">
+      <div className="relative overflow-hidden bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-6" aria-disabled={INSTAGRAM_DM_AUTOMATION_PAUSED}>
         
         <div className="flex items-center justify-between border-b border-gray-100 pb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -227,13 +263,27 @@ export const MarketingEditor: React.FC = () => {
             )}
 
             <button
-              onClick={() => setIsAddingRule(true)}
-              disabled={!instagramAccount || isInstagramLoading}
+              onClick={() => {
+                setEditingInstagramRule(null);
+                setIsInstagramRuleWizardOpen(true);
+              }}
+              disabled={!instagramAccount || isInstagramLoading || (planEntitlements.maxInstagramRules !== null && dmRules.length >= planEntitlements.maxInstagramRules)}
               className="px-4 py-2.5 bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>DM 규칙 생성</span>
+              <span>DM 자동화 생성</span>
             </button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl bg-gray-50 px-4 py-3">
+            <p className="text-[10px] font-black text-gray-400">자동화 규칙</p>
+            <p className="mt-1 text-sm font-black text-gray-900">{dmRules.length} / 무제한</p>
+          </div>
+          <div className="rounded-2xl bg-gray-50 px-4 py-3">
+            <p className="text-[10px] font-black text-gray-400">이번 달 DM 발송</p>
+            <p className="mt-1 text-sm font-black text-gray-900">{monthlyDmUsage.toLocaleString()} / {monthlyDmLimit === null ? '무제한' : `${monthlyDmLimit.toLocaleString()}건`}</p>
           </div>
         </div>
 
@@ -243,119 +293,22 @@ export const MarketingEditor: React.FC = () => {
           </div>
         )}
 
-        {/* Not Connected State Banner (Only when !instagramAccount) */}
-        {!instagramAccount && (
-          <div className="p-5 bg-gray-50 border border-gray-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gray-950 text-white flex items-center justify-center font-bold shrink-0">
-                <FaInstagram className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-gray-900">인스타그램 계정이 아직 연동되지 않았습니다.</h4>
-                <p className="text-[11px] text-gray-500 font-medium">버튼 한 번만 누르면 인스타그램 계정이 자동 연동되어 DM 발송 규칙이 작동합니다.</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => void handleInstagramConnect()}
-              disabled={isInstagramLoading}
-              className="px-4 py-2.5 bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs rounded-xl transition cursor-pointer shrink-0 flex items-center gap-1.5"
-            >
-              <FaInstagram className="w-4 h-4" />
-              <span>{isInstagramLoading ? '연결 상태 확인 중...' : '인스타그램으로 안전하게 연동'}</span>
-            </button>
-            <p className="text-[10px] text-gray-400 font-medium sm:max-w-44">
-              게시 전에는 Meta 앱 역할에 등록된 계정만 테스트할 수 있습니다.
-            </p>
+        {instagramConnectionIssue && (
+          <div role="alert" className="px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-800">
+            {instagramConnectionIssue}
           </div>
         )}
 
-        {/* Quick Add DM Automation Rule Form */}
-        {isAddingRule ? (
-          <div className="p-5 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-4 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black text-purple-900 flex items-center gap-1.5">
-                <Bot className="w-4 h-4 text-purple-600" />
-                <span>새 DM 자동 발송 규칙 등록</span>
-              </h4>
-              <button
-                onClick={() => setIsAddingRule(false)}
-                className="text-xs text-gray-400 hover:text-black font-bold"
-              >
-                ✕ 닫기
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-gray-600">감지할 키워드</label>
-                <input
-                  type="text"
-                  value={newKeyword}
-                  onChange={(e) => setNewKeyword(e.target.value)}
-                  maxLength={100}
-                  placeholder="예: 링크, 구매, 굿즈"
-                  className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 bg-white"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-gray-600">자동 발송 DM 답장 문구</label>
-                <input
-                  type="text"
-                  value={newResponseMessage}
-                  onChange={(e) => setNewResponseMessage(e.target.value)}
-                  maxLength={900}
-                  placeholder="요청하신 상품 구매 링크입니다!"
-                  className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 bg-white"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-gray-600">전송할 목표 URL</label>
-                <input
-                  type="text"
-                  value={newTargetLink}
-                  onChange={(e) => setNewTargetLink(e.target.value)}
-                  maxLength={500}
-                  placeholder="https://linkzip.kr/..."
-                  className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900 bg-white"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setIsAddingRule(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-100"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateRule}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black shadow-xs"
-              >
-                규칙 저장
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
+        <div className="flex items-center">
             <span className="text-xs font-extrabold text-gray-700 flex items-center gap-2">
               활성화된 DM 자동 발송 규칙 ({dmRules.length}개)
-              {instagramAccount && rulesSaveState === 'saving' && <span className="text-gray-400">서버 저장 중</span>}
               {instagramAccount && rulesSaveState === 'error' && <span className="text-red-600">서버 저장 실패</span>}
             </span>
-            <button
-              onClick={() => setIsAddingRule(true)}
-              disabled={!instagramAccount || isInstagramLoading}
-              className="text-xs font-bold text-purple-600 hover:text-purple-800 disabled:text-gray-300 disabled:cursor-not-allowed underline flex items-center gap-1 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>간편 규칙 추가</span>
-            </button>
+        </div>
+
+        {instagramAccount && rulesSaveState === 'error' && rulesSaveError && (
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700">
+            {rulesSaveError}
           </div>
         )}
 
@@ -371,13 +324,37 @@ export const MarketingEditor: React.FC = () => {
             {dmRules.map((rule) => (
               <div 
                 key={rule.id}
-                className="p-4 bg-gray-50/80 border border-gray-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-purple-300 transition"
+                className="p-4 bg-gray-50/80 border border-gray-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#ff5f35] transition"
               >
-                <div className="space-y-1 flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md bg-purple-600 text-white font-extrabold text-[10px]">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    {rule.targetMode === 'next' ? (
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-[#FFDA44] text-black">
+                        <span className="text-xl font-black">NEXT</span>
+                        <span className="mt-0.5 text-[9px] font-bold">게시물 대기</span>
+                      </div>
+                    ) : rule.postThumbnailUrl ? (
+                      <img
+                        src={rule.postThumbnailUrl}
+                        alt={rule.postCaption || '자동화 대상 게시물'}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
+                        <FaInstagram className="h-7 w-7" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-[#171714] bg-[#ffcf4a] px-2.5 py-0.5 text-[10px] font-extrabold text-[#171714]">
                       키워드: {rule.keyword}
                     </span>
+                    {rule.targetMode === 'next' && (
+                      <span className="rounded-full bg-[#FFDA44] px-2 py-0.5 text-[10px] font-black text-black">
+                        NEXT · 다음 게시물 대기
+                      </span>
+                    )}
                     <span className={clsx(
                       "text-[10px] font-bold px-2 py-0.5 rounded-full",
                       rule.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-500"
@@ -388,13 +365,31 @@ export const MarketingEditor: React.FC = () => {
                   <p className="text-xs font-extrabold text-gray-900 truncate">
                     💬 "{rule.responseMessage}"
                   </p>
-                  <p className="text-[11px] text-purple-600 font-semibold truncate flex items-center gap-1">
+                  {rule.postCaption && rule.targetMode !== 'next' && (
+                    <p className="truncate text-[11px] font-semibold text-gray-500">
+                      게시물 · {rule.postCaption}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-[#ff5f35] font-semibold truncate flex items-center gap-1">
                     <ExternalLink className="w-3 h-3" />
                     <span>{rule.targetLinkUrl}</span>
                   </p>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingInstagramRule(rule);
+                      setIsInstagramRuleWizardOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-gray-600 hover:bg-white hover:text-black transition cursor-pointer"
+                    title="자동화 수정"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>수정</span>
+                  </button>
                   <button
                     onClick={() => updateDMRule(rule.id, { isActive: !rule.isActive })}
                     className={clsx(
@@ -423,10 +418,26 @@ export const MarketingEditor: React.FC = () => {
           </div>
         )}
 
+        {INSTAGRAM_DM_AUTOMATION_PAUSED && (
+          <div className="absolute inset-0 z-40 flex cursor-not-allowed items-center justify-center rounded-3xl bg-[#f4f1e8]/94 p-5 backdrop-blur-[2px]">
+            <div className="w-full max-w-md rounded-[26px] border-2 border-[#171714] bg-[#fffdf8] px-7 py-8 text-center shadow-[6px_6px_0_#171714]">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-[#171714] bg-[#ffcf4a] shadow-[3px_3px_0_#ff5f35]">
+                <FaInstagram className="h-6 w-6" />
+              </div>
+              <span className="mt-5 inline-flex rounded-full bg-[#171714] px-3 py-1 text-[10px] font-black text-white">일시 중단</span>
+              <h4 className="mt-3 text-xl font-black tracking-[-0.04em] text-[#171714]">인스타그램 DM 자동 발송 점검 중</h4>
+              <p className="mt-2 text-xs font-bold leading-5 text-gray-500">기능 안정화를 위해 잠시 이용을 막아두었습니다.<br />기존 계정 연동과 자동화 규칙은 삭제되지 않습니다.</p>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* 2. Kakao Alimtalk & Customer Marketing Card */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-6">
+      <div
+        className="relative overflow-hidden bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-2xs space-y-6"
+        aria-disabled="true"
+      >
         <div className="flex items-center justify-between border-b border-gray-100 pb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-400 text-black flex items-center justify-center font-black shadow-xs">
@@ -488,7 +499,7 @@ export const MarketingEditor: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
               <div className="p-3 bg-white/80 rounded-xl border border-amber-100 space-y-0.5">
                 <div className="text-[11px] text-gray-500 font-bold">발신 대표 전화번호</div>
-                <div className="font-extrabold text-gray-900">{alimtalkSettings?.senderPhone || '010-1234-5678'}</div>
+                <div className="font-extrabold text-gray-900">{alimtalkSettings?.senderPhone || '발신 번호 미등록'}</div>
               </div>
 
               <div className="p-3 bg-white/90 rounded-xl border border-amber-200/80 space-y-1.5 shadow-2xs">
@@ -568,7 +579,7 @@ export const MarketingEditor: React.FC = () => {
                 <div className="flex items-center justify-between border-b border-black/10 pb-2">
                   <div className="flex items-center gap-2 font-black text-xs">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                    <span>[알림톡 도착] {state.profile.name || 'LinkZip Official'}</span>
+                    <span>[알림톡 도착] {state.profile.name || '채널명 미등록'}</span>
                   </div>
                   <span className="text-[10px] text-gray-700 font-bold">방금 전</span>
                 </div>
@@ -576,7 +587,7 @@ export const MarketingEditor: React.FC = () => {
                   {alimtalkSettings?.customMessage || '[LinkZip] 안녕하세요! 요청하신 정보/주문이 성공적으로 수신되었습니다.'}
                 </p>
                 <div className="text-[10px] text-gray-700 pt-1 font-medium border-t border-black/10 flex justify-between">
-                  <span>수신 대표 번호: {alimtalkSettings?.senderPhone || '010-1234-5678'}</span>
+                  <span>수신 대표 번호: {alimtalkSettings?.senderPhone || '미등록'}</span>
                   <span className="font-extrabold text-amber-950">✅ 시뮬레이션 알림톡 발송 성공</span>
                 </div>
               </div>
@@ -667,12 +678,31 @@ export const MarketingEditor: React.FC = () => {
             </div>
           </div>
         )}
+
+        <div className="absolute inset-0 z-40 flex cursor-not-allowed items-center justify-center rounded-3xl bg-[#f4f1e8]/94 p-5 backdrop-blur-[2px]">
+          <div className="w-full max-w-md rounded-[26px] border-2 border-[#171714] bg-[#fffdf8] px-7 py-8 text-center shadow-[6px_6px_0_#171714]">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-[#171714] bg-[#ffcf4a] shadow-[3px_3px_0_#ff5f35]">
+              <Bell className="h-6 w-6" />
+            </div>
+            <span className="mt-5 inline-flex rounded-full bg-[#171714] px-3 py-1 text-[10px] font-black text-white">준비 중</span>
+            <h4 className="mt-3 text-xl font-black tracking-[-0.04em] text-[#171714]">카카오 알림톡 자동 발송 준비 중</h4>
+            <p className="mt-2 text-xs font-bold leading-5 text-gray-500">더 안정적인 발송을 위해 기능을 준비하고 있습니다.<br />정식 제공 전까지 잠시만 기다려 주세요.</p>
+          </div>
+        </div>
       </div>
 
       {/* Kakao Alimtalk 1-Click Auto Connection Wizard Modal Mount */}
       <KakaoAlimtalkWizardModal
         isOpen={isKakaoWizardOpen}
         onClose={() => setIsKakaoWizardOpen(false)}
+      />
+      <InstagramDmRuleCreateWizardModal
+        isOpen={!INSTAGRAM_DM_AUTOMATION_PAUSED && isInstagramRuleWizardOpen}
+        editingRule={editingInstagramRule}
+        onClose={() => {
+          setIsInstagramRuleWizardOpen(false);
+          setEditingInstagramRule(null);
+        }}
       />
 
     </div>

@@ -25,14 +25,16 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
   const [price, setPrice] = useState<number>(initialProduct?.price ?? 50000);
   const [fileName, setFileName] = useState(initialProduct?.fileName || '');
   const [filePath, setFilePath] = useState(initialProduct?.filePath || '');
+  const [shippingFee, setShippingFee] = useState<number>(initialProduct?.shippingFee ?? 3000);
   const [isUploading, setIsUploading] = useState(false);
 
   // Optional checkbox states matching Screenshot 3
-  const [showDiscount, setShowDiscount] = useState(!!initialProduct?.discountPrice);
-  const [discountPrice, setDiscountPrice] = useState<number>(initialProduct?.discountPrice ?? 0);
-
-  const [showStock, setShowStock] = useState(!!initialProduct?.stock);
-  const [stock, setStock] = useState<number>(initialProduct?.stock ?? 100);
+  const getDiscountRate = (product?: ProductItem) => {
+    if (!product?.price || product.discountPrice == null || product.discountPrice >= product.price) return 0;
+    return Math.round((1 - product.discountPrice / product.price) * 100);
+  };
+  const [showDiscount, setShowDiscount] = useState(getDiscountRate(initialProduct) > 0);
+  const [discountRate, setDiscountRate] = useState<number>(getDiscountRate(initialProduct));
 
   const [showOrderNotes, setShowOrderNotes] = useState(!!initialProduct?.orderNote);
   const [orderNote, setOrderNote] = useState(initialProduct?.orderNote || '');
@@ -44,10 +46,10 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
     setPrice(initialProduct?.price ?? 50000);
     setFileName(initialProduct?.fileName || '');
     setFilePath(initialProduct?.filePath || '');
-    setShowDiscount(initialProduct?.discountPrice != null);
-    setDiscountPrice(initialProduct?.discountPrice ?? 0);
-    setShowStock(initialProduct?.stock != null);
-    setStock(initialProduct?.stock ?? 100);
+    setShippingFee(initialProduct?.shippingFee ?? 3000);
+    const initialDiscountRate = getDiscountRate(initialProduct);
+    setShowDiscount(initialDiscountRate > 0);
+    setDiscountRate(initialDiscountRate);
     setShowOrderNotes(!!initialProduct?.orderNote);
     setOrderNote(initialProduct?.orderNote || '');
   }, [initialProduct, isOpen, salesType]);
@@ -77,12 +79,25 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
       alert('상품명을 입력해주세요.');
       return;
     }
-    if (!price || price <= 0) {
-      alert('판매 가격을 입력해주세요.');
+    if (!Number.isSafeInteger(price) || price < 100) {
+      alert('상품 가격은 100원 이상으로 입력해주세요.');
       return;
     }
     if (salesType === 'digital_file' && !filePath) {
       alert('구매자에게 전달할 파일을 업로드해주세요.');
+      return;
+    }
+    if (showDiscount && (discountRate < 1 || discountRate > 99)) {
+      alert('할인율은 1~99% 사이로 입력해주세요.');
+      return;
+    }
+
+    const calculatedDiscountPrice = showDiscount
+      ? Math.round(price * (1 - discountRate / 100))
+      : undefined;
+
+    if (calculatedDiscountPrice !== undefined && calculatedDiscountPrice < 100) {
+      alert('할인 적용가는 100원 이상이어야 합니다.');
       return;
     }
 
@@ -92,8 +107,9 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
       price,
       fileName,
       filePath,
-      discountPrice: showDiscount ? discountPrice : undefined,
-      stock: showStock ? stock : undefined,
+      discountPrice: calculatedDiscountPrice,
+      stock: initialProduct?.stock ?? 10,
+      shippingFee: salesType === 'product' ? Math.max(0, Math.floor(shippingFee)) : undefined,
       orderNote: showOrderNotes ? orderNote : undefined
     });
     onClose();
@@ -142,6 +158,8 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
             <div className="relative">
               <input
                 type="number"
+                min={100}
+                step={100}
                 value={price}
                 onChange={(e) => setPrice(Number(e.target.value))}
                 placeholder="50000"
@@ -149,6 +167,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
               />
               <span className="absolute right-3.5 top-3 text-xs font-extrabold text-gray-800 pointer-events-none">KRW</span>
             </div>
+            <p className="text-[10px] font-semibold text-gray-400">최소 판매가는 100원입니다.</p>
           </div>
 
           {/* Upload Files* */}
@@ -168,7 +187,7 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
             {fileName && (
               <div className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700">
                 <div className="flex items-center gap-2 truncate">
-                  <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <FileText className="w-4 h-4 text-[#e94f2b] shrink-0" />
                   <span className="truncate">{fileName}</span>
                 </div>
                 <span className="text-[10px] text-emerald-600 font-bold">업로드 됨</span>
@@ -193,41 +212,41 @@ export const ProductRegistrationModal: React.FC<ProductRegistrationModalProps> =
               </label>
 
               {showDiscount && (
-                <div className="mt-2 pl-6">
-                  <input
-                    type="number"
-                    value={discountPrice}
-                    onChange={(e) => setDiscountPrice(Number(e.target.value))}
-                    placeholder="할인된 가격 (KRW)"
-                    className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900"
-                  />
+                <div className="mt-2 space-y-2 pl-6">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={discountRate || ''}
+                      onChange={(e) => setDiscountRate(Math.min(99, Math.max(0, Number(e.target.value))))}
+                      placeholder="할인율 입력"
+                      className="w-full rounded-xl border border-gray-300 p-2.5 pr-10 text-xs font-bold text-gray-900"
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-gray-700">%</span>
+                  </div>
+                  {discountRate > 0 && (
+                    <p className="text-[11px] font-semibold text-gray-500">
+                      할인 적용가 <span className="font-black text-gray-900">{Math.round(price * (1 - discountRate / 100)).toLocaleString()}원</span>
+                    </p>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* 2. Stock Quantity */}
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showStock}
-                  onChange={(e) => setShowStock(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
-                />
+            {/* 2. Stock Quantity / Shipping */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2.5">
                 <span>{tr('재고 수량', 'Stock quantity')}</span>
-              </label>
-
-              {showStock && (
-                <div className="mt-2 pl-6">
-                  <input
-                    type="number"
-                    value={stock}
-                    onChange={(e) => setStock(Number(e.target.value))}
-                    placeholder="재고 수량 (개)"
-                    className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-900"
-                  />
+                <span className="font-black text-gray-900">{initialProduct?.stock ?? 10}개 <span className="ml-1 text-[10px] font-semibold text-gray-400">고정</span></span>
+              </div>
+              {salesType === 'product' && <label className="space-y-1">
+                <span className="block text-xs font-bold text-gray-600">{tr('배송비', 'Shipping fee')}</span>
+                <div className="relative">
+                  <input type="number" min={0} step={100} value={shippingFee} onChange={(event) => setShippingFee(Math.max(0, Number(event.target.value) || 0))} className="w-full rounded-xl border border-gray-300 p-3 pr-9 text-right text-xs font-bold text-gray-900 focus:ring-2 focus:ring-black" />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">원</span>
                 </div>
-              )}
+              </label>}
             </div>
 
             {/* 3. Order Notes */}

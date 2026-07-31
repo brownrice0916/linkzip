@@ -27,7 +27,7 @@ const userTypes: Array<{
     title: '브랜드·기업',
     description: '비즈니스를 위해 더 많은 고객을 모으고 싶어요',
     icon: <Building2 className="h-7 w-7" />,
-    color: 'bg-violet-100 text-violet-600',
+    color: 'bg-[#ffcf4a] text-[#171714]',
   },
   {
     id: 'personal',
@@ -83,7 +83,7 @@ const Progress = ({ step }: { step: number }) => (
 const OnboardingSurvey = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
-  const saved = readOnboardingSurvey();
+  const saved = readOnboardingSurvey(user?.uid);
   const [step, setStep] = useState(1);
   const [userType, setUserType] = useState<OnboardingUserType>(saved?.userType || 'creator');
   const [goals, setGoals] = useState<string[]>(saved?.goals || []);
@@ -112,13 +112,13 @@ const OnboardingSurvey = () => {
   };
 
   const goToStep = (nextStep: number) => {
-    writeOnboardingSurvey({ userType, goals, categories: selectedCategories });
+    writeOnboardingSurvey(user?.uid, { userType, goals, categories: selectedCategories });
     setStep(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const finish = (skipCategories = false) => {
-    writeOnboardingSurvey({
+    writeOnboardingSurvey(user?.uid, {
       userType,
       goals,
       categories: skipCategories ? [] : selectedCategories,

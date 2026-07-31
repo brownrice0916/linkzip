@@ -2,6 +2,50 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    function paidMembershipActive(uid) {
+      return firestore.exists(/databases/(default)/documents/users/$(uid))
+        && (
+          firestore.get(/databases/(default)/documents/users/$(uid)).data.get('membershipGrant', '') == 'beta_lifetime_premium'
+          || (
+            firestore.get(/databases/(default)/documents/users/$(uid)).data.get('membershipPlan', 'basic') in ['standard', 'premium']
+            && firestore.get(/databases/(default)/documents/users/$(uid)).data.get('membershipPeriodEndsAt', request.time) is timestamp
+            && firestore.get(/databases/(default)/documents/users/$(uid)).data.get('membershipPeriodEndsAt', request.time) > request.time
+          )
+        );
+    }
+
+    function premiumMembershipActive(uid) {
+      return paidMembershipActive(uid)
+        && (
+          firestore.get(/databases/(default)/documents/users/$(uid)).data.get('membershipGrant', '') == 'beta_lifetime_premium'
+          || firestore.get(/databases/(default)/documents/users/$(uid)).data.get('membershipPlan', 'basic') == 'premium'
+        );
+    }
+
+    function betaLifetimePremium(uid) {
+      return firestore.exists(/databases/(default)/documents/users/$(uid))
+        && firestore.get(/databases/(default)/documents/users/$(uid)).data.get('membershipGrant', '') == 'beta_lifetime_premium';
+    }
+
+    function validBetaUploadReservation(uid, fileName) {
+      let reservationId = request.resource.metadata.get('linkzipUploadReservation', '');
+      let reservationPath = /databases/(default)/documents/sharedFileUploadReservations/$(reservationId);
+      return reservationId is string
+        && reservationId.size() > 0
+        && firestore.exists(reservationPath)
+        && firestore.get(reservationPath).data.uid == uid
+        && firestore.get(reservationPath).data.fileName == fileName
+        && firestore.get(reservationPath).data.filePath == 'shared-files/' + uid + '/' + fileName
+        && firestore.get(reservationPath).data.size == request.resource.size
+        && firestore.get(reservationPath).data.status == 'reserved'
+        && firestore.get(reservationPath).data.expiresAt > request.time;
+    }
+
+    function sharedFileLimit(uid) {
+      return premiumMembershipActive(uid) ? 100 * 1024 * 1024
+        : (paidMembershipActive(uid) ? 20 * 1024 * 1024 : 5 * 1024 * 1024);
+    }
+
     match /avatars/{uid}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == uid
@@ -31,9 +75,12 @@ service firebase.storage {
     }
 
     match /shared-files/{uid}/{fileName} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == uid
-        && request.resource.size < 25 * 1024 * 1024;
+      allow read: if false;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.size <= sharedFileLimit(uid)
+        && (!betaLifetimePremium(uid) || validBetaUploadReservation(uid, fileName));
+      allow update: if false;
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
     match /digital-products/{uid}/{fileName} {

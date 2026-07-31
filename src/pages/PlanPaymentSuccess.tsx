@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, LoaderCircle, XCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { confirmTossMembershipPayment, type MembershipPaymentConfirmation } from '../services/membershipService';
+import { useStore } from '../store/useStore';
 
 export default function PlanPaymentSuccess() {
   const [params] = useSearchParams();
@@ -17,7 +18,13 @@ export default function PlanPaymentSuccess() {
       return;
     }
     void confirmTossMembershipPayment(paymentKey, orderId, amount)
-      .then(setResult)
+      .then((confirmation) => {
+        useStore.setState({
+          membershipPlan: confirmation.planId,
+          membershipPeriodEndsAt: confirmation.periodEndsAt,
+        });
+        setResult(confirmation);
+      })
       .catch((reason) => setError(reason instanceof Error ? reason.message : '플랜 결제 승인에 실패했습니다.'));
   }, [params]);
 

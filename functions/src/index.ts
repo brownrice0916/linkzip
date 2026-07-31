@@ -1,13 +1,14 @@
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
-import {FieldValue, Timestamp, getFirestore} from "firebase-admin/firestore";
+import {FieldValue, Timestamp, getFirestore, type DocumentReference} from "firebase-admin/firestore";
 import {getStorage} from "firebase-admin/storage";
 import {logger} from "firebase-functions";
 import {defineSecret} from "firebase-functions/params";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
-import {createHash, randomBytes, randomUUID, timingSafeEqual} from "node:crypto";
+import {onObjectFinalized} from "firebase-functions/v2/storage";
+import {createHash, randomBytes, randomInt, randomUUID, timingSafeEqual} from "node:crypto";
 import type {Request} from "firebase-functions/v2/https";
 import type {Response} from "express";
 
@@ -37,6 +38,16 @@ import {
   isSiteAdmin,
   normalizeInviteCode,
 } from "./betaAccess.js";
+import {
+  BETA_LIFETIME_PREMIUM_GRANT,
+  BETA_SHARED_FILE_DOWNLOADS_PER_DAY,
+  BETA_SHARED_FILE_UPLOAD_BYTES_PER_DAY,
+  PLAN_ENTITLEMENTS,
+  entitlementsForUser,
+  isBetaLifetimePremium,
+  sharedFileDownloadsPerDayForUser,
+  type MembershipPlan,
+} from "./planEntitlements.js";
 
 initializeApp();
 
@@ -44,8 +55,14 @@ const db = getFirestore();
 const metaWebhookVerifyToken = defineSecret("META_WEBHOOK_VERIFY_TOKEN");
 const metaAppSecret = defineSecret("META_APP_SECRET");
 const metaInstagramAppId = defineSecret("META_INSTAGRAM_APP_ID");
+const metaInstagramAppSecret = defineSecret("META_INSTAGRAM_APP_SECRET");
 const metaTokenEncryptionKey = defineSecret("META_TOKEN_ENCRYPTION_KEY");
 const tossSecretKey = defineSecret("TOSS_SECRET_KEY");
+const kakaoRestApiKey = defineSecret("KAKAO_REST_API_KEY");
+const kakaoClientSecret = defineSecret("KAKAO_CLIENT_SECRET");
+const naverClientId = defineSecret("NAVER_CLIENT_ID");
+const naverClientSecret = defineSecret("NAVER_CLIENT_SECRET");
+const resendApiKey = defineSecret("RESEND_API_KEY");
 
 const tossBankCodes: Record<string, string> = {
   "KB국민은행": "06",
@@ -67,6 +84,16 @@ const betaCallableOptions = {
   timeoutSeconds: 30,
 };
 
+const betaLifetimePremiumData = () => ({
+  membershipPlan: "premium",
+  membershipBillingCycle: "lifetime_beta",
+  membershipPeriodEndsAt: null,
+  membershipPaymentProvider: "beta_invite",
+  membershipGrant: BETA_LIFETIME_PREMIUM_GRANT,
+  membershipGrantedAt: FieldValue.serverTimestamp(),
+  membershipUpdatedAt: FieldValue.serverTimestamp(),
+});
+
 const requireSiteAdmin = (request: {auth?: {token: Record<string, unknown>}}) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
   if (!isSiteAdmin(request.auth.token)) {
@@ -85,6 +112,55 @@ const instagramScopes = [
   "instagram_business_manage_comments",
 ];
 
+const kakaoRedirectUri = "https://linkzip.kr/auth/kakao/callback";
+// Firebase Hosting forwards only the specially named `__session` cookie to
+// rewritten Cloud Functions. Provider-specific names are stripped before the
+// callback reaches the function, so scope the shared name by provider path.
+const oauthStateCookieName = "__session";
+const kakaoAllowedReturnOrigins = new Set([
+  "https://linkzip.kr",
+  "https://www.linkzip.kr",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:5274",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
+  "http://127.0.0.1:5274",
+]);
+
+interface KakaoProfileResponse {
+  id?: number | string;
+  properties?: {
+    nickname?: string;
+    profile_image?: string;
+  };
+  kakao_account?: {
+    email?: string;
+    is_email_valid?: boolean;
+    is_email_verified?: boolean;
+    profile?: {
+      nickname?: string;
+      profile_image_url?: string;
+    };
+  };
+}
+
+const naverRedirectUri = "https://linkzip.kr/auth/naver/callback";
+
+interface NaverProfileResponse {
+  resultcode?: string;
+  message?: string;
+  response?: {
+    id?: string;
+    email?: string;
+    nickname?: string;
+    name?: string;
+    profile_image?: string;
+  };
+}
+
 interface InstagramConnection {
   uid: string;
   instagramUserId: string;
@@ -101,7 +177,9 @@ const orderLookupOrigins = new Set([
   "https://linkzip.kr",
   "https://www.linkzip.kr",
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
 ]);
 
 interface PublicSalesProduct {
@@ -111,6 +189,8 @@ interface PublicSalesProduct {
   discountPrice?: unknown;
   fileName?: unknown;
   filePath?: unknown;
+  stock?: unknown;
+  shippingFee?: unknown;
 }
 
 interface PublicSalesLink {
@@ -175,6 +255,331 @@ const findPrivateProfileLinks = (
     return typeof profile?.username === "string" && profile.username.trim().toLowerCase() === username;
   }) as {customLinks?: unknown} | undefined;
   return workspace?.customLinks || userData.customLinks || [];
+};
+
+const productWithinPlanLimit = (
+  links: unknown,
+  targetBlockId: string,
+  targetProductId: string,
+  limit: number | null,
+) => {
+  if (!Array.isArray(links)) return false;
+  let index = 0;
+  let allowed = false;
+  const visit = (items: unknown[]) => {
+    for (const candidate of items) {
+      if (!candidate || typeof candidate !== "object") continue;
+      const link = candidate as PublicSalesLink;
+      if (link.type === "sales" && Array.isArray(link.salesConfig?.products)) {
+        for (const product of link.salesConfig.products) {
+          if (link.id === targetBlockId && product && typeof product === "object" && (product as {id?: unknown}).id === targetProductId) {
+            allowed = limit === null || index < limit;
+          }
+          index += 1;
+        }
+      }
+      if (Array.isArray(link.links)) visit(link.links);
+    }
+  };
+  visit(links);
+  return allowed;
+};
+
+const hasCustomerFormBlock = (userData: FirebaseFirestore.DocumentData | undefined, blockId: string) => {
+  const workspaces = Array.isArray(userData?.profileWorkspaces) ? userData.profileWorkspaces : [];
+  const linkSets = workspaces.length > 0
+    ? workspaces.map((workspace: {customLinks?: unknown}) => workspace.customLinks)
+    : [userData?.customLinks];
+  return linkSets.some((links: unknown) => {
+    const block = findPublicLink(links, blockId);
+    return block?.type === "customer_info" && block.isVisible !== false;
+  });
+};
+
+const platformFeeFor = (amount: number, percent: number) =>
+  Math.floor(amount * percent / 100);
+
+const writePlatformFeeLedger = (
+  transaction: FirebaseFirestore.Transaction,
+  orderNumber: string,
+  ownerUid: string,
+  orderData: FirebaseFirestore.DocumentData | undefined,
+  provider: "toss" | "bank_transfer",
+) => {
+  const feeAmount = Number(orderData?.platformFeeAmount || 0);
+  if (feeAmount < 1) return;
+  transaction.set(db.collection("platformFeeLedger").doc(orderNumber), {
+    orderNumber,
+    ownerUid,
+    kind: orderData?.kind === "donation" ? "donation" : "sales",
+    sellerPlan: orderData?.sellerPlan || "basic",
+    grossAmount: Number(orderData?.amount || 0),
+    platformFeePercent: Number(orderData?.platformFeePercent || 0),
+    platformFeeAmount: feeAmount,
+    sellerNetAmount: Number(orderData?.sellerNetAmount || 0),
+    paymentProvider: provider,
+    collectionStatus: provider === "toss" ? "held_for_settlement" : "receivable",
+    createdAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+};
+
+const instagramEntitlementsForUid = async (uid: string) => {
+  const userSnapshot = await db.collection("users").doc(uid).get();
+  return entitlementsForUser(userSnapshot.data());
+};
+
+export const submitCustomerData = onCall(
+  {region: "asia-northeast3", memory: "256MiB", timeoutSeconds: 20},
+  async (request) => {
+    const ownerUid = cleanString(request.data?.ownerUid, 128);
+    const blockId = cleanString(request.data?.data?.blockId, 128);
+    const email = cleanString(request.data?.data?.email, 200);
+    const phone = cleanString(request.data?.data?.phone, 50);
+    const name = cleanString(request.data?.data?.name, 100);
+    if (!/^[A-Za-z0-9_-]{6,128}$/.test(ownerUid) || !blockId || (!email && !phone && !name)) {
+      throw new HttpsError("invalid-argument", "제출할 고객 정보를 확인해주세요.");
+    }
+    const userSnapshot = await db.collection("users").doc(ownerUid).get();
+    if (!userSnapshot.exists || !hasCustomerFormBlock(userSnapshot.data(), blockId)) {
+      throw new HttpsError("not-found", "고객 정보 수집 양식을 찾을 수 없습니다.");
+    }
+    const {entitlements} = entitlementsForUser(userSnapshot.data());
+    if (!entitlements.canUseCustomerForms) {
+      throw new HttpsError("permission-denied", "현재 프로필에서는 고객 정보를 수집할 수 없습니다.");
+    }
+    const entries = db.collection("users").doc(ownerUid).collection("collected_customer_data");
+    const countSnapshot = await entries.count().get();
+    const usageRef = db.collection("customerDataUsage").doc(ownerUid);
+    const entryRef = entries.doc();
+    await db.runTransaction(async (transaction) => {
+      const usageSnapshot = await transaction.get(usageRef);
+      const count = Math.max(countSnapshot.data().count, Number(usageSnapshot.data()?.count || 0));
+      if (count >= entitlements.maxCustomerRecords) {
+        throw new HttpsError("resource-exhausted", "이 프로필의 고객 정보 수집 한도에 도달했습니다.");
+      }
+      transaction.set(usageRef, {
+        uid: ownerUid,
+        count: count + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+      }, {merge: true});
+      transaction.set(entryRef, {
+        blockId,
+        email,
+        phone,
+        name,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    });
+    return {submitted: true};
+  },
+);
+
+export const deleteMyAccount = onCall(
+  {region: "asia-northeast3", memory: "512MiB", timeoutSeconds: 120},
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    const uid = request.auth.uid;
+    const authTime = Number(request.auth.token.auth_time || 0) * 1000;
+    if (!authTime || Date.now() - authTime > 10 * 60 * 1000) {
+      throw new HttpsError("failed-precondition", "보안을 위해 다시 로그인한 뒤 탈퇴해주세요.");
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const [userSnapshot, usernameSnapshot, publicProfileSnapshot, identitySnapshot, bugReportSnapshot] = await Promise.all([
+      userRef.get(),
+      db.collection("usernames").where("uid", "==", uid).get(),
+      db.collection("publicProfiles").where("ownerUid", "==", uid).get(),
+      db.collection("oauthIdentities").where("uid", "==", uid).get(),
+      db.collection("bugReports").where("uid", "==", uid).get(),
+    ]);
+
+    const profileIds = new Set<string>([uid]);
+    const profileUsernames = new Set<string>();
+    const workspaces = Array.isArray(userSnapshot.data()?.profileWorkspaces)
+      ? userSnapshot.data()?.profileWorkspaces as Array<{id?: unknown; profile?: {username?: unknown}}>
+      : [];
+    for (const workspace of workspaces) {
+      if (typeof workspace.id === "string" && workspace.id) profileIds.add(`${uid}_${workspace.id}`);
+      if (typeof workspace.profile?.username === "string" && workspace.profile.username) {
+        profileUsernames.add(workspace.profile.username.trim().toLowerCase());
+      }
+    }
+    const primaryUsername = userSnapshot.data()?.profile?.username;
+    if (typeof primaryUsername === "string" && primaryUsername) profileUsernames.add(primaryUsername.trim().toLowerCase());
+    usernameSnapshot.docs.forEach((document) => profileUsernames.add(document.id.trim().toLowerCase()));
+    publicProfileSnapshot.docs.forEach((document) => profileIds.add(document.id));
+
+    const batch = db.batch();
+    usernameSnapshot.docs.forEach((document) => batch.delete(document.ref));
+    publicProfileSnapshot.docs.forEach((document) => batch.delete(document.ref));
+    identitySnapshot.docs.forEach((document) => batch.delete(document.ref));
+    bugReportSnapshot.docs.forEach((document) => batch.delete(document.ref));
+    for (const profileId of profileIds) batch.delete(db.collection("publicProfiles").doc(profileId));
+    batch.delete(db.collection("instagramConnections").doc(uid));
+    batch.delete(db.collection("customerDataUsage").doc(uid));
+    batch.delete(db.collection("betaMembers").doc(uid));
+    await batch.commit();
+
+    // Guestbook content lives in top-level collections rather than beneath the
+    // user document. Remove content owned by or authored by the departing user,
+    // together with password/challenge records that would otherwise be orphaned.
+    const guestbookQueries: Array<Promise<FirebaseFirestore.QuerySnapshot>> = [
+      db.collection("guestbooks").where("targetOwnerUid", "==", uid).get(),
+      db.collection("guestbooks").where("authorUid", "==", uid).get(),
+      db.collection("guestbookReplies").where("authorUid", "==", uid).get(),
+    ];
+    for (const username of profileUsernames) {
+      guestbookQueries.push(
+        db.collection("guestbooks").where("targetUsername", "==", username).get(),
+        db.collection("guestbookReplies").where("targetUsername", "==", username).get(),
+        db.collection("guestbookEditChallenges").where("targetUsername", "==", username).get(),
+        db.collection("guestbookDeleteChallenges").where("targetUsername", "==", username).get(),
+        db.collection("guestbookReplyEditChallenges").where("targetUsername", "==", username).get(),
+        db.collection("guestbookReplyDeleteChallenges").where("targetUsername", "==", username).get(),
+      );
+    }
+    const guestbookSnapshots = await Promise.all(guestbookQueries);
+    const guestbookDocuments = new Map<string, DocumentReference>();
+    for (const snapshot of guestbookSnapshots) {
+      snapshot.docs.forEach((document) => guestbookDocuments.set(document.ref.path, document.ref));
+    }
+    for (const document of guestbookDocuments.values()) {
+      if (document.parent.id === "guestbooks") {
+        const secretRef = db.collection("guestbookSecrets").doc(document.id);
+        guestbookDocuments.set(secretRef.path, secretRef);
+      }
+      if (document.parent.id === "guestbookReplies") {
+        const secretRef = db.collection("guestbookReplySecrets").doc(document.id);
+        guestbookDocuments.set(secretRef.path, secretRef);
+      }
+    }
+    const guestbookWriter = db.bulkWriter();
+    guestbookDocuments.forEach((document) => guestbookWriter.delete(document));
+    await guestbookWriter.close();
+
+    await Promise.all([
+      db.recursiveDelete(userRef),
+      db.recursiveDelete(db.collection("analytics").doc(uid)),
+    ]);
+
+    const bucket = getStorage().bucket();
+    const storagePrefixes = [
+      `avatars/${uid}/`,
+      `profiles/${uid}/`,
+      `thumbnails/${uid}/`,
+      `affiliate-products/${uid}/`,
+      `shared-files/${uid}/`,
+      `digital-products/${uid}/`,
+    ];
+    await Promise.all(storagePrefixes.map(async (prefix) => {
+      try {
+        await bucket.deleteFiles({prefix, force: true});
+      } catch (error) {
+        logger.warn("Account storage cleanup failed", {uid, prefix, error});
+        throw error;
+      }
+    }));
+
+    await getAuth().deleteUser(uid);
+    logger.info("Account deletion completed", {uid});
+    return {deleted: true};
+  },
+);
+
+export const listCustomerData = onCall(
+  {region: "asia-northeast3", memory: "256MiB", timeoutSeconds: 20},
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    const userSnapshot = await db.collection("users").doc(request.auth.uid).get();
+    const {entitlements} = entitlementsForUser(userSnapshot.data());
+    const snapshot = await db.collection("users").doc(request.auth.uid)
+      .collection("collected_customer_data")
+      .limit(entitlements.maxCustomerRecords)
+      .get();
+    return {
+      records: snapshot.docs.map((document) => {
+        const data = document.data();
+        return {
+          id: document.id,
+          blockId: cleanString(data.blockId, 128),
+          email: cleanString(data.email, 200),
+          phone: cleanString(data.phone, 50),
+          name: cleanString(data.name, 100),
+          createdAt: data.createdAt instanceof Timestamp
+            ? data.createdAt.toDate().toISOString()
+            : cleanString(data.createdAt, 64),
+        };
+      }),
+      limit: entitlements.maxCustomerRecords,
+      canExport: entitlements.canExportCustomerData,
+    };
+  },
+);
+
+export const removeCustomerData = onCall(
+  {region: "asia-northeast3", memory: "256MiB", timeoutSeconds: 20},
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    const id = cleanString(request.data?.id, 128);
+    if (!/^[A-Za-z0-9]{6,128}$/.test(id)) throw new HttpsError("invalid-argument", "삭제할 고객 정보를 확인해주세요.");
+    const entryRef = db.collection("users").doc(request.auth.uid).collection("collected_customer_data").doc(id);
+    const usageRef = db.collection("customerDataUsage").doc(request.auth.uid);
+    await db.runTransaction(async (transaction) => {
+      const [entrySnapshot, usageSnapshot] = await Promise.all([
+        transaction.get(entryRef),
+        transaction.get(usageRef),
+      ]);
+      if (!entrySnapshot.exists) return;
+      transaction.delete(entryRef);
+      transaction.set(usageRef, {
+        uid: request.auth?.uid,
+        count: Math.max(0, Number(usageSnapshot.data()?.count || 1) - 1),
+        updatedAt: FieldValue.serverTimestamp(),
+      }, {merge: true});
+    });
+    return {removed: true};
+  },
+);
+
+const requireInstagramPlan = async (uid: string) => {
+  return instagramEntitlementsForUid(uid);
+};
+
+const reserveInstagramDelivery = async (uid: string, monthlyLimit: number | null) => {
+  const month = new Date().toISOString().slice(0, 7);
+  const usageRef = db.collection("instagramAutomationUsage").doc(`${uid}_${month}`);
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(usageRef);
+    const count = Number(snapshot.data()?.count || 0);
+    if (monthlyLimit !== null && count >= monthlyLimit) return false;
+    transaction.set(usageRef, {
+      uid,
+      month,
+      count: count + 1,
+      ...(monthlyLimit !== null ? {limit: monthlyLimit} : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+    return true;
+  });
+};
+
+const syncProfilePlanVisibility = async (uid: string, plan: MembershipPlan) => {
+  const userSnapshot = await db.collection("users").doc(uid).get();
+  const workspaces = Array.isArray(userSnapshot.data()?.profileWorkspaces)
+    ? userSnapshot.data()?.profileWorkspaces as Array<{id?: unknown}>
+    : [];
+  if (workspaces.length === 0) return;
+  const batch = db.batch();
+  const maxProfiles = PLAN_ENTITLEMENTS[plan].maxProfiles;
+  workspaces.forEach((workspace, index) => {
+    if (typeof workspace.id !== "string") return;
+    batch.set(db.collection("publicProfiles").doc(`${uid}_${workspace.id}`), {
+      planPaused: index >= maxProfiles,
+      forceWatermark: !PLAN_ENTITLEMENTS[plan].canHideBranding,
+      planVisibilityUpdatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  });
+  await batch.commit();
 };
 
 interface BankTransferAccount {
@@ -313,10 +718,170 @@ export const verifyTossBankAccount = onCall(
     if ((verification.entityBody?.isValid ?? verification.isValid) !== true) {
       throw new HttpsError("failed-precondition", "계좌번호와 소유자 정보가 일치하지 않습니다.");
     }
+    const verifiedHolderName = cleanString(
+      verification.entityBody?.holderName ?? verification.holderName,
+      50,
+    );
+    const normalizeHolderName = (value: string) => value.replace(/\s+/g, "").toLocaleLowerCase("ko-KR");
+    if (!verifiedHolderName || normalizeHolderName(verifiedHolderName) !== normalizeHolderName(holderName)) {
+      throw new HttpsError("failed-precondition", "입력한 예금주명과 인증된 예금주명이 일치하지 않습니다.");
+    }
 
-    return {holderName};
+    return {holderName: verifiedHolderName};
   },
 );
+
+const isValidBusinessRegistrationNumber = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (!/^\d{10}$/.test(digits)) return false;
+  const weights = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+  const sum = weights.reduce((total, weight, index) => total + Number(digits[index]) * weight, 0)
+    + Math.floor((Number(digits[8]) * 5) / 10);
+  return (10 - (sum % 10)) % 10 === Number(digits[9]);
+};
+
+const sellerVerificationResponse = (data: FirebaseFirestore.DocumentData | undefined) => {
+  const verification = data?.sellerVerification || {};
+  return {
+    status: ["pending", "approved", "rejected"].includes(verification.status)
+      ? verification.status
+      : "not_submitted",
+    sellerType: verification.sellerType === "individual_creator" ? "individual_creator" : "business",
+    businessRegistrationNumber: cleanString(verification.businessRegistrationNumber, 10),
+    businessName: cleanString(verification.businessName, 100),
+    representativeName: cleanString(verification.representativeName, 50),
+    businessAddress: cleanString(verification.businessAddress, 300),
+    contactPhone: cleanString(verification.contactPhone, 30),
+    contactEmail: cleanString(verification.contactEmail, 100),
+    mailOrderRegistrationNumber: cleanString(verification.mailOrderRegistrationNumber, 100),
+    mailOrderExemptionReason: cleanString(verification.mailOrderExemptionReason, 300),
+    bankName: cleanString(verification.bankName, 50),
+    accountHolder: cleanString(verification.accountHolder, 50),
+    accountNumber: cleanString(verification.accountNumber, 30),
+    shippingPolicy: cleanString(verification.shippingPolicy, 1000),
+    prohibitedGoodsAgreed: verification.prohibitedGoodsAgreed === true,
+    privacyTermsAgreed: verification.privacyTermsAgreed === true,
+    sellerTermsAgreed: verification.sellerTermsAgreed === true,
+    creatorDigitalOnlyAgreed: verification.creatorDigitalOnlyAgreed === true,
+    creatorBusinessTransitionAgreed: verification.creatorBusinessTransitionAgreed === true,
+    creatorTaxResponsibilityAgreed: verification.creatorTaxResponsibilityAgreed === true,
+    submittedAt: serializeTimestamp(verification.submittedAt),
+    reviewedAt: serializeTimestamp(verification.reviewedAt),
+    rejectionReason: cleanString(verification.rejectionReason, 300),
+  };
+};
+
+export const getSellerVerification = onCall(betaCallableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const snapshot = await db.collection("users").doc(request.auth.uid).get();
+  return sellerVerificationResponse(snapshot.data());
+});
+
+export const submitSellerVerification = onCall(betaCallableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const sellerType = request.data?.sellerType === "individual_creator" ? "individual_creator" : "business";
+  const businessRegistrationNumber = cleanString(request.data?.businessRegistrationNumber, 20).replace(/\D/g, "");
+  const application = {
+    sellerType,
+    businessRegistrationNumber,
+    businessName: cleanString(request.data?.businessName, 100),
+    representativeName: cleanString(request.data?.representativeName, 50),
+    businessAddress: cleanString(request.data?.businessAddress, 300),
+    contactPhone: cleanString(request.data?.contactPhone, 30),
+    contactEmail: cleanString(request.data?.contactEmail, 100),
+    mailOrderRegistrationNumber: cleanString(request.data?.mailOrderRegistrationNumber, 100),
+    mailOrderExemptionReason: cleanString(request.data?.mailOrderExemptionReason, 300),
+    bankName: cleanString(request.data?.bankName, 50),
+    accountHolder: cleanString(request.data?.accountHolder, 50),
+    accountNumber: cleanString(request.data?.accountNumber, 30).replace(/\D/g, ""),
+    shippingPolicy: cleanString(request.data?.shippingPolicy, 1000),
+    prohibitedGoodsAgreed: request.data?.prohibitedGoodsAgreed === true,
+    privacyTermsAgreed: request.data?.privacyTermsAgreed === true,
+    sellerTermsAgreed: request.data?.sellerTermsAgreed === true,
+    creatorDigitalOnlyAgreed: request.data?.creatorDigitalOnlyAgreed === true,
+    creatorBusinessTransitionAgreed: request.data?.creatorBusinessTransitionAgreed === true,
+    creatorTaxResponsibilityAgreed: request.data?.creatorTaxResponsibilityAgreed === true,
+  };
+  if (sellerType === "business" && !isValidBusinessRegistrationNumber(businessRegistrationNumber)) {
+    throw new HttpsError("invalid-argument", "유효한 사업자등록번호를 입력해주세요.");
+  }
+  if (!application.representativeName || !/^\S+@\S+\.\S+$/.test(application.contactEmail)
+    || !/^\d{9,15}$/.test(application.contactPhone.replace(/\D/g, ""))
+    || !application.bankName || !application.accountHolder || application.accountNumber.length < 8
+    || !application.shippingPolicy) {
+    throw new HttpsError("invalid-argument", "판매자, 연락처, 정산 및 판매 정책 정보를 모두 확인해주세요.");
+  }
+  if (sellerType === "business" && (!application.businessName || !application.businessAddress
+    || (!application.mailOrderRegistrationNumber && !application.mailOrderExemptionReason))) {
+    throw new HttpsError("invalid-argument", "사업자와 통신판매업 정보를 모두 확인해주세요.");
+  }
+  if (sellerType === "individual_creator" && (!application.creatorDigitalOnlyAgreed
+    || !application.creatorBusinessTransitionAgreed || !application.creatorTaxResponsibilityAgreed)) {
+    throw new HttpsError("failed-precondition", "개인 크리에이터 판매 조건을 모두 확인해주세요.");
+  }
+  if (!application.prohibitedGoodsAgreed || !application.privacyTermsAgreed || !application.sellerTermsAgreed) {
+    throw new HttpsError("failed-precondition", "판매자 필수 동의 항목을 모두 확인해주세요.");
+  }
+  const ref = db.collection("users").doc(request.auth.uid);
+  await ref.set({
+    sellerVerification: {
+      ...application,
+      status: "pending",
+      submittedAt: FieldValue.serverTimestamp(),
+      reviewedAt: FieldValue.delete(),
+      rejectionReason: FieldValue.delete(),
+    },
+  }, {merge: true});
+  const updated = await ref.get();
+  return sellerVerificationResponse(updated.data());
+});
+
+export const setSellerVerificationStatus = onCall(betaCallableOptions, async (request) => {
+  requireSiteAdmin(request);
+  const uid = cleanString(request.data?.uid, 128);
+  const status = cleanString(request.data?.status, 20);
+  const rejectionReason = cleanString(request.data?.rejectionReason, 300);
+  if (!uid || !["approved", "rejected"].includes(status) || (status === "rejected" && !rejectionReason)) {
+    throw new HttpsError("invalid-argument", "판매자와 심사 상태를 확인해주세요.");
+  }
+  const ref = db.collection("users").doc(uid);
+  const current = await ref.get();
+  if (!current.exists || !["pending", "approved", "rejected"].includes(current.data()?.sellerVerification?.status)) {
+    throw new HttpsError("failed-precondition", "접수된 판매자 신청을 찾을 수 없습니다.");
+  }
+  const batch = db.batch();
+  batch.update(ref, {
+    "sellerVerification.status": status,
+    "sellerVerification.reviewedAt": FieldValue.serverTimestamp(),
+    "sellerVerification.rejectionReason": status === "rejected" ? rejectionReason : "",
+  });
+  if (status === "rejected") {
+    const userData = current.data() || {};
+    const profileWorkspaces = Array.isArray(userData.profileWorkspaces)
+      ? userData.profileWorkspaces.map((workspace: FirebaseFirestore.DocumentData) => ({
+        ...workspace,
+        profile: workspace?.profile?.storefront ? {
+          ...workspace.profile,
+          storefront: {...workspace.profile.storefront, checkoutAvailability: "external_only"},
+        } : workspace?.profile,
+      }))
+      : [];
+    const privateUpdates: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {};
+    if (profileWorkspaces.length > 0) privateUpdates.profileWorkspaces = profileWorkspaces;
+    if (userData.profile?.storefront) {
+      privateUpdates["profile.storefront.checkoutAvailability"] = "external_only";
+    }
+    if (Object.keys(privateUpdates).length > 0) batch.update(ref, privateUpdates);
+    const publicProfiles = await db.collection("publicProfiles").where("ownerUid", "==", uid).get();
+    publicProfiles.docs.forEach((profile) => {
+      if (profile.data()?.profile?.storefront) {
+        batch.update(profile.ref, {"profile.storefront.checkoutAvailability": "external_only"});
+      }
+    });
+  }
+  await batch.commit();
+  return {ok: true};
+});
 
 const createDigitalDownload = async (
   orderData: FirebaseFirestore.DocumentData,
@@ -345,6 +910,94 @@ const createDigitalDownload = async (
 
 const cleanString = (value: unknown, maxLength: number) =>
   typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+
+const seoulDayKey = (date = new Date()) => new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(date);
+
+const safeStorageFileName = (value: unknown) => {
+  const cleaned = cleanString(value, 180).replace(/[^a-zA-Z0-9._-]/g, "_");
+  return cleaned || "file";
+};
+
+export const reserveSharedFileUpload = onCall(betaCallableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const uid = request.auth.uid;
+  const size = Number(request.data?.size || 0);
+  if (!Number.isSafeInteger(size) || size <= 0) {
+    throw new HttpsError("invalid-argument", "파일 크기를 확인할 수 없습니다.");
+  }
+
+  const userSnapshot = await db.collection("users").doc(uid).get();
+  const userData = userSnapshot.data();
+  const {entitlements} = entitlementsForUser(userData);
+  if (size > entitlements.maxSharedFileBytes) {
+    throw new HttpsError("resource-exhausted", "현재 플랜의 파일당 업로드 용량을 초과했습니다.");
+  }
+
+  const fileName = `${Date.now()}_${randomUUID()}_${safeStorageFileName(request.data?.fileName)}`;
+  const filePath = `shared-files/${uid}/${fileName}`;
+  if (!isBetaLifetimePremium(userData)) {
+    return {filePath, reservationId: null, dailyLimitBytes: null};
+  }
+
+  const day = seoulDayKey();
+  const usageRef = db.collection("sharedFileUploadUsage").doc(`${uid}_${day}`);
+  const reservationRef = db.collection("sharedFileUploadReservations").doc();
+  await db.runTransaction(async (transaction) => {
+    const usageSnapshot = await transaction.get(usageRef);
+    const currentBytes = Number(usageSnapshot.data()?.bytes || 0);
+    if (currentBytes + size > BETA_SHARED_FILE_UPLOAD_BYTES_PER_DAY) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "베타 계정의 오늘 파일 업로드 용량 100MB를 모두 사용했습니다. 내일 다시 시도해주세요.",
+      );
+    }
+    transaction.set(usageRef, {
+      uid,
+      day,
+      bytes: currentBytes + size,
+      count: Number(usageSnapshot.data()?.count || 0) + 1,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+    transaction.set(reservationRef, {
+      uid,
+      day,
+      fileName,
+      filePath,
+      size,
+      status: "reserved",
+      expiresAt: Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return {
+    filePath,
+    reservationId: reservationRef.id,
+    dailyLimitBytes: BETA_SHARED_FILE_UPLOAD_BYTES_PER_DAY,
+  };
+});
+
+export const finalizeSharedFileUpload = onObjectFinalized(
+  {region: "asia-northeast3"},
+  async (event) => {
+    const filePath = event.data.name || "";
+    if (!filePath.startsWith("shared-files/")) return;
+    const reservationId = cleanString(event.data.metadata?.linkzipUploadReservation, 128);
+    if (!reservationId) return;
+    const reservationRef = db.collection("sharedFileUploadReservations").doc(reservationId);
+    const reservation = await reservationRef.get();
+    if (!reservation.exists || reservation.data()?.filePath !== filePath) return;
+    await reservationRef.set({
+      status: "used",
+      usedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  },
+);
 
 const createOrderNumber = () => {
   const now = new Date();
@@ -432,7 +1085,7 @@ export const createTossMembershipOrder = onRequest(
       return;
     }
 
-    const amount = billingCycle === "annual" ? plan.monthlyPrice * 6 : plan.monthlyPrice;
+    const amount = billingCycle === "annual" ? plan.monthlyPrice * 10 : plan.monthlyPrice;
     const orderNumber = createMembershipOrderNumber();
     const orderName = `LinkZip ${plan.name} ${billingCycle === "annual" ? "연간" : "월간"} 이용권`;
     const expiresAt = bankTransferExpiresAt();
@@ -595,6 +1248,7 @@ export const confirmTossMembershipPayment = onRequest(
         membershipUpdatedAt: FieldValue.serverTimestamp(),
       }, {merge: true});
     });
+    await syncProfilePlanVisibility(uid, orderData.planId as MembershipPlan);
 
     response.status(200).json({
       planId: orderData.planId,
@@ -627,6 +1281,8 @@ export const createTossSalesOrder = onRequest(
     const buyerEmail = cleanString(request.body?.buyerEmail, 100);
     const shippingAddress = cleanString(request.body?.shippingAddress, 300);
     const postalCode = cleanString(request.body?.postalCode, 10);
+    const orderRequest = cleanString(request.body?.orderRequest, 100);
+    const quantity = Number(request.body?.quantity ?? 1);
     const paymentProvider = request.body?.paymentProvider === "bank_transfer" ? "bank_transfer" : "toss";
     const depositorName = cleanString(request.body?.depositorName, 50) || buyerName;
     const normalizedPhone = buyerContact.replace(/\D/g, "");
@@ -654,7 +1310,26 @@ export const createTossSalesOrder = onRequest(
       return;
     }
 
-    const block = findPublicLink(publicProfile.customLinks, blockId);
+    let block = findPublicLink(publicProfile.customLinks, blockId);
+    const publicStorefront = publicProfile.profile?.storefront;
+    const storefrontProducts = Array.isArray(publicStorefront?.products)
+      ? publicStorefront.products as PublicSalesProduct[]
+      : [];
+    const storefrontProduct = publicStorefront?.enabled !== false && blockId === `store-${productId}`
+      ? storefrontProducts.find((item) => item?.id === productId)
+      : undefined;
+    const isStorefrontOrder = Boolean(storefrontProduct);
+    if (!block && storefrontProduct) {
+      block = {
+        id: blockId,
+        type: "sales",
+        isVisible: true,
+        salesConfig: {
+          salesType: "product",
+          products: [storefrontProduct],
+        },
+      };
+    }
     if (!block || block.type !== "sales" || block.isVisible === false) {
       response.status(404).json({message: "판매 중인 상품을 찾을 수 없습니다."});
       return;
@@ -674,9 +1349,17 @@ export const createTossSalesOrder = onRequest(
       : [];
     const product = products.find((item) => item?.id === productId);
     const rawAmount = product?.discountPrice ?? product?.price;
-    const amount = typeof rawAmount === "number" ? rawAmount : Number.NaN;
+    const unitPrice = typeof rawAmount === "number" ? rawAmount : Number.NaN;
+    const shippingFee = salesType === "product" && typeof product?.shippingFee === "number"
+      ? Math.max(0, Math.round(product.shippingFee))
+      : 0;
+    const productAmount = Number.isSafeInteger(unitPrice) && Number.isSafeInteger(quantity)
+      ? unitPrice * quantity
+      : Number.NaN;
+    const amount = Number.isSafeInteger(productAmount) ? productAmount + shippingFee : Number.NaN;
     const productName = cleanString(product?.name, 100);
-    if (!product || !productName || !Number.isSafeInteger(amount) || amount < 100) {
+    const stock = typeof product?.stock === "number" ? Math.max(0, Math.floor(product.stock)) : null;
+    if (!product || !productName || !Number.isSafeInteger(unitPrice) || unitPrice < 100 || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 10 || (stock !== null && quantity > stock) || !Number.isSafeInteger(amount) || amount < 100) {
       response.status(400).json({message: "상품 가격 정보를 확인해주세요."});
       return;
     }
@@ -689,7 +1372,7 @@ export const createTossSalesOrder = onRequest(
     const matchingOrders = previousOrdersSnapshot.docs
       .map((document) => document.data())
       .filter((order) => order.productId === productId && order.targetUsername === targetUsername);
-    if (matchingOrders.some((order) => order.status === "paid")) {
+    if (salesType === "digital_file" && matchingOrders.some((order) => order.status === "paid")) {
       response.status(409).json({message: "이미 구매한 상품입니다. 주문조회에서 다운로드 또는 배송 상태를 확인해주세요."});
       return;
     }
@@ -704,6 +1387,24 @@ export const createTossSalesOrder = onRequest(
     }
 
     const privateUserSnapshot = await db.collection("users").doc(ownerUid).get();
+    if (paymentProvider === "toss") {
+      const paymentSettings = await db.collection("platformSettings").doc("payment").get();
+      if (paymentSettings.data()?.marketplaceSellerSettlementEnabled !== true) {
+        response.status(503).json({message: "판매자별 정산 계약을 준비 중입니다. 현재는 판매자 계좌이체 또는 외부 구매 링크를 이용해주세요."});
+        return;
+      }
+    }
+    const {plan: sellerPlan, entitlements: sellerEntitlements} = entitlementsForUser(privateUserSnapshot.data());
+    const privateProfileLinks = findPrivateProfileLinks(privateUserSnapshot.data(), targetUsername);
+    if (!isStorefrontOrder && !productWithinPlanLimit(privateProfileLinks, blockId, productId, sellerEntitlements.maxProductsPerProfile)) {
+      response.status(403).json({message: sellerEntitlements.maxProductsPerProfile === null
+        ? "판매 상품 정보를 확인할 수 없습니다."
+        : `현재 플랜에서는 프로필당 상품을 최대 ${sellerEntitlements.maxProductsPerProfile}개까지 판매할 수 있습니다.`});
+      return;
+    }
+    const platformFeePercent = sellerEntitlements.salesFeePercent;
+    const platformFeeAmount = platformFeeFor(amount, platformFeePercent);
+    const sellerNetAmount = amount - platformFeeAmount;
     const bankAccount = paymentProvider === "bank_transfer"
       ? findVerifiedAccount(privateUserSnapshot.data(), targetUsername)
       : null;
@@ -744,12 +1445,20 @@ export const createTossSalesOrder = onRequest(
         productId,
         productName,
         amount,
+        quantity,
+        productAmount,
+        shippingFee,
+        sellerPlan,
+        platformFeePercent,
+        platformFeeAmount,
+        sellerNetAmount,
         salesType,
         buyerName,
         buyerContact,
         buyerEmail,
         shippingAddress: salesType === "product" ? shippingAddress : "",
         postalCode: salesType === "product" ? postalCode : "",
+        orderRequest: salesType === "product" ? orderRequest : "",
         orderNumber,
         buyerContactNormalized: normalizedPhone,
         status: "pending",
@@ -767,6 +1476,13 @@ export const createTossSalesOrder = onRequest(
         targetUsername,
         productName,
         amount,
+        quantity,
+        productAmount,
+        shippingFee,
+        sellerPlan,
+        platformFeePercent,
+        platformFeeAmount,
+        sellerNetAmount,
         salesType,
         kind: "sales",
         paymentProvider,
@@ -861,6 +1577,10 @@ export const createTossDonationOrder = onRequest(
     const configuredName = cleanString(block.donationConfig?.mainText, 100);
     const orderName = configuredName || "도네이션";
     const privateUserSnapshot = await db.collection("users").doc(ownerUid).get();
+    const {plan: sellerPlan, entitlements: sellerEntitlements} = entitlementsForUser(privateUserSnapshot.data());
+    const platformFeePercent = sellerEntitlements.salesFeePercent;
+    const platformFeeAmount = platformFeeFor(requestedAmount, platformFeePercent);
+    const sellerNetAmount = requestedAmount - platformFeeAmount;
     const bankAccount = paymentProvider === "bank_transfer"
       ? findVerifiedAccount(privateUserSnapshot.data(), targetUsername)
       : null;
@@ -879,6 +1599,10 @@ export const createTossDonationOrder = onRequest(
       message,
       productName: orderName,
       amount: requestedAmount,
+      sellerPlan,
+      platformFeePercent,
+      platformFeeAmount,
+      sellerNetAmount,
       paymentProvider,
       depositorName: paymentProvider === "bank_transfer" ? depositorName : "",
       buyerContact: paymentProvider === "bank_transfer" ? buyerContact : "",
@@ -1007,12 +1731,17 @@ export const confirmTossSalesPayment = onRequest(
     if (orderData.kind === "donation") {
       const donationRecordId = String(orderData.donationRecordId);
       const donationRef = db.collection("users").doc(ownerUid).collection("donations").doc(donationRecordId);
+      const publicDonationRef = db.collection("users").doc(ownerUid).collection("publicDonations").doc(donationRecordId);
       const donationRecord = {
         blockId: orderData.blockId,
         targetUsername: orderData.targetUsername,
         nickname: orderData.nickname,
         message: orderData.message,
         amount: orderData.amount,
+        sellerPlan: orderData.sellerPlan,
+        platformFeePercent: orderData.platformFeePercent,
+        platformFeeAmount: orderData.platformFeeAmount,
+        sellerNetAmount: orderData.sellerNetAmount,
         paymentId: orderId,
         paymentProvider: "toss",
         createdAt: FieldValue.serverTimestamp(),
@@ -1026,6 +1755,15 @@ export const confirmTossSalesPayment = onRequest(
           paidAt: FieldValue.serverTimestamp(),
         });
         transaction.set(donationRef, donationRecord);
+        transaction.set(publicDonationRef, {
+          blockId: donationRecord.blockId,
+          targetUsername: donationRecord.targetUsername,
+          nickname: donationRecord.nickname,
+          message: donationRecord.message,
+          amount: donationRecord.amount,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+        writePlatformFeeLedger(transaction, orderId, ownerUid, orderData, "toss");
       });
     } else {
       const salesOrderId = String(orderData.salesOrderId);
@@ -1045,6 +1783,7 @@ export const confirmTossSalesPayment = onRequest(
           paymentMethod,
           paidAt: approvedAt,
         });
+        writePlatformFeeLedger(transaction, orderId, ownerUid, orderData, "toss");
       });
     }
 
@@ -1145,7 +1884,8 @@ export const manageBankTransferOrder = onRequest(
     }
 
     const orderNumber = cleanString(request.body?.orderNumber, 64).toUpperCase();
-    const action = request.body?.action === "cancel" ? "cancel" : "confirm";
+    const requestedAction = request.body?.action;
+    const action = requestedAction === "cancel" || requestedAction === "restore" ? requestedAction : "confirm";
     if (!/^(?:LZ|DN|MB)-\d{8}-[A-F0-9]{10}$/.test(orderNumber)) {
       response.status(400).json({message: "주문번호를 확인해주세요."});
       return;
@@ -1162,6 +1902,37 @@ export const manageBankTransferOrder = onRequest(
       : orderData.ownerUid === caller.uid;
     if (!canManage) {
       response.status(403).json({message: "이 주문을 처리할 권한이 없습니다."});
+      return;
+    }
+    if (action === "restore") {
+      if (orderData.status !== "CANCELLED") {
+        response.status(400).json({message: "취소된 주문만 입금 대기로 되돌릴 수 있습니다."});
+        return;
+      }
+      const ownerUid = cleanString(orderData.ownerUid, 128);
+      const salesOrderRef = orderData.salesOrderId
+        ? db.collection("users").doc(ownerUid).collection("sales_orders").doc(String(orderData.salesOrderId))
+        : null;
+      try {
+        await db.runTransaction(async (transaction) => {
+          const current = await transaction.get(orderRef);
+          if (current.data()?.status !== "CANCELLED") throw new Error("ORDER_ALREADY_PROCESSED");
+          transaction.update(orderRef, {
+            status: "WAITING_DEPOSIT",
+            expiresAt: bankTransferExpiresAt(),
+            cancelledAt: FieldValue.delete(),
+            depositReportedAt: FieldValue.delete(),
+          });
+          if (salesOrderRef) transaction.update(salesOrderRef, {status: "pending"});
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === "ORDER_ALREADY_PROCESSED") {
+          response.status(409).json({message: "이미 상태가 변경된 주문입니다."});
+          return;
+        }
+        throw error;
+      }
+      response.status(200).json({orderNumber, status: "WAITING_DEPOSIT"});
       return;
     }
     if (orderData.status === "PAID" && action === "confirm") {
@@ -1233,16 +2004,31 @@ export const manageBankTransferOrder = onRequest(
         } else if (orderData.kind === "donation") {
           const donationRef = db.collection("users").doc(ownerUid).collection("donations")
             .doc(String(orderData.donationRecordId));
+          const publicDonationRef = db.collection("users").doc(ownerUid).collection("publicDonations")
+            .doc(String(orderData.donationRecordId));
           transaction.set(donationRef, {
             blockId: orderData.blockId,
             targetUsername: orderData.targetUsername,
             nickname: orderData.nickname,
             message: orderData.message,
             amount: orderData.amount,
+            sellerPlan: orderData.sellerPlan,
+            platformFeePercent: orderData.platformFeePercent,
+            platformFeeAmount: orderData.platformFeeAmount,
+            sellerNetAmount: orderData.sellerNetAmount,
             paymentId: orderNumber,
             paymentProvider: "bank_transfer",
             createdAt: paidAt,
           });
+          transaction.set(publicDonationRef, {
+            blockId: orderData.blockId,
+            targetUsername: orderData.targetUsername,
+            nickname: orderData.nickname,
+            message: orderData.message,
+            amount: orderData.amount,
+            createdAt: paidAt,
+          });
+          writePlatformFeeLedger(transaction, orderNumber, ownerUid, orderData, "bank_transfer");
         } else if (salesOrderRef) {
           transaction.update(salesOrderRef, {
             status: "paid",
@@ -1251,6 +2037,7 @@ export const manageBankTransferOrder = onRequest(
             paymentMethod: "계좌이체",
             paidAt: paidAt.toDate().toISOString(),
           });
+          writePlatformFeeLedger(transaction, orderNumber, ownerUid, orderData, "bank_transfer");
         }
       });
     } catch (error) {
@@ -1259,6 +2046,9 @@ export const manageBankTransferOrder = onRequest(
         return;
       }
       throw error;
+    }
+    if (orderData.kind === "membership") {
+      await syncProfilePlanVisibility(ownerUid, orderData.planId as MembershipPlan);
     }
     const download = await createDigitalDownload({...orderData, status: "PAID"}, orderRef, orderNumber);
     await enqueueBankTransferNotification(orderNumber, orderData);
@@ -1332,6 +2122,39 @@ export const expireBankTransferOrders = onSchedule(
   },
 );
 
+export const expireMembershipPlans = onSchedule(
+  {
+    schedule: "every 60 minutes",
+    timeZone: "Asia/Seoul",
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const snapshot = await db.collection("users")
+      .where("membershipPeriodEndsAt", "<=", Timestamp.now())
+      .limit(200)
+      .get();
+    const expired = snapshot.docs.filter((document) => {
+      const data = document.data();
+      const plan = data.membershipPlan;
+      return data.membershipGrant !== BETA_LIFETIME_PREMIUM_GRANT
+        && (plan === "standard" || plan === "premium");
+    });
+    if (expired.length === 0) return;
+    const batch = db.batch();
+    expired.forEach((document) => batch.set(document.ref, {
+      membershipPreviousPlan: document.data().membershipPlan,
+      membershipPlan: "basic",
+      membershipExpiredAt: FieldValue.serverTimestamp(),
+      membershipUpdatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true}));
+    await batch.commit();
+    await Promise.all(expired.map((document) => syncProfilePlanVisibility(document.id, "basic")));
+    logger.info("Expired membership plans downgraded", {count: expired.length});
+  },
+);
+
 export const downloadDigitalOrder = onRequest(
   {
     region: "asia-northeast3",
@@ -1395,6 +2218,150 @@ export const downloadDigitalOrder = onRequest(
   },
 );
 
+export const downloadSharedFile = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    invoker: "public",
+  },
+  async (request, response) => {
+    if (request.method !== "GET") {
+      response.set("Allow", "GET").status(405).send("Method not allowed");
+      return;
+    }
+
+    const filePath = cleanString(request.query.path, 1024);
+    const downloadToken = cleanString(request.query.token, 128);
+    if (!/^shared-files\/[A-Za-z0-9_-]+\/[^/]+$/.test(filePath) || !downloadToken) {
+      response.status(400).send("다운로드 주소가 올바르지 않습니다.");
+      return;
+    }
+
+    const ownerUid = filePath.split("/")[1];
+    const ownerSnapshot = await db.collection("users").doc(ownerUid).get();
+    const ownerData = ownerSnapshot.data();
+    const {entitlements: ownerEntitlements} = entitlementsForUser(ownerData);
+    const betaLifetimeOwner = isBetaLifetimePremium(ownerData);
+    const file = getStorage().bucket().file(filePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      response.status(404).send("파일을 찾을 수 없습니다.");
+      return;
+    }
+
+    const [metadata] = await file.getMetadata();
+    const fileSize = Number(metadata.size || 0);
+    const maxSharedFileBytes = ownerEntitlements.maxSharedFileBytes;
+    if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > maxSharedFileBytes) {
+      response.status(413).send("현재 플랜에서 허용된 파일 크기를 초과했습니다.");
+      return;
+    }
+    const customShareToken = cleanString(metadata.metadata?.linkzipShareToken, 128);
+    const validTokens = String(metadata.metadata?.firebaseStorageDownloadTokens || "")
+      .split(",")
+      .map((token) => token.trim())
+      .filter(Boolean);
+    if (downloadToken !== customShareToken && !validTokens.includes(downloadToken)) {
+      response.status(403).send("다운로드 권한을 확인할 수 없습니다.");
+      return;
+    }
+
+    const dayKey = seoulDayKey();
+    const fileKey = createHash("sha256").update(filePath).digest("hex").slice(0, 32);
+    const globalUsageRef = db.collection("sharedFileDownloadUsage").doc(`global_${dayKey}`);
+    const fileUsageRef = db.collection("sharedFileDownloadUsage").doc(`file_${dayKey}_${fileKey}`);
+    const ownerUsageRef = db.collection("sharedFileDownloadUsage").doc(`owner_${dayKey}_${ownerUid}`);
+    const maxGlobalDownloadsPerDay = 150;
+    const maxGlobalBytesPerDay = 750 * 1024 * 1024;
+    const maxFileDownloadsPerDay = sharedFileDownloadsPerDayForUser(ownerData);
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        const usageSnapshots = await Promise.all([
+          transaction.get(globalUsageRef),
+          transaction.get(fileUsageRef),
+          ...(betaLifetimeOwner ? [transaction.get(ownerUsageRef)] : []),
+        ]);
+        const [globalUsage, fileUsage, ownerUsage] = usageSnapshots;
+        const globalCount = Number(globalUsage.data()?.count || 0);
+        const globalBytes = Number(globalUsage.data()?.bytes || 0);
+        const fileCount = Number(fileUsage.data()?.count || 0);
+        const ownerCount = Number(ownerUsage?.data()?.count || 0);
+
+        if (fileCount >= maxFileDownloadsPerDay) {
+          throw new Error("FILE_DAILY_LIMIT");
+        }
+        if (betaLifetimeOwner && ownerCount >= BETA_SHARED_FILE_DOWNLOADS_PER_DAY) {
+          throw new Error("BETA_OWNER_DAILY_LIMIT");
+        }
+        if (globalCount >= maxGlobalDownloadsPerDay || globalBytes + fileSize > maxGlobalBytesPerDay) {
+          throw new Error("GLOBAL_DAILY_LIMIT");
+        }
+
+        transaction.set(globalUsageRef, {
+          count: globalCount + 1,
+          bytes: globalBytes + fileSize,
+          day: dayKey,
+          updatedAt: FieldValue.serverTimestamp(),
+        }, {merge: true});
+        transaction.set(fileUsageRef, {
+          count: fileCount + 1,
+          bytes: FieldValue.increment(fileSize),
+          day: dayKey,
+          filePath,
+          updatedAt: FieldValue.serverTimestamp(),
+        }, {merge: true});
+        if (betaLifetimeOwner) {
+          transaction.set(ownerUsageRef, {
+            uid: ownerUid,
+            count: ownerCount + 1,
+            bytes: FieldValue.increment(fileSize),
+            day: dayKey,
+            updatedAt: FieldValue.serverTimestamp(),
+          }, {merge: true});
+        }
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "";
+      if (reason === "FILE_DAILY_LIMIT") {
+        response.status(429).send(`이 파일의 오늘 다운로드 한도(${maxFileDownloadsPerDay}회)를 모두 사용했습니다. 내일 다시 시도해주세요.`);
+        return;
+      }
+      if (reason === "BETA_OWNER_DAILY_LIMIT") {
+        response.status(429).send("베타 계정의 오늘 전체 파일 다운로드 한도(100회)를 모두 사용했습니다. 내일 다시 시도해주세요.");
+        return;
+      }
+      if (reason === "GLOBAL_DAILY_LIMIT") {
+        response.status(429).send("오늘의 전체 파일 다운로드 한도를 모두 사용했습니다. 내일 다시 시도해주세요.");
+        return;
+      }
+      logger.error("Shared file quota check failed", {filePath, error});
+      response.status(503).send("다운로드 한도를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    const requestedName = cleanString(request.query.name, 255);
+    const storedName = filePath.split("/").pop()?.replace(/^\d+_/, "") || "download";
+    const fileName = requestedName || storedName;
+    response.set("Content-Type", "application/octet-stream");
+    response.set("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    response.set("Cache-Control", "private, no-store");
+    response.set("X-Content-Type-Options", "nosniff");
+    response.set("X-LinkZip-File-Daily-Limit", String(maxFileDownloadsPerDay));
+
+    await new Promise<void>((resolve, reject) => {
+      file.createReadStream()
+        .on("error", reject)
+        .on("end", resolve)
+        .pipe(response);
+    }).catch((error) => {
+      logger.error("Shared file download failed", {filePath, error});
+      if (!response.headersSent) response.status(500).send("파일 다운로드에 실패했습니다.");
+    });
+  },
+);
+
 export const lookupSalesOrder = onRequest(
   {
     region: "asia-northeast3",
@@ -1403,6 +2370,7 @@ export const lookupSalesOrder = onRequest(
     invoker: "public",
   },
   async (request, response) => {
+    response.set("Cache-Control", "private, no-store");
     const origin = request.get("origin") || "";
     if (orderLookupOrigins.has(origin)) response.set("Access-Control-Allow-Origin", origin);
     response.set("Vary", "Origin");
@@ -1421,27 +2389,51 @@ export const lookupSalesOrder = onRequest(
       return;
     }
 
-    const ownerUid = typeof request.body?.ownerUid === "string" ? request.body.ownerUid.trim() : "";
-    const lookupValue = typeof request.body?.lookupValue === "string" ? request.body.lookupValue.trim() : "";
-    if (!/^[A-Za-z0-9_-]{6,128}$/.test(ownerUid) || lookupValue.length < 4 || lookupValue.length > 40) {
-      response.status(400).json({message: "휴대폰 번호 또는 주문번호를 확인해주세요."});
+    const requesterIp = cleanString(request.ip || "unknown", 96);
+    const rateLimitRef = db.collection("orderLookupRateLimits").doc(
+      createHash("sha256").update(requesterIp).digest("hex"),
+    );
+    try {
+      await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(rateLimitRef);
+        const now = Date.now();
+        const previousWindow = snapshot.data()?.windowStartedAt;
+        const windowStartedAt = previousWindow instanceof Timestamp ? previousWindow.toMillis() : 0;
+        const withinWindow = now - windowStartedAt < 60 * 60 * 1000;
+        const count = withinWindow ? Number(snapshot.data()?.count || 0) : 0;
+        if (count >= 10) throw new Error("RATE_LIMITED");
+        transaction.set(rateLimitRef, {
+          count: count + 1,
+          windowStartedAt: withinWindow ? previousWindow : Timestamp.fromMillis(now),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "RATE_LIMITED") {
+        response.set("Retry-After", "3600").status(429).json({message: "조회 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."});
+        return;
+      }
+      logger.error("Order lookup rate limit check failed", {error});
+      response.status(503).json({message: "주문 조회를 잠시 이용할 수 없습니다."});
       return;
     }
 
-    const normalizedPhone = lookupValue.replace(/\D/g, "");
-    const isOrderNumber = /^LZ-\d{8}-(?:[A-Z0-9]{6}|[A-F0-9]{10})$/.test(lookupValue.toUpperCase());
-    if (!isOrderNumber && normalizedPhone.length < 9) {
-      response.status(400).json({message: "휴대폰 번호를 정확히 입력해주세요."});
+    const ownerUid = typeof request.body?.ownerUid === "string" ? request.body.ownerUid.trim() : "";
+    const orderNumber = cleanString(request.body?.orderNumber, 64).toUpperCase();
+    const normalizedPhone = cleanString(request.body?.buyerContact, 50).replace(/\D/g, "");
+    const isOrderNumber = /^LZ-\d{8}-(?:[A-Z0-9]{6}|[A-F0-9]{10})$/.test(orderNumber);
+    if (!/^[A-Za-z0-9_-]{6,128}$/.test(ownerUid) || !isOrderNumber || normalizedPhone.length < 9) {
+      response.status(400).json({message: "주문번호와 휴대폰 번호를 정확히 입력해주세요."});
       return;
     }
 
     const ordersRef = db.collection("users").doc(ownerUid).collection("sales_orders");
-    const snapshot = await (isOrderNumber
-      ? ordersRef.where("orderNumber", "==", lookupValue.toUpperCase()).limit(5)
-      : ordersRef.where("buyerContactNormalized", "==", normalizedPhone).limit(10)
-    ).get();
+    const snapshot = await ordersRef.where("orderNumber", "==", orderNumber).limit(1).get();
+    const matchingDocuments = snapshot.docs.filter((document) =>
+      document.data().buyerContactNormalized === normalizedPhone,
+    );
 
-    const orders = await Promise.all(snapshot.docs.map(async (document) => {
+    const orders = await Promise.all(matchingDocuments.map(async (document) => {
       const data = document.data();
       const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : null;
       let digitalDownload = {};
@@ -1467,6 +2459,277 @@ export const lookupSalesOrder = onRequest(
       };
     }));
     response.status(200).json({orders});
+  },
+);
+
+export const kakaoOAuthStart = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    invoker: "public",
+    secrets: [kakaoRestApiKey],
+  },
+  async (request, response) => {
+    if (request.method !== "GET") {
+      response.set("Allow", "GET").status(405).send("Method not allowed");
+      return;
+    }
+
+    const returnTo = normalizeKakaoReturnTo(singleQueryString(request.query.returnTo));
+    const state = randomBytes(32).toString("hex");
+    await db.collection("kakaoOAuthStates").doc(hashOAuthState(state)).set({
+      returnTo,
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+      used: false,
+    });
+
+    response.setHeader(
+      "Set-Cookie",
+      `${oauthStateCookieName}=${encodeURIComponent(state)}; Max-Age=600; Path=/auth/kakao; HttpOnly; Secure; SameSite=Lax`,
+    );
+    // Do not leak a localhost referrer through the redirect chain. Providers
+    // can reject an otherwise valid callback when the initiating local origin
+    // is not one of the production service URLs registered in their console.
+    response.setHeader("Referrer-Policy", "no-referrer");
+    response.setHeader("Cache-Control", "no-store");
+
+    const authorizationUrl = new URL("https://kauth.kakao.com/oauth/authorize");
+    authorizationUrl.searchParams.set("response_type", "code");
+    authorizationUrl.searchParams.set("client_id", kakaoRestApiKey.value());
+    authorizationUrl.searchParams.set("redirect_uri", kakaoRedirectUri);
+    authorizationUrl.searchParams.set("state", state);
+    response.redirect(302, authorizationUrl.toString());
+  },
+);
+
+export const kakaoOAuthCallback = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    invoker: "public",
+    secrets: [kakaoRestApiKey, kakaoClientSecret],
+  },
+  async (request, response) => {
+    if (request.method !== "GET") {
+      response.set("Allow", "GET").status(405).send("Method not allowed");
+      return;
+    }
+
+    const state = singleQueryString(request.query.state);
+    const code = singleQueryString(request.query.code);
+    const providerError = singleQueryString(request.query.error);
+    const stateCookie = readCookie(request.get("cookie") || "", oauthStateCookieName);
+    const stateRef = state ? db.collection("kakaoOAuthStates").doc(hashOAuthState(state)) : null;
+    let returnTo = "https://linkzip.kr/auth/kakao/complete";
+
+    response.setHeader(
+      "Set-Cookie",
+      `${oauthStateCookieName}=; Max-Age=0; Path=/auth/kakao; HttpOnly; Secure; SameSite=Lax`,
+    );
+
+    try {
+      if (!state || !stateRef || !stateCookie || !timingSafeStringEqual(state, stateCookie)) {
+        throw new Error("Invalid OAuth state cookie");
+      }
+
+      await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(stateRef);
+        const data = snapshot.data();
+        const expiresAt = data?.expiresAt as Timestamp | undefined;
+        if (!snapshot.exists || !data || data.used === true || !expiresAt || expiresAt.toMillis() < Date.now()) {
+          throw new Error("Expired or already used OAuth state");
+        }
+        returnTo = normalizeKakaoReturnTo(typeof data.returnTo === "string" ? data.returnTo : "");
+        transaction.update(stateRef, {used: true, usedAt: FieldValue.serverTimestamp()});
+      });
+
+      if (providerError || !code) {
+        redirectToKakaoResult(response, returnTo, {error: "authorization_cancelled"});
+        return;
+      }
+
+      const tokenBody = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: kakaoRestApiKey.value(),
+        redirect_uri: kakaoRedirectUri,
+        code,
+        client_secret: kakaoClientSecret.value(),
+      });
+      const tokenResponse = await fetch("https://kauth.kakao.com/oauth/token", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded;charset=utf-8"},
+        body: tokenBody,
+      });
+      const tokenPayload = await tokenResponse.json() as {access_token?: string; error?: string};
+      if (!tokenResponse.ok || !tokenPayload.access_token) {
+        logger.warn("Kakao token exchange failed", {status: tokenResponse.status, error: tokenPayload.error});
+        throw new Error("Kakao token exchange failed");
+      }
+
+      const profileResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${tokenPayload.access_token}`,
+          "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+        },
+      });
+      const kakaoProfile = await profileResponse.json() as KakaoProfileResponse;
+      if (!profileResponse.ok || (typeof kakaoProfile.id !== "number" && typeof kakaoProfile.id !== "string")) {
+        logger.warn("Kakao user profile request failed", {status: profileResponse.status});
+        throw new Error("Kakao user profile request failed");
+      }
+
+      const firebaseUid = await resolveKakaoFirebaseUid(kakaoProfile);
+      const customToken = await getAuth().createCustomToken(firebaseUid, {loginProvider: "kakao"});
+      redirectToKakaoResult(response, returnTo, {custom_token: customToken});
+    } catch (error) {
+      logger.error("Kakao OAuth callback failed", error);
+      redirectToKakaoResult(response, returnTo, {error: "login_failed"});
+    }
+  },
+);
+
+export const naverOAuthStart = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    invoker: "public",
+    secrets: [naverClientId],
+  },
+  async (request, response) => {
+    if (request.method !== "GET") {
+      response.set("Allow", "GET").status(405).send("Method not allowed");
+      return;
+    }
+
+    const returnTo = normalizeNaverReturnTo(singleQueryString(request.query.returnTo));
+    const state = randomBytes(32).toString("hex");
+    await db.collection("naverOAuthStates").doc(hashOAuthState(state)).set({
+      returnTo,
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+      used: false,
+    });
+
+    response.setHeader(
+      "Set-Cookie",
+      `${oauthStateCookieName}=${encodeURIComponent(state)}; Max-Age=600; Path=/auth/naver; HttpOnly; Secure; SameSite=Lax`,
+    );
+    response.setHeader("Referrer-Policy", "no-referrer");
+    response.setHeader("Cache-Control", "no-store");
+
+    const authorizationUrl = new URL("https://nid.naver.com/oauth2.0/authorize");
+    authorizationUrl.searchParams.set("response_type", "code");
+    authorizationUrl.searchParams.set("client_id", naverClientId.value());
+    authorizationUrl.searchParams.set("redirect_uri", naverRedirectUri);
+    authorizationUrl.searchParams.set("state", state);
+    // NAVER validates the service URL from the browser navigation context.
+    // A bare 302 can retain localhost as the referrer across the redirect
+    // chain, which NAVER rejects with disp_stat=208. Render one canonical-host
+    // document first so the provider navigation starts from linkzip.kr.
+    const destination = JSON.stringify(authorizationUrl.toString()).replace(/</g, "\\u003c");
+    response
+      .status(200)
+      .set({
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+      })
+      .send(`<!doctype html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>NAVER 로그인</title></head><body><script>window.location.replace(${destination});</script></body></html>`);
+  },
+);
+
+export const naverOAuthCallback = onRequest(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    invoker: "public",
+    secrets: [naverClientId, naverClientSecret],
+  },
+  async (request, response) => {
+    if (request.method !== "GET") {
+      response.set("Allow", "GET").status(405).send("Method not allowed");
+      return;
+    }
+
+    const state = singleQueryString(request.query.state);
+    const code = singleQueryString(request.query.code);
+    const providerError = singleQueryString(request.query.error);
+    const stateCookie = readCookie(request.get("cookie") || "", oauthStateCookieName);
+    const stateRef = state ? db.collection("naverOAuthStates").doc(hashOAuthState(state)) : null;
+    let returnTo = "https://linkzip.kr/auth/naver/complete";
+
+    response.setHeader(
+      "Set-Cookie",
+      `${oauthStateCookieName}=; Max-Age=0; Path=/auth/naver; HttpOnly; Secure; SameSite=Lax`,
+    );
+
+    try {
+      if (!state || !stateRef || !stateCookie || !timingSafeStringEqual(state, stateCookie)) {
+        throw new Error("Invalid OAuth state cookie");
+      }
+
+      await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(stateRef);
+        const data = snapshot.data();
+        const expiresAt = data?.expiresAt as Timestamp | undefined;
+        if (!snapshot.exists || !data || data.used === true || !expiresAt || expiresAt.toMillis() < Date.now()) {
+          throw new Error("Expired or already used OAuth state");
+        }
+        returnTo = normalizeNaverReturnTo(typeof data.returnTo === "string" ? data.returnTo : "");
+        transaction.update(stateRef, {used: true, usedAt: FieldValue.serverTimestamp()});
+      });
+
+      if (providerError || !code) {
+        redirectToNaverResult(response, returnTo, {error: "authorization_cancelled"});
+        return;
+      }
+
+      const tokenBody = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: naverClientId.value(),
+        client_secret: naverClientSecret.value(),
+        code,
+        state,
+      });
+      const tokenResponse = await fetch("https://nid.naver.com/oauth2.0/token", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded;charset=utf-8"},
+        body: tokenBody,
+      });
+      const tokenPayload = await tokenResponse.json() as {access_token?: string; error?: string; error_description?: string};
+      if (!tokenResponse.ok || !tokenPayload.access_token) {
+        logger.warn("Naver token exchange failed", {status: tokenResponse.status, error: tokenPayload.error});
+        throw new Error("Naver token exchange failed");
+      }
+
+      const profileResponse = await fetch("https://openapi.naver.com/v1/nid/me", {
+        method: "GET",
+        headers: {Authorization: `Bearer ${tokenPayload.access_token}`},
+      });
+      const naverProfile = await profileResponse.json() as NaverProfileResponse;
+      if (!profileResponse.ok || naverProfile.resultcode !== "00" || !naverProfile.response?.id) {
+        logger.warn("Naver user profile request failed", {
+          status: profileResponse.status,
+          resultcode: naverProfile.resultcode,
+        });
+        throw new Error("Naver user profile request failed");
+      }
+
+      const firebaseUid = await resolveNaverFirebaseUid(naverProfile);
+      const customToken = await getAuth().createCustomToken(firebaseUid, {
+        loginProvider: "naver",
+        naverDisplayName: getNaverDisplayName(naverProfile),
+      });
+      redirectToNaverResult(response, returnTo, {custom_token: customToken});
+    } catch (error) {
+      logger.error("Naver OAuth callback failed", error);
+      redirectToNaverResult(response, returnTo, {error: "login_failed"});
+    }
   },
 );
 
@@ -1547,6 +2810,7 @@ export const startInstagramOAuth = onCall(
   },
   async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    await requireInstagramPlan(request.auth.uid);
 
     const state = randomOAuthState();
     await db.collection("metaInstagramOAuthStates").doc(hashOAuthState(state)).set({
@@ -1575,7 +2839,7 @@ export const instagramOAuthCallback = onRequest(
     memory: "256MiB",
     timeoutSeconds: 60,
     invoker: "public",
-    secrets: [metaInstagramAppId, metaAppSecret, metaTokenEncryptionKey],
+    secrets: [metaInstagramAppId, metaInstagramAppSecret, metaTokenEncryptionKey],
   },
   async (request, response) => {
     if (request.method !== "GET") {
@@ -1583,7 +2847,8 @@ export const instagramOAuthCallback = onRequest(
       return;
     }
 
-    const code = singleQueryString(request.query.code);
+    const rawCode = singleQueryString(request.query.code);
+    const code = rawCode.trim().replace(/ /g, "+").replace(/#_$/, "");
     const state = singleQueryString(request.query.state);
     const error = singleQueryString(request.query.error);
     if (error || !code || !state) {
@@ -1592,6 +2857,11 @@ export const instagramOAuthCallback = onRequest(
     }
 
     try {
+      logger.info("Instagram OAuth callback received", {
+        codeLength: code.length,
+        codeWasNormalized: code !== rawCode,
+        redirectUri: instagramRedirectUri,
+      });
       const stateRef = db.collection("metaInstagramOAuthStates").doc(hashOAuthState(state));
       let uid = "";
       await db.runTransaction(async (transaction) => {
@@ -1608,10 +2878,16 @@ export const instagramOAuthCallback = onRequest(
         transaction.update(stateRef, {used: true, usedAt: FieldValue.serverTimestamp()});
       });
 
-      const shortToken = await exchangeAuthorizationCode(code);
+      await requireInstagramPlan(uid);
+
+      const shortToken = await exchangeAuthorizationCode(code, instagramRedirectUri);
+      logger.info("Instagram OAuth short-lived token exchanged");
       const longToken = await exchangeLongLivedToken(shortToken.accessToken);
+      logger.info("Instagram OAuth long-lived token exchanged");
       const profile = await fetchInstagramProfile(shortToken.userId, longToken.accessToken);
+      logger.info("Instagram OAuth profile loaded");
       await subscribeInstagramWebhooks(shortToken.userId, longToken.accessToken);
+      logger.info("Instagram OAuth webhook subscription completed");
 
       const connectionRef = db.collection("instagramConnections").doc(uid);
       const existing = await connectionRef.get();
@@ -1642,12 +2918,77 @@ export const instagramOAuthCallback = onRequest(
 );
 
 export const getInstagramConnectionStatus = onCall(
-  {region: "asia-northeast3", memory: "256MiB", timeoutSeconds: 30},
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    secrets: [metaTokenEncryptionKey],
+  },
   async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    const instagramAccess = await instagramEntitlementsForUid(request.auth.uid);
+    const usageMonth = new Date().toISOString().slice(0, 7);
+    const usageSnapshot = await db.collection("instagramAutomationUsage")
+      .doc(`${request.auth.uid}_${usageMonth}`).get();
     const snapshot = await db.collection("instagramConnections").doc(request.auth.uid).get();
     const data = snapshot.data();
-    if (!snapshot.exists || data?.status !== "connected") return {connected: false};
+    if (!snapshot.exists || data?.status !== "connected") return {
+      connected: false,
+      planLocked: false,
+      plan: instagramAccess.plan,
+      monthlyUsage: Number(usageSnapshot.data()?.count || 0),
+      monthlyLimit: instagramAccess.entitlements.maxInstagramDeliveriesPerMonth,
+    };
+    let grantedScopes: string[] = [];
+    let subscribedFields: string[] = [];
+    let diagnosticError = "";
+    try {
+      const token = decryptSecret(
+        data.accessToken as EncryptedSecret,
+        metaTokenEncryptionKey.value(),
+      );
+      const instagramUserId = encodeURIComponent(String(data.instagramUserId || ""));
+      const profileUrl = new URL(
+        `https://graph.instagram.com/${instagramGraphVersion}/${instagramUserId}`,
+      );
+      profileUrl.searchParams.set("fields", "user_id,username");
+      const subscriptionUrl = new URL(
+        `https://graph.instagram.com/${instagramGraphVersion}/${instagramUserId}/subscribed_apps`,
+      );
+      const [, subscriptionResult] = await Promise.all([
+        metaFetch(profileUrl.toString(), {
+          headers: {Authorization: `Bearer ${token}`},
+        }),
+        metaFetch(subscriptionUrl.toString(), {
+          headers: {Authorization: `Bearer ${token}`},
+        }),
+      ]);
+      grantedScopes = Array.isArray(data.scopes)
+        ? data.scopes.filter((scope): scope is string => typeof scope === "string")
+        : [];
+      const subscriptions = Array.isArray(subscriptionResult.data) ? subscriptionResult.data : [];
+      subscribedFields = subscriptions.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const fields = (item as Record<string, unknown>).subscribed_fields;
+        return Array.isArray(fields)
+          ? fields.filter((field): field is string => typeof field === "string")
+          : [];
+      });
+    } catch (diagnosticFailure) {
+      diagnosticError = diagnosticFailure instanceof Error
+        ? diagnosticFailure.message
+        : "인스타그램 권한 상태를 확인하지 못했습니다.";
+      logger.warn("Instagram connection diagnostics failed", {
+        uid: request.auth.uid,
+        error: diagnosticError,
+      });
+    }
+    const missingScopes = diagnosticError
+      ? []
+      : instagramScopes.filter((scope) => !grantedScopes.includes(scope));
+    const missingWebhookFields = diagnosticError
+      ? []
+      : ["comments", "messages"].filter((field) => !subscribedFields.includes(field));
     return {
       connected: true,
       username: typeof data.username === "string" ? data.username : "",
@@ -1659,6 +3000,63 @@ export const getInstagramConnectionStatus = onCall(
       tokenExpiresAt: data.tokenExpiresAt instanceof Timestamp
         ? data.tokenExpiresAt.toDate().toISOString()
         : null,
+      grantedScopes,
+      subscribedFields,
+      missingScopes,
+      missingWebhookFields,
+      diagnosticError,
+      planLocked: false,
+      plan: instagramAccess.plan,
+      monthlyUsage: Number(usageSnapshot.data()?.count || 0),
+      monthlyLimit: instagramAccess.entitlements.maxInstagramDeliveriesPerMonth,
+    };
+  },
+);
+
+export const listInstagramMedia = onCall(
+  {
+    region: "asia-northeast3",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    secrets: [metaTokenEncryptionKey],
+  },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    await requireInstagramPlan(request.auth.uid);
+    const snapshot = await db.collection("instagramConnections").doc(request.auth.uid).get();
+    const connection = snapshot.data() as InstagramConnection | undefined;
+    if (!snapshot.exists || !connection || connection.status !== "connected") {
+      throw new HttpsError("failed-precondition", "인스타그램 계정을 먼저 연결해주세요.");
+    }
+    const token = decryptSecret(connection.accessToken, metaTokenEncryptionKey.value());
+    const url = new URL(
+      `https://graph.instagram.com/${instagramGraphVersion}/${encodeURIComponent(connection.instagramUserId)}/media`,
+    );
+    url.searchParams.set(
+      "fields",
+      "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp",
+    );
+    url.searchParams.set("limit", "60");
+    const result = await metaFetch(url.toString(), {
+      headers: {Authorization: `Bearer ${token}`},
+    });
+    const data = Array.isArray(result.data) ? result.data : [];
+    return {
+      media: data.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const media = item as Record<string, unknown>;
+        const id = stringField(media, "id");
+        if (!id) return [];
+        return [{
+          id,
+          caption: stringField(media, "caption"),
+          mediaType: stringField(media, "media_type"),
+          mediaUrl: stringField(media, "media_url"),
+          thumbnailUrl: stringField(media, "thumbnail_url"),
+          permalink: stringField(media, "permalink"),
+          timestamp: stringField(media, "timestamp"),
+        }];
+      }),
     };
   },
 );
@@ -1667,6 +3065,7 @@ export const saveInstagramAutomationRules = onCall(
   {region: "asia-northeast3", memory: "256MiB", timeoutSeconds: 30},
   async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    const {entitlements} = await requireInstagramPlan(request.auth.uid);
     let rules: InstagramAutomationRule[];
     try {
       rules = normalizeAutomationRules(request.data?.rules);
@@ -1674,6 +3073,12 @@ export const saveInstagramAutomationRules = onCall(
       throw new HttpsError(
         "invalid-argument",
         error instanceof Error ? error.message : "자동 답장 규칙이 올바르지 않습니다.",
+      );
+    }
+    if (entitlements.maxInstagramRules !== null && rules.length > entitlements.maxInstagramRules) {
+      throw new HttpsError(
+        "resource-exhausted",
+        `현재 플랜에서는 DM 자동화 규칙을 최대 ${entitlements.maxInstagramRules}개까지 저장할 수 있습니다.`,
       );
     }
     const connectionRef = db.collection("instagramConnections").doc(request.auth.uid);
@@ -1750,6 +3155,13 @@ export const processMetaInstagramWebhookEvent = onDocumentCreated(
       processedAt: FieldValue.serverTimestamp(),
       result: {received: events.length, sent, skipped, failed},
     });
+    logger.info("Instagram automation webhook processed", {
+      eventId: event.params.eventId,
+      received: events.length,
+      sent,
+      skipped,
+      failed,
+    });
   },
 );
 
@@ -1808,13 +3220,41 @@ async function processInboundEvent(
     .where("instagramUserId", "==", inboundEvent.recipientId)
     .limit(1)
     .get();
-  if (connections.empty) return "skipped";
+  if (connections.empty) {
+    logger.info("Instagram automation skipped", {reason: "connection_not_found"});
+    return "skipped";
+  }
 
-  const connection = connections.docs[0].data() as InstagramConnection;
-  if (connection.status !== "connected") return "skipped";
-  if (connection.instagramUserId === inboundEvent.senderId) return "skipped";
-  const rule = matchingRule(normalizeStoredRules(connection.rules), inboundEvent.text);
-  if (!rule) return "skipped";
+  const connectionRef = connections.docs[0].ref;
+  let connection = connections.docs[0].data() as InstagramConnection;
+  if (connection.status !== "connected") {
+    logger.info("Instagram automation skipped", {reason: "connection_inactive"});
+    return "skipped";
+  }
+  // Meta provides self-comment webhooks specifically for previewing and
+  // testing automations. Allow those comment events while still ignoring
+  // self-authored direct messages to prevent message loops.
+  if (inboundEvent.kind === "message" && connection.instagramUserId === inboundEvent.senderId) {
+    logger.info("Instagram automation skipped", {reason: "self_message"});
+    return "skipped";
+  }
+  const {plan, entitlements} = await instagramEntitlementsForUid(connection.uid);
+  connection = await bindPendingNextPostRules(connectionRef, connection, inboundEvent);
+  const storedRules = normalizeStoredRules(connection.rules);
+  const rule = matchingRule(
+    entitlements.maxInstagramRules === null ? storedRules : storedRules.slice(0, entitlements.maxInstagramRules),
+    inboundEvent.text,
+    inboundEvent.mediaId,
+    inboundEvent.kind,
+  );
+  if (!rule) {
+    logger.info("Instagram automation skipped", {
+      reason: "no_matching_rule",
+      kind: inboundEvent.kind,
+      mediaId: inboundEvent.mediaId || "",
+    });
+    return "skipped";
+  }
 
   const logRef = db.collection("instagramAutomationDeliveries").doc(
     deliveryId(connection.instagramUserId, inboundEvent.sourceId, rule.id),
@@ -1831,8 +3271,29 @@ async function processInboundEvent(
       expiresAt: Timestamp.fromMillis(Date.now() + 90 * 24 * 60 * 60 * 1000),
     });
   } catch (error) {
-    if (isAlreadyExistsError(error)) return "skipped";
+    if (isAlreadyExistsError(error)) {
+      logger.info("Instagram automation skipped", {reason: "duplicate_delivery", ruleId: rule.id});
+      return "skipped";
+    }
     throw error;
+  }
+
+  const reserved = await reserveInstagramDelivery(
+    connection.uid,
+    entitlements.maxInstagramDeliveriesPerMonth,
+  );
+  if (!reserved) {
+    await logRef.update({
+      status: "skipped_quota",
+      skippedAt: FieldValue.serverTimestamp(),
+      monthlyLimit: entitlements.maxInstagramDeliveriesPerMonth,
+    });
+    logger.info("Instagram automation skipped", {
+      reason: "monthly_quota",
+      uid: connection.uid,
+      plan,
+    });
+    return "skipped";
   }
 
   try {
@@ -1840,18 +3301,58 @@ async function processInboundEvent(
     const recipient = inboundEvent.kind === "comment"
       ? {comment_id: inboundEvent.commentId}
       : {id: inboundEvent.senderId};
+    const message = rule.buttons?.length ? {
+      attachment: {
+        type: "template",
+        payload: {
+          template_type: "generic",
+          elements: [{
+            title: rule.responseMessage,
+            buttons: rule.buttons.map((button) => ({
+              type: "web_url",
+              url: button.url,
+              title: button.label,
+            })),
+          }],
+        },
+      },
+    } : {text: buildReplyText(rule)};
     const result = await metaFetch(
       `https://graph.instagram.com/${instagramGraphVersion}/${encodeURIComponent(connection.instagramUserId)}/messages`,
       {
         method: "POST",
         headers: {Authorization: `Bearer ${token}`, "Content-Type": "application/json"},
-        body: JSON.stringify({recipient, message: {text: buildReplyText(rule)}}),
+        body: JSON.stringify({recipient, message}),
       },
     );
+    let commentReplySent = false;
+    if (inboundEvent.kind === "comment" && inboundEvent.commentId && rule.commentReplies?.length) {
+      const replyIndex = Math.abs(
+        createHash("sha256").update(inboundEvent.sourceId).digest().readInt32BE(0),
+      ) % rule.commentReplies.length;
+      try {
+        await metaFetch(
+          `https://graph.instagram.com/${instagramGraphVersion}/${encodeURIComponent(inboundEvent.commentId)}/replies`,
+          {
+            method: "POST",
+            headers: {Authorization: `Bearer ${token}`, "Content-Type": "application/json"},
+            body: JSON.stringify({message: rule.commentReplies[replyIndex]}),
+          },
+        );
+        commentReplySent = true;
+      } catch (replyError) {
+        logger.warn("Instagram comment auto-reply failed after DM was sent", {
+          commentId: inboundEvent.commentId,
+          ruleId: rule.id,
+          error: replyError,
+        });
+      }
+    }
     await logRef.update({
       status: "sent",
       sentAt: FieldValue.serverTimestamp(),
       metaMessageId: stringField(result, "message_id"),
+      commentReplySent,
     });
     return "sent";
   } catch (error) {
@@ -1862,6 +3363,73 @@ async function processInboundEvent(
     });
     throw error;
   }
+}
+
+async function bindPendingNextPostRules(
+  connectionRef: DocumentReference,
+  connection: InstagramConnection,
+  inboundEvent: InstagramInboundEvent,
+): Promise<InstagramConnection> {
+  if (inboundEvent.kind !== "comment" || !inboundEvent.mediaId) return connection;
+  const storedRules = normalizeStoredRules(connection.rules);
+  if (!storedRules.some((rule) => rule.isActive && rule.targetMode === "next")) {
+    return connection;
+  }
+
+  const token = decryptSecret(connection.accessToken, metaTokenEncryptionKey.value());
+  const mediaUrl = new URL(
+    `https://graph.instagram.com/${instagramGraphVersion}/${encodeURIComponent(connection.instagramUserId)}/media`,
+  );
+  mediaUrl.searchParams.set("fields", "id,timestamp,caption,media_url,thumbnail_url");
+  mediaUrl.searchParams.set("limit", "100");
+  const mediaResult = await metaFetch(mediaUrl.toString(), {
+    headers: {Authorization: `Bearer ${token}`},
+  });
+  const media = (Array.isArray(mediaResult.data) ? mediaResult.data : [])
+    .flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const value = item as Record<string, unknown>;
+      const id = stringField(value, "id");
+      if (!id) return [];
+      const timestamp = Date.parse(stringField(value, "timestamp"));
+      return [{
+        id,
+        timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+        caption: stringField(value, "caption"),
+        thumbnailUrl: stringField(value, "thumbnail_url") || stringField(value, "media_url"),
+      }];
+    })
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  let resolvedRules = storedRules;
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(connectionRef);
+    const currentRules = normalizeStoredRules(snapshot.data()?.rules);
+    let changed = false;
+    resolvedRules = currentRules.map((rule) => {
+      if (!rule.isActive || rule.targetMode !== "next") return rule;
+      const excluded = new Set(rule.excludedPostIds || []);
+      const nextMedia = media.find((item) => !excluded.has(item.id));
+      if (!nextMedia || nextMedia.id !== inboundEvent.mediaId) return rule;
+      changed = true;
+      return {
+        ...rule,
+        targetMode: "selected" as const,
+        postIds: [nextMedia.id],
+        excludedPostIds: [],
+        postThumbnailUrl: nextMedia.thumbnailUrl,
+        postCaption: nextMedia.caption,
+      };
+    });
+    if (changed) {
+      transaction.update(connectionRef, {
+        rules: resolvedRules,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  });
+
+  return {...connection, rules: resolvedRules};
 }
 
 export const checkBetaAccess = onCall(betaCallableOptions, async (request) => {
@@ -1875,6 +3443,17 @@ export const checkBetaAccess = onCall(betaCallableOptions, async (request) => {
   const admin = isSiteAdmin(request.auth.token);
   const legacy = userSnapshot.exists;
   const allowed = admin || (memberSnapshot.exists ? member?.status === "active" : legacy);
+
+  const shouldBackfillLifetimePremium = memberSnapshot.exists
+    && member?.status === "active"
+    && member?.source === "invite"
+    && (userSnapshot.data()?.membershipGrant !== BETA_LIFETIME_PREMIUM_GRANT
+      || userSnapshot.data()?.membershipPlan !== "premium");
+
+  if (shouldBackfillLifetimePremium) {
+    await db.collection("users").doc(uid).set(betaLifetimePremiumData(), {merge: true});
+    await syncProfilePlanVisibility(uid, "premium");
+  }
 
   if (legacy && !memberSnapshot.exists) {
     await db.collection("betaMembers").doc(uid).set({
@@ -1891,6 +3470,246 @@ export const checkBetaAccess = onCall(betaCallableOptions, async (request) => {
   return {allowed, admin, legacy, status: member?.status || (allowed ? "active" : "pending")};
 });
 
+const EMAIL_SIGNUP_CODE_TTL_MS = 10 * 60 * 1000;
+const EMAIL_SIGNUP_CODE_COOLDOWN_MS = 60 * 1000;
+const EMAIL_SIGNUP_CODE_MAX_ATTEMPTS = 5;
+
+const normalizeSignupEmail = (value: unknown) => String(value || "").trim().toLowerCase();
+const signupCodeDocumentId = (email: string) => createHash("sha256").update(email).digest("hex");
+const hashSignupCode = (salt: string, code: string) =>
+  createHash("sha256").update(`${salt}:${code}`).digest("hex");
+
+const assertSignupEmail = (email: string) => {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+    throw new HttpsError("invalid-argument", "이메일 주소 형식을 확인해주세요.");
+  }
+};
+
+const assertInviteAvailable = async (code: string) => {
+  if (!code || code.length > 40) {
+    throw new HttpsError("invalid-argument", "초대코드를 확인해주세요.");
+  }
+  const inviteSnapshot = await db.collection("betaInviteCodes").doc(inviteCodeId(code)).get();
+  const invite = inviteSnapshot.data();
+  if (!inviteSnapshot.exists || invite?.status !== "active") {
+    throw new HttpsError("permission-denied", "유효하지 않거나 사용 중지된 초대코드입니다.");
+  }
+  const expiresAt = invite.expiresAt as Timestamp | null | undefined;
+  if (expiresAt && expiresAt.toMillis() <= Date.now()) {
+    throw new HttpsError("permission-denied", "만료된 초대코드입니다.");
+  }
+  const maxUses = typeof invite.maxUses === "number" ? invite.maxUses : 1;
+  const useCount = typeof invite.useCount === "number" ? invite.useCount : 0;
+  if (useCount >= maxUses) {
+    throw new HttpsError("resource-exhausted", "사용 가능한 인원을 모두 채운 초대코드입니다.");
+  }
+};
+
+const redeemInviteForEmailAccount = async (uid: string, email: string, code: string) => {
+  const memberRef = db.collection("betaMembers").doc(uid);
+  const userRef = db.collection("users").doc(uid);
+  const inviteRef = db.collection("betaInviteCodes").doc(inviteCodeId(code));
+  await db.runTransaction(async (transaction) => {
+    const inviteSnapshot = await transaction.get(inviteRef);
+    const invite = inviteSnapshot.data();
+    if (!inviteSnapshot.exists || invite?.status !== "active") {
+      throw new HttpsError("permission-denied", "유효하지 않거나 사용 중지된 초대코드입니다.");
+    }
+    const expiresAt = invite.expiresAt as Timestamp | null | undefined;
+    if (expiresAt && expiresAt.toMillis() <= Date.now()) {
+      throw new HttpsError("permission-denied", "만료된 초대코드입니다.");
+    }
+    const maxUses = typeof invite.maxUses === "number" ? invite.maxUses : 1;
+    const useCount = typeof invite.useCount === "number" ? invite.useCount : 0;
+    if (useCount >= maxUses) {
+      throw new HttpsError("resource-exhausted", "사용 가능한 인원을 모두 채운 초대코드입니다.");
+    }
+
+    transaction.update(inviteRef, {
+      useCount: FieldValue.increment(1),
+      lastUsedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(memberRef, {
+      uid,
+      email,
+      displayName: null,
+      photoURL: null,
+      inviteCodeId: inviteRef.id,
+      inviteLabel: typeof invite.label === "string" ? invite.label : "",
+      status: "active",
+      source: "invite",
+      joinedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+    transaction.set(userRef, {
+      ...betaLifetimePremiumData(),
+      membershipPeriodStartedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  });
+  await syncProfilePlanVisibility(uid, "premium").catch((error) => {
+    logger.warn("Unable to sync profile plan after email signup", {uid, error});
+  });
+};
+
+export const requestEmailSignupCode = onCall({
+  ...betaCallableOptions,
+  secrets: [resendApiKey],
+}, async (request) => {
+  const email = normalizeSignupEmail(request.data?.email);
+  const code = normalizeInviteCode(request.data?.inviteCode);
+  assertSignupEmail(email);
+  await assertInviteAvailable(code);
+
+  try {
+    const existingUser = await getAuth().getUserByEmail(email);
+    if (existingUser.emailVerified) {
+      throw new HttpsError("already-exists", "이미 가입된 이메일이에요. 로그인해주세요.");
+    }
+    throw new HttpsError("failed-precondition", "이전에 완료되지 않은 가입 계정이 있어요. 관리자에게 문의해주세요.");
+  } catch (error: unknown) {
+    const errorCode = typeof error === "object" && error && "code" in error
+      ? String((error as {code?: unknown}).code || "")
+      : "";
+    if (error instanceof HttpsError) throw error;
+    if (errorCode !== "auth/user-not-found") throw error;
+  }
+
+  const verificationCode = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const salt = randomBytes(16).toString("hex");
+  const codeRef = db.collection("emailSignupCodes").doc(signupCodeDocumentId(email));
+  const now = Date.now();
+  await db.runTransaction(async (transaction) => {
+    const current = await transaction.get(codeRef);
+    const lastSentAt = current.data()?.lastSentAt as Timestamp | undefined;
+    if (lastSentAt && now - lastSentAt.toMillis() < EMAIL_SIGNUP_CODE_COOLDOWN_MS) {
+      throw new HttpsError("resource-exhausted", "인증코드는 1분 후 다시 요청할 수 있어요.");
+    }
+    transaction.set(codeRef, {
+      email,
+      inviteCode: code,
+      salt,
+      codeHash: hashSignupCode(salt, verificationCode),
+      attempts: 0,
+      status: "pending",
+      createdAt: FieldValue.serverTimestamp(),
+      lastSentAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(now + EMAIL_SIGNUP_CODE_TTL_MS),
+    });
+  });
+
+  const resendResponse = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey.value()}`,
+      "Content-Type": "application/json",
+      "User-Agent": "linkzip-firebase-functions/1.0",
+    },
+    body: JSON.stringify({
+      from: "Linkzip <no-reply@linkzip.kr>",
+      to: [email],
+      subject: "[Linkzip] 이메일 인증코드",
+      text: `Linkzip 회원가입 인증코드는 ${verificationCode}입니다. 인증코드는 10분 동안 유효합니다. 본인이 요청하지 않았다면 이 메일을 무시해주세요.`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px;color:#171714"><h1 style="font-size:24px">Linkzip 이메일 인증</h1><p>회원가입 화면에 아래 인증코드를 입력해주세요.</p><div style="margin:28px 0;padding:22px;border:2px solid #171714;border-radius:16px;background:#f0ffd0;font-size:34px;font-weight:800;letter-spacing:8px;text-align:center">${verificationCode}</div><p style="color:#6b7280;font-size:14px">인증코드는 10분 동안 유효합니다. 본인이 요청하지 않았다면 이 메일을 무시해주세요.</p></div>`,
+    }),
+  });
+  if (!resendResponse.ok) {
+    const resendError = await resendResponse.text().catch(() => "");
+    logger.error("Resend signup code delivery failed", {status: resendResponse.status, body: resendError});
+    await codeRef.delete().catch(() => undefined);
+    throw new HttpsError("internal", "인증코드를 보내지 못했어요. 잠시 후 다시 시도해주세요.");
+  }
+
+  return {sent: true, expiresInSeconds: EMAIL_SIGNUP_CODE_TTL_MS / 1000};
+});
+
+export const completeEmailSignup = onCall(betaCallableOptions, async (request) => {
+  const email = normalizeSignupEmail(request.data?.email);
+  const password = String(request.data?.password || "");
+  const inviteCode = normalizeInviteCode(request.data?.inviteCode);
+  const verificationCode = String(request.data?.verificationCode || "").trim();
+  assertSignupEmail(email);
+  if (password.length < 8 || password.length > 128) {
+    throw new HttpsError("invalid-argument", "비밀번호는 8자 이상으로 만들어주세요.");
+  }
+  if (!/^\d{6}$/.test(verificationCode)) {
+    throw new HttpsError("invalid-argument", "6자리 인증코드를 입력해주세요.");
+  }
+
+  const codeRef = db.collection("emailSignupCodes").doc(signupCodeDocumentId(email));
+  const verificationResult = await db.runTransaction(async (transaction) => {
+    const codeSnapshot = await transaction.get(codeRef);
+    const pending = codeSnapshot.data();
+    if (!codeSnapshot.exists || !pending) return {accepted: false, reason: "missing"};
+    if (pending.inviteCode !== inviteCode) return {accepted: false, reason: "invite"};
+    const expiresAt = pending.expiresAt as Timestamp | undefined;
+    if (!expiresAt || expiresAt.toMillis() <= Date.now()) return {accepted: false, reason: "expired"};
+    const attempts = typeof pending.attempts === "number" ? pending.attempts : 0;
+    if (attempts >= EMAIL_SIGNUP_CODE_MAX_ATTEMPTS) return {accepted: false, reason: "attempts"};
+    if (pending.status !== "pending") return {accepted: false, reason: "busy"};
+    const expected = Buffer.from(String(pending.codeHash || ""), "hex");
+    const actual = Buffer.from(hashSignupCode(String(pending.salt || ""), verificationCode), "hex");
+    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+      transaction.update(codeRef, {attempts: FieldValue.increment(1)});
+      return {accepted: false, reason: "code"};
+    }
+    transaction.update(codeRef, {status: "consuming", consumingAt: FieldValue.serverTimestamp()});
+    return {accepted: true, reason: "ok"};
+  });
+
+  if (!verificationResult.accepted) {
+    if (verificationResult.reason === "code") throw new HttpsError("permission-denied", "인증코드가 올바르지 않아요.");
+    if (verificationResult.reason === "attempts") throw new HttpsError("resource-exhausted", "인증 시도 횟수를 초과했어요. 코드를 다시 받아주세요.");
+    if (verificationResult.reason === "busy") throw new HttpsError("aborted", "가입 처리가 진행 중이에요. 잠시만 기다려주세요.");
+    throw new HttpsError("deadline-exceeded", "인증코드가 만료됐어요. 코드를 다시 받아주세요.");
+  }
+
+  let createdUid = "";
+  let inviteCommitted = false;
+  try {
+    const userRecord = await getAuth().createUser({email, password, emailVerified: true});
+    createdUid = userRecord.uid;
+    await redeemInviteForEmailAccount(createdUid, email, inviteCode);
+    inviteCommitted = true;
+    await codeRef.delete().catch((error) => {
+      logger.warn("Unable to delete consumed email signup code", {email, error});
+    });
+    return {created: true};
+  } catch (error: unknown) {
+    if (createdUid && !inviteCommitted) await getAuth().deleteUser(createdUid).catch(() => undefined);
+    if (!inviteCommitted) await codeRef.set({status: "pending"}, {merge: true}).catch(() => undefined);
+    const errorCode = typeof error === "object" && error && "code" in error
+      ? String((error as {code?: unknown}).code || "")
+      : "";
+    if (errorCode === "auth/email-already-exists") {
+      throw new HttpsError("already-exists", "이미 가입된 이메일이에요. 로그인해주세요.");
+    }
+    throw error;
+  }
+});
+
+export const validateBetaInvite = onCall(betaCallableOptions, async (request) => {
+  const code = normalizeInviteCode(request.data?.code);
+  if (!code || code.length > 40) {
+    throw new HttpsError("invalid-argument", "초대코드를 확인해주세요.");
+  }
+
+  const inviteSnapshot = await db.collection("betaInviteCodes").doc(inviteCodeId(code)).get();
+  const invite = inviteSnapshot.data();
+  if (!inviteSnapshot.exists || invite?.status !== "active") {
+    throw new HttpsError("permission-denied", "유효하지 않거나 사용 중지된 초대코드입니다.");
+  }
+  const expiresAt = invite.expiresAt as Timestamp | null | undefined;
+  if (expiresAt && expiresAt.toMillis() <= Date.now()) {
+    throw new HttpsError("permission-denied", "만료된 초대코드입니다.");
+  }
+  const maxUses = typeof invite.maxUses === "number" ? invite.maxUses : 1;
+  const useCount = typeof invite.useCount === "number" ? invite.useCount : 0;
+  if (useCount >= maxUses) {
+    throw new HttpsError("resource-exhausted", "사용 가능한 인원을 모두 채운 초대코드입니다.");
+  }
+
+  return {valid: true};
+});
+
 export const redeemBetaInvite = onCall(betaCallableOptions, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
   const uid = request.auth.uid;
@@ -1902,28 +3721,31 @@ export const redeemBetaInvite = onCall(betaCallableOptions, async (request) => {
   const memberRef = db.collection("betaMembers").doc(uid);
   const userRef = db.collection("users").doc(uid);
   const inviteRef = db.collection("betaInviteCodes").doc(inviteCodeId(code));
-  await db.runTransaction(async (transaction) => {
-    const [memberSnapshot, userSnapshot, inviteSnapshot] = await Promise.all([
+  const lifetimePremiumGranted = await db.runTransaction(async (transaction) => {
+    const [memberSnapshot, inviteSnapshot] = await Promise.all([
       transaction.get(memberRef),
-      transaction.get(userRef),
       transaction.get(inviteRef),
     ]);
-    if (memberSnapshot.exists) {
-      if (memberSnapshot.data()?.status === "active") return;
+    if (memberSnapshot.exists && memberSnapshot.data()?.status !== "active") {
       throw new HttpsError("permission-denied", "이용이 중지된 계정입니다. 관리자에게 문의해주세요.");
     }
 
-    if (userSnapshot.exists || isSiteAdmin(request.auth!.token)) {
+    if (memberSnapshot.data()?.source === "invite") {
+      transaction.set(userRef, betaLifetimePremiumData(), {merge: true});
+      return true;
+    }
+
+    if (isSiteAdmin(request.auth!.token)) {
       transaction.set(memberRef, {
         uid,
         email: request.auth!.token.email || null,
         displayName: request.auth!.token.name || null,
         photoURL: request.auth!.token.picture || null,
         status: "active",
-        source: userSnapshot.exists ? "legacy" : "admin",
+        source: "admin",
         joinedAt: FieldValue.serverTimestamp(),
       }, {merge: true});
-      return;
+      return false;
     }
 
     const invite = inviteSnapshot.data();
@@ -1954,8 +3776,14 @@ export const redeemBetaInvite = onCall(betaCallableOptions, async (request) => {
       status: "active",
       source: "invite",
       joinedAt: FieldValue.serverTimestamp(),
-    });
+    }, {merge: true});
+    transaction.set(userRef, {
+      ...betaLifetimePremiumData(),
+      membershipPeriodStartedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+    return true;
   });
+  if (lifetimePremiumGranted) await syncProfilePlanVisibility(uid, "premium");
   return {allowed: true};
 });
 
@@ -2097,6 +3925,7 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       };
     });
     const membershipPayments = membershipPaymentsByUid.get(account.uid) || {count: 0, amount: 0, lastPaidAt: null};
+    const sellerVerification = sellerVerificationResponse(user);
     return {
       uid: account.uid,
       email: account.email || "",
@@ -2115,6 +3944,7 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       membershipBillingCycle: typeof user?.membershipBillingCycle === "string" ? user.membershipBillingCycle : "",
       membershipPeriodStartedAt: timestampText(user?.membershipPeriodStartedAt),
       membershipPeriodEndsAt: timestampText(user?.membershipPeriodEndsAt),
+      membershipGrant: typeof user?.membershipGrant === "string" ? user.membershipGrant : null,
       membershipPaymentProvider: typeof user?.membershipPaymentProvider === "string" ? user.membershipPaymentProvider : "",
       membershipPaymentCount: membershipPayments.count,
       membershipPaidAmount: membershipPayments.amount,
@@ -2135,6 +3965,23 @@ export const getSiteAdminDashboard = onCall(betaCallableOptions, async (request)
       unreadAnonymousMessages: unreadMessagesByUid.get(account.uid) || 0,
       collectedCustomers: customerDataByUid.get(account.uid) || 0,
       latestActivityAt: latestActivityByUid.get(account.uid) || null,
+      sellerVerificationStatus: sellerVerification.status,
+      sellerType: sellerVerification.sellerType,
+      sellerBusinessRegistrationNumber: sellerVerification.businessRegistrationNumber,
+      sellerBusinessName: sellerVerification.businessName,
+      sellerRepresentativeName: sellerVerification.representativeName,
+      sellerBusinessAddress: sellerVerification.businessAddress,
+      sellerContactPhone: sellerVerification.contactPhone,
+      sellerContactEmail: sellerVerification.contactEmail,
+      sellerMailOrderRegistrationNumber: sellerVerification.mailOrderRegistrationNumber,
+      sellerMailOrderExemptionReason: sellerVerification.mailOrderExemptionReason,
+      sellerBankName: sellerVerification.bankName,
+      sellerAccountHolder: sellerVerification.accountHolder,
+      sellerAccountNumber: sellerVerification.accountNumber,
+      sellerShippingPolicy: sellerVerification.shippingPolicy,
+      sellerSubmittedAt: sellerVerification.submittedAt,
+      sellerReviewedAt: sellerVerification.reviewedAt,
+      sellerRejectionReason: sellerVerification.rejectionReason,
     };
   });
   const invites = inviteSnapshot.docs.map((item) => {
@@ -2227,19 +4074,248 @@ export const setBetaMemberStatus = onCall(betaCallableOptions, async (request) =
   return {updated: true};
 });
 
+export const setOwnAdminMembershipPlan = onCall(betaCallableOptions, async (request) => {
+  requireSiteAdmin(request);
+  const requestedPlan = request.data?.planId;
+  if (requestedPlan !== "basic" && requestedPlan !== "standard" && requestedPlan !== "premium") {
+    throw new HttpsError("invalid-argument", "플랜 정보가 올바르지 않습니다.");
+  }
+  const uid = request.auth!.uid;
+  const now = Timestamp.now();
+  const periodEndsAt = requestedPlan === "basic"
+    ? null
+    : Timestamp.fromDate(new Date("2099-12-31T23:59:59.000Z"));
+  await db.collection("users").doc(uid).set({
+    membershipPlan: requestedPlan,
+    membershipBillingCycle: requestedPlan === "basic" ? null : "admin",
+    membershipPeriodStartedAt: requestedPlan === "basic" ? null : now,
+    membershipPeriodEndsAt: periodEndsAt,
+    membershipPaymentProvider: requestedPlan === "basic" ? null : "admin_override",
+    membershipUpdatedAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+  await syncProfilePlanVisibility(uid, requestedPlan);
+  return {
+    planId: requestedPlan,
+    periodEndsAt: periodEndsAt?.toDate().toISOString() || null,
+  };
+});
+
+function normalizeKakaoReturnTo(value: string): string {
+  const fallback = "https://linkzip.kr/auth/kakao/complete";
+  if (!value) return fallback;
+  try {
+    const url = new URL(value);
+    if (!kakaoAllowedReturnOrigins.has(url.origin) || url.pathname !== "/auth/kakao/complete") {
+      return fallback;
+    }
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeNaverReturnTo(value: string): string {
+  const fallback = "https://linkzip.kr/auth/naver/complete";
+  if (!value) return fallback;
+  try {
+    const url = new URL(value);
+    if (!kakaoAllowedReturnOrigins.has(url.origin) || url.pathname !== "/auth/naver/complete") {
+      return fallback;
+    }
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return fallback;
+  }
+}
+
+function readCookie(cookieHeader: string, name: string): string {
+  for (const part of cookieHeader.split(";")) {
+    const [rawName, ...rawValue] = part.trim().split("=");
+    if (rawName !== name) continue;
+    try {
+      return decodeURIComponent(rawValue.join("="));
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+function timingSafeStringEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function redirectToKakaoResult(
+  response: {redirect: (status: number, url: string) => void},
+  returnTo: string,
+  payload: Record<string, string>,
+): void {
+  const url = new URL(normalizeKakaoReturnTo(returnTo));
+  url.hash = new URLSearchParams(payload).toString();
+  response.redirect(303, url.toString());
+}
+
+function redirectToNaverResult(
+  response: {redirect: (status: number, url: string) => void},
+  returnTo: string,
+  payload: Record<string, string>,
+): void {
+  const url = new URL(normalizeNaverReturnTo(returnTo));
+  url.hash = new URLSearchParams(payload).toString();
+  response.redirect(303, url.toString());
+}
+
+function kakaoPhotoUrl(profile: KakaoProfileResponse): string | undefined {
+  const candidate = profile.kakao_account?.profile?.profile_image_url || profile.properties?.profile_image;
+  if (!candidate) return undefined;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isAuthError(error: unknown, code: string): boolean {
+  return Boolean(error && typeof error === "object" && (error as {code?: unknown}).code === code);
+}
+
+async function resolveKakaoFirebaseUid(profile: KakaoProfileResponse): Promise<string> {
+  const kakaoId = String(profile.id);
+  const account = profile.kakao_account;
+  const email = account?.is_email_valid === true && account.is_email_verified === true
+    ? account.email?.trim().toLowerCase()
+    : undefined;
+  const displayName = account?.profile?.nickname?.trim() || profile.properties?.nickname?.trim() || "카카오 사용자";
+  const photoURL = kakaoPhotoUrl(profile);
+  const identityRef = db.collection("oauthIdentities").doc(`kakao-${kakaoId}`);
+  const identity = await identityRef.get();
+  const mappedUid = typeof identity.data()?.uid === "string" ? identity.data()!.uid as string : "";
+
+  if (mappedUid) {
+    try {
+      const existing = await getAuth().getUser(mappedUid);
+      const updates: {displayName?: string; photoURL?: string; email?: string} = {};
+      if (!existing.displayName && displayName) updates.displayName = displayName;
+      if (!existing.photoURL && photoURL) updates.photoURL = photoURL;
+      if (!existing.email && email) updates.email = email;
+      if (Object.keys(updates).length > 0) await getAuth().updateUser(mappedUid, updates);
+      await identityRef.set({lastLoginAt: FieldValue.serverTimestamp()}, {merge: true});
+      return mappedUid;
+    } catch (error) {
+      if (!isAuthError(error, "auth/user-not-found")) throw error;
+    }
+  }
+
+  let firebaseUser;
+  if (email) {
+    try {
+      firebaseUser = await getAuth().getUserByEmail(email);
+    } catch (error) {
+      if (!isAuthError(error, "auth/user-not-found")) throw error;
+    }
+  }
+
+  if (!firebaseUser) {
+    const uid = `kakao:${kakaoId}`;
+    try {
+      firebaseUser = await getAuth().createUser({uid, email, displayName, photoURL});
+    } catch (error) {
+      if (isAuthError(error, "auth/uid-already-exists")) {
+        firebaseUser = await getAuth().getUser(uid);
+      } else if (email && isAuthError(error, "auth/email-already-exists")) {
+        firebaseUser = await getAuth().getUserByEmail(email);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  await identityRef.set({
+    provider: "kakao",
+    providerUserId: kakaoId,
+    uid: firebaseUser.uid,
+    email: email || null,
+    createdAt: identity.exists ? identity.data()?.createdAt || FieldValue.serverTimestamp() : FieldValue.serverTimestamp(),
+    lastLoginAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+  return firebaseUser.uid;
+}
+
+async function resolveNaverFirebaseUid(profile: NaverProfileResponse): Promise<string> {
+  const account = profile.response;
+  const naverId = account?.id?.trim();
+  if (!naverId) throw new Error("Naver profile did not contain an id");
+
+  const displayName = getNaverDisplayName(profile);
+  const photoURL = safeHttpUrl(account?.profile_image);
+  const email = account?.email?.trim().toLowerCase() || null;
+  const uid = `naver:${naverId}`;
+  const identityRef = db.collection("oauthIdentities").doc(`naver-${naverId}`);
+
+  let firebaseUser;
+  try {
+    firebaseUser = await getAuth().getUser(uid);
+    const updates: {displayName?: string; photoURL?: string} = {};
+    if (displayName && firebaseUser.displayName !== displayName) updates.displayName = displayName;
+    if (photoURL && firebaseUser.photoURL !== photoURL) updates.photoURL = photoURL;
+    if (Object.keys(updates).length > 0) firebaseUser = await getAuth().updateUser(uid, updates);
+  } catch (error) {
+    if (!isAuthError(error, "auth/user-not-found")) throw error;
+    firebaseUser = await getAuth().createUser({uid, displayName, photoURL});
+  }
+
+  const existingIdentity = await identityRef.get();
+  await identityRef.set({
+    provider: "naver",
+    providerUserId: naverId,
+    uid: firebaseUser.uid,
+    email,
+    createdAt: existingIdentity.exists
+      ? existingIdentity.data()?.createdAt || FieldValue.serverTimestamp()
+      : FieldValue.serverTimestamp(),
+    lastLoginAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+  return firebaseUser.uid;
+}
+
+function getNaverDisplayName(profile: NaverProfileResponse): string {
+  const account = profile.response;
+  const emailId = account?.email?.trim().split("@")[0]?.trim();
+  return account?.nickname?.trim()
+    || account?.name?.trim()
+    || emailId
+    || "네이버 사용자";
+}
+
+function safeHttpUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function exchangeAuthorizationCode(
   code: string,
+  redirectUri: string,
 ): Promise<{accessToken: string; userId: string}> {
-  const body = new URLSearchParams({
-    client_id: metaInstagramAppId.value(),
-    client_secret: metaAppSecret.value(),
-    grant_type: "authorization_code",
-    redirect_uri: instagramRedirectUri,
-    code,
-  });
+  const body = new FormData();
+  body.set("client_id", metaInstagramAppId.value());
+  body.set("client_secret", metaInstagramAppSecret.value());
+  body.set("grant_type", "authorization_code");
+  body.set("redirect_uri", redirectUri);
+  body.set("code", code);
   const result = await metaFetch("https://api.instagram.com/oauth/access_token", {
     method: "POST",
-    headers: {"Content-Type": "application/x-www-form-urlencoded"},
     body,
   });
   const nested = Array.isArray(result.data) && result.data[0] && typeof result.data[0] === "object"
@@ -2256,7 +4332,7 @@ async function exchangeLongLivedToken(
 ): Promise<{accessToken: string; expiresIn: number}> {
   const url = new URL("https://graph.instagram.com/access_token");
   url.searchParams.set("grant_type", "ig_exchange_token");
-  url.searchParams.set("client_secret", metaAppSecret.value());
+  url.searchParams.set("client_secret", metaInstagramAppSecret.value());
   url.searchParams.set("access_token", accessToken);
   const result = await metaFetch(url.toString());
   const longToken = stringField(result, "access_token");
@@ -2300,7 +4376,10 @@ async function subscribeInstagramWebhooks(userId: string, accessToken: string): 
 }
 
 async function metaFetch(url: string, init?: RequestInit): Promise<Record<string, unknown>> {
-  const response = await fetch(url, init);
+  const response = await fetch(url, {
+    ...init,
+    signal: init?.signal ?? AbortSignal.timeout(15_000),
+  });
   const text = await response.text();
   let data: Record<string, unknown> = {};
   try {
@@ -2314,6 +4393,8 @@ async function metaFetch(url: string, init?: RequestInit): Promise<Record<string
       : undefined;
     const message = typeof metaError?.message === "string"
       ? metaError.message
+      : typeof data.error_message === "string"
+        ? data.error_message
       : `Meta API request failed (${response.status})`;
     throw new Error(message);
   }

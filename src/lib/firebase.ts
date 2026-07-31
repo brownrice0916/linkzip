@@ -1,7 +1,14 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  getAuth,
+  getRedirectResult,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  type User,
+} from 'firebase/auth';
 import { initializeFirestore } from 'firebase/firestore';
-import { getAnalytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
 import { useStore } from '../store/useStore';
 
@@ -18,7 +25,6 @@ const firebaseConfig = {
 
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
-export const analytics = getAnalytics(app);
 export const auth = getAuth(app);
 export const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
 export const storage = getStorage(app);
@@ -29,13 +35,49 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-export const signInWithGoogle = async () => {
+export const GOOGLE_REDIRECT_PENDING_KEY = 'linkzip_google_redirect_pending';
+export const EMAIL_SIGNUP_PENDING_KEY = 'linkzip_email_signup_pending';
+
+const shouldUseGoogleRedirect = () => {
+  if (typeof window === 'undefined') return false;
+
+  const mobileUserAgent = /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent);
+  const compactViewport = window.matchMedia?.('(max-width: 767px)').matches ?? false;
+  return mobileUserAgent || compactViewport;
+};
+
+export const signInWithGoogle = async (): Promise<User | null> => {
   try {
+    // Mobile browsers frequently turn Firebase popups into a separate browser
+    // tab/window. Redirect auth keeps the flow in the current tab instead.
+    if (shouldUseGoogleRedirect()) {
+      sessionStorage.setItem(GOOGLE_REDIRECT_PENDING_KEY, '1');
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
+
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error) {
+    sessionStorage.removeItem(GOOGLE_REDIRECT_PENDING_KEY);
     console.error("Error signing in with Google", error);
     throw error;
+  }
+};
+
+export const finishGoogleRedirectLogin = async (): Promise<User | null> => {
+  if (
+    typeof window === 'undefined' ||
+    sessionStorage.getItem(GOOGLE_REDIRECT_PENDING_KEY) !== '1'
+  ) {
+    return null;
+  }
+
+  try {
+    const result = await getRedirectResult(auth);
+    return result?.user ?? auth.currentUser;
+  } finally {
+    sessionStorage.removeItem(GOOGLE_REDIRECT_PENDING_KEY);
   }
 };
 

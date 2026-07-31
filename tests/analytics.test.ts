@@ -4,6 +4,7 @@ import {
   filterAnalyticsByPeriod,
   shouldRecordAnalytics,
   sumAnalytics,
+  sumLinkClicks,
 } from '../src/domain/analytics.ts';
 
 test('does not record analytics on local development hosts', () => {
@@ -35,4 +36,14 @@ test('filters daily, weekly and monthly analytics ranges', () => {
 
 test('sums views and clicks from the selected analytics range', () => {
   assert.deepEqual(sumAnalytics(history.slice(1)), { views: 90, clicks: 9 });
+});
+
+test('sums per-link clicks only from the selected analytics range', () => {
+  const daily = [
+    { date: '2026-07-27', views: 10, clicks: 4, linkClicks: { first: 3, second: 1 } },
+    { date: '2026-07-28', views: 20, clicks: 5, linkClicks: { first: 2, third: 3 } },
+    { date: '2026-07-29', views: 30, clicks: 7 },
+  ];
+
+  assert.deepEqual(sumLinkClicks(daily.slice(1)), { first: 2, third: 3 });
 });

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   useStore,
   type CustomLink,
@@ -6,10 +7,8 @@ import {
 } from "../../store/useStore";
 import {
   Plus,
+  Link2,
   Trash2,
-  LayoutList,
-  LayoutGrid,
-  GalleryHorizontal,
   Folder,
   GripVertical,
   CornerDownRight,
@@ -17,13 +16,17 @@ import {
   ChevronDown,
   ChevronRight,
   ArrowLeft,
+  RotateCcw,
   ArrowUp,
   ArrowDown,
   Phone,
   Smartphone,
   Gift,
+  Heart,
   Lock,
   HelpCircle,
+  BookOpen,
+  MessageSquareText,
   CalendarCheck,
   BadgeDollarSign,
   MapPinned,
@@ -34,18 +37,25 @@ import {
   ShoppingBag,
   FileDown,
   Newspaper,
-  HandHeart,
   Pencil,
-  Globe2,
+  EllipsisVertical,
+  Bell,
+  Copy,
+  AlertTriangle,
+  X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { getLinkIcon } from "../../lib/icons";
 import { ThumbnailModal } from "./ThumbnailModal";
+import { ProfileImageCropModal } from "./ProfileImageCropModal";
 import { SocialModal } from "./SocialModal";
 import { AddBlockModal } from "./AddBlockModal";
 import { ProfitAccountModal } from "./ProfitAccountModal";
 import { NoticeModal } from "./NoticeModal";
 import { ProductRegistrationModal } from "./ProductRegistrationModal";
 import { AddReservationScheduleModal } from "./AddReservationScheduleModal";
+import { SNSPlatformPickerModal } from "./SNSPlatformPickerModal";
 import clsx from "clsx";
 import type {
   DonationConfig,
@@ -56,15 +66,69 @@ import type {
   ReservationScheduleItem,
 } from "../../store/useStore";
 import { BlockList } from "./BlockList";
-import { LinkStyleEditorModal } from "./LinkStyleEditorModal";
-import { uploadPublicFile, uploadPublicImage } from "../../services/storageService";
+import { ColorPickerPopover } from "./ColorPickerPopover";
+import { deletePublicFile, uploadPublicFile, uploadPublicImage } from "../../services/storageService";
+import { BETA_LIFETIME_PREMIUM_GRANT, entitlementsForPlan, workspaceUsage } from "../../domain/membershipPlans";
+import { requestUpgradePrompt } from "../UpgradePromptHost";
+import { useNavigate } from "react-router-dom";
+import { STOREFRONT_AVAILABLE } from "../../config/featureFlags";
 
 const getSocialIconComp = (platform: string) => {
   return getLinkIcon(platform);
 };
 
-const blockIconClassName =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600";
+const normalizeLinkUrl = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
+const getThumbnailPreviewStyle = (link: CustomLink): React.CSSProperties => {
+  const zoom = Math.max(100, link.imageZoom ?? 100) / 100;
+  const visibleFraction = 1 / zoom;
+  const centerX = Math.max(0, Math.min(1, (link.imagePositionX ?? 50) / 100));
+  const centerY = Math.max(0, Math.min(1, (link.imagePositionY ?? 50) / 100));
+  const cropX = Math.max(0, Math.min(1 - visibleFraction, centerX - visibleFraction / 2));
+  const cropY = Math.max(0, Math.min(1 - visibleFraction, centerY - visibleFraction / 2));
+
+  return {
+    objectPosition: "center",
+    transformOrigin: "top left",
+    transform: `scale(${zoom}) translate(${-cropX * 100}%, ${-cropY * 100}%)`,
+  };
+};
+
+const getBlockKind = (link: CustomLink) => {
+  if (link.blockKind) return link.blockKind;
+  if (link.type === "sales") {
+    return link.salesConfig?.salesType === "product" ? "product_sales" : "digital_file_sales";
+  }
+  if (link.type) return link.type;
+  if (link.url?.includes("/guestbook") || link.title?.includes("방명록")) return "guestbook";
+  if (link.title?.includes("비즈니스") || link.title?.includes("오픈채팅")) return "contact";
+  return "link";
+};
+
+const blockHeaderMeta: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; badge: string }> = {
+  link: { label: "단일 링크", icon: Link2, badge: "bg-emerald-500" },
+  image: { label: "이미지 링크", icon: ImageIcon, badge: "bg-cyan-500" },
+  collection: { label: "링크 그룹", icon: Folder, badge: "bg-gray-900" },
+  sns: { label: "소셜 미디어", icon: getLinkIcon("instagram"), badge: "bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600" },
+  map: { label: "거주지", icon: MapPinned, badge: "bg-sky-600" },
+  contact: { label: "비즈니스 연락처", icon: Phone, badge: "bg-stone-600" },
+  notice: { label: "공지사항", icon: Megaphone, badge: "bg-amber-500" },
+  file: { label: "파일 공유", icon: FileDown, badge: "bg-cyan-600" },
+  reservation: { label: "캘린더", icon: CalendarCheck, badge: "bg-emerald-600" },
+  guestbook: { label: "방명록", icon: BookOpen, badge: "bg-rose-500" },
+  anonymous_message: { label: "익명 메시지 보내기", icon: MessageSquareText, badge: "bg-[#ff5f35]" },
+  customer_info: { label: "고객 정보 수집", icon: ClipboardList, badge: "bg-blue-500" },
+  digital_file_sales: { label: "디지털 파일 판매", icon: FileDown, badge: "bg-blue-600" },
+  product_sales: { label: "실물 상품 판매", icon: ShoppingBag, badge: "bg-indigo-500" },
+  store: { label: "스토어", icon: ShoppingBag, badge: "bg-[#111827] text-white" },
+  affiliate_product: { label: "어필리에이트 상품", icon: BadgeDollarSign, badge: "bg-[#ffcf4a] text-[#171714]" },
+  donation: { label: "후원", icon: Heart, badge: "bg-red-500" },
+};
 
 const disconnectAccountFromLinks = (links: CustomLink[]): CustomLink[] => links.map((link) => {
   const donationConfig = link.donationConfig ? {...link.donationConfig} : undefined;
@@ -89,18 +153,21 @@ const disconnectAccountFromLinks = (links: CustomLink[]): CustomLink[] => links.
   };
 });
 
+const containsNoticeBlock = (links: CustomLink[]): boolean => links.some((link) => (
+  link.type === "notice"
+  || link.url?.includes("/notice")
+  || containsNoticeBlock(link.links || [])
+));
+
 const LinksEditor = () => {
+  const navigate = useNavigate();
   const {
     profile,
     setProfile,
-    templateType,
-    templateValue,
     buttonColor,
     buttonTextColor,
     buttonOpacity,
     buttonTextOpacity,
-    buttonRoundness,
-    buttonShadow,
     socialLinks,
     addSocialLink,
     updateSocialLink,
@@ -110,25 +177,119 @@ const LinksEditor = () => {
     updateCustomLink,
     removeCustomLink,
     reorderLinks,
-    moveItemToCollection,
-    moveItemToRoot,
-    moveItemRelative,
-    moveItemDirection,
     language,
     user,
+    membershipPlan,
+    membershipGrant,
   } = useStore();
   const isKo = language === 'ko';
+  const planEntitlements = entitlementsForPlan(membershipPlan);
+  const currentUsage = workspaceUsage({ customLinks });
 
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
-  const [dragOverPosition, setDragOverPosition] = useState<'before' | 'inside' | 'after' | null>(null);
-  const [isOverRootArea, setIsOverRootArea] = useState(false);
+  const focusPreviewBlock = (blockId: string) => {
+    window.dispatchEvent(new CustomEvent("linkzip:focus-preview-block", { detail: { blockId } }));
+  };
+
+  const renderBlockIdentity = (link: CustomLink, summary = link.title, typeBadge?: React.ReactNode) => {
+    const kind = getBlockKind(link);
+    const meta = blockHeaderMeta[kind] || blockHeaderMeta.link;
+    const Icon = meta.icon;
+    const normalizedSummary = summary?.trim();
+    const showSummary = normalizedSummary && normalizedSummary !== meta.label;
+
+    return (
+      <div className="block-identity flex min-w-0 flex-1 items-center gap-3">
+        <span className={clsx("block-identity-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-xs", meta.badge)} aria-label={`${meta.label} 아이콘`}>
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="block-identity-copy flex min-w-0 items-baseline gap-3">
+          <span className="block-identity-title shrink-0 text-sm font-black text-gray-950">{meta.label}</span>
+          {showSummary && <span className="block-identity-summary truncate text-xs font-semibold text-gray-400">{normalizedSummary}</span>}
+          {typeBadge}
+        </div>
+      </div>
+    );
+  };
+
   const [activeThumbnailLink, setActiveThumbnailLink] =
     useState<CustomLink | null>(null);
-  const [activeStyleLinkId, setActiveStyleLinkId] = useState<string | null>(null);
+  const [openBlockMenuId, setOpenBlockMenuId] = useState<string | null>(null);
+  const [pendingDeleteLink, setPendingDeleteLink] = useState<CustomLink | null>(null);
+  const [blockMenuMode, setBlockMenuMode] = useState<"actions" | "design">("actions");
+  const [blockMenuPosition, setBlockMenuPosition] = useState({ top: 0, left: 0 });
   const [uploadingAffiliateId, setUploadingAffiliateId] = useState<string | null>(null);
   const [uploadingSalesImageId, setUploadingSalesImageId] = useState<string | null>(null);
   const [uploadingFileId, setUploadingFileId] = useState<string | null>(null);
+  const [isQuickProfileOpen, setIsQuickProfileOpen] = useState(false);
+  const [quickProfileName, setQuickProfileName] = useState("");
+  const [isQuickAvatarUploading, setIsQuickAvatarUploading] = useState(false);
+  const quickAvatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [quickAvatarCrop, setQuickAvatarCrop] = useState<{ src: string; fileName: string } | null>(null);
+  const [isStoreGuideOpen, setIsStoreGuideOpen] = useState(false);
+
+  const handleQuickAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!user?.uid) {
+      alert(isKo ? "로그인이 필요합니다." : "Please sign in.");
+      return;
+    }
+    setQuickAvatarCrop({ src: URL.createObjectURL(file), fileName: file.name });
+    event.target.value = "";
+  };
+
+  const closeQuickAvatarCrop = () => {
+    setQuickAvatarCrop((current) => {
+      if (current?.src.startsWith("blob:")) URL.revokeObjectURL(current.src);
+      return null;
+    });
+  };
+
+  const openQuickProfileNameEditor = () => {
+    setQuickProfileName(profile.name || profile.username || "");
+    setIsQuickProfileOpen(true);
+  };
+
+  const closeQuickProfileNameEditor = () => {
+    setQuickProfileName("");
+    setIsQuickProfileOpen(false);
+  };
+
+  const saveQuickProfileName = () => {
+    const nextName = quickProfileName.trim();
+    if (!nextName) return;
+    const latestProfile = useStore.getState().profile;
+    setProfile({ ...latestProfile, name: nextName });
+    closeQuickProfileNameEditor();
+  };
+
+  const handleQuickAvatarUpload = async (file: File) => {
+    if (!user?.uid) return;
+    setIsQuickAvatarUploading(true);
+    try {
+      const avatarUrl = await uploadPublicImage(`profiles/${user.uid}/avatarUrl`, file);
+      const latestProfile = useStore.getState().profile;
+      setProfile({ ...latestProfile, avatarUrl });
+      closeQuickAvatarCrop();
+    } catch (error) {
+      console.error("Quick avatar upload failed:", error);
+      alert(isKo ? "이미지 업로드에 실패했습니다." : "Image upload failed.");
+    } finally {
+      setIsQuickAvatarUploading(false);
+    }
+  };
+
+  const handleStoreEntry = () => {
+    if (!STOREFRONT_AVAILABLE) {
+      alert(isKo ? "스토어 기능을 준비하고 있어요. 기존 설정과 상품 데이터는 그대로 보관됩니다." : "The store is coming soon. Existing settings and product data are preserved.");
+      return;
+    }
+    if (profile.storefront) {
+      navigate("/admin/store");
+      return;
+    }
+    setIsStoreGuideOpen(true);
+  };
 
   const findLinkContext = (
     links: CustomLink[],
@@ -143,34 +304,30 @@ const LinksEditor = () => {
     return undefined;
   };
 
-  const activeStyleContext = activeStyleLinkId
-    ? findLinkContext(customLinks, activeStyleLinkId)
-    : undefined;
-  const activeStyleLink = activeStyleContext?.link;
-  const handleCardStyleClick = (event: React.MouseEvent, linkId: string) => {
-    const target = event.target as HTMLElement;
-    if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
-    event.stopPropagation();
-    setActiveStyleLinkId(linkId);
-  };
-
   const handleCollectionCardClick = (event: React.MouseEvent, collectionId: string) => {
     const target = event.target as HTMLElement;
-    if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
+    if (target.closest('button, input, textarea, select, a, [data-no-style-editor], [data-drag-handle], .cursor-grab')) return;
     event.stopPropagation();
     toggleBlockCollapse(collectionId, true);
   };
 
   const handleCollapsibleCardClick = (event: React.MouseEvent, linkId: string) => {
     const target = event.target as HTMLElement;
-    if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
+    if (target.closest('button, input, textarea, select, a, [data-no-style-editor], [data-drag-handle], .cursor-grab')) return;
     event.stopPropagation();
     toggleBlockCollapse(linkId, true);
   };
 
   // Add / Edit Reservation Schedule Modal State
   const [isAddBlockModalOpen, setIsAddBlockModalOpen] = useState(false);
+  const [isGroupTypeModalOpen, setIsGroupTypeModalOpen] = useState(false);
   const [addBlockTargetCollectionId, setAddBlockTargetCollectionId] = useState<string | null>(null);
+  const [quickAddCollectionId, setQuickAddCollectionId] = useState<string | null>(null);
+  const [quickAddLinkTitle, setQuickAddLinkTitle] = useState("");
+  const [quickAddLinkUrl, setQuickAddLinkUrl] = useState("");
+  const [quickAddLinkError, setQuickAddLinkError] = useState("");
+  const [showBottomAddButton, setShowBottomAddButton] = useState(false);
+  const blockListRef = useRef<HTMLDivElement>(null);
   const [activeReservationScheduleLink, setActiveReservationScheduleLink] = useState<{
     link: CustomLink;
     editingSchedule?: ReservationScheduleItem | null;
@@ -190,6 +347,30 @@ const LinksEditor = () => {
       ...prev,
       [id]: !(prev[id] ?? defaultVal),
     }));
+  };
+
+  useEffect(() => {
+    const blockList = blockListRef.current;
+    if (!blockList) return;
+
+    const updateBottomButtonVisibility = () => {
+      const listHeight = blockList.getBoundingClientRect().height;
+      setShowBottomAddButton(customLinks.length > 0 && listHeight > Math.max(420, window.innerHeight * 0.55));
+    };
+
+    updateBottomButtonVisibility();
+    const resizeObserver = new ResizeObserver(updateBottomButtonVisibility);
+    resizeObserver.observe(blockList);
+    window.addEventListener("resize", updateBottomButtonVisibility);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateBottomButtonVisibility);
+    };
+  }, [customLinks.length]);
+
+  const openRootAddBlockModal = () => {
+    setAddBlockTargetCollectionId(null);
+    setIsAddBlockModalOpen(true);
   };
 
   const renderCollapseControl = (id: string, collapsed: boolean, defaultVal = true, label = "") => (
@@ -224,6 +405,262 @@ const LinksEditor = () => {
         )}
       />
     </button>
+  );
+
+  const openBlockEditor = (id: string) => {
+    const context = findLinkContext(customLinks, id);
+    if (!context) return;
+    if (context?.link.type === "image" || context?.link.type === "link" || !context?.link.type) {
+      const updates: Partial<CustomLink> = {};
+      if (!context.link.title?.trim()) {
+        updates.title = context.link.type === "image" ? "이미지 링크" : "링크 제목";
+      }
+      if (Object.keys(updates).length > 0) updateCustomLink(id, updates);
+    }
+    setCollapsedBlockIds((prev) => ({ ...prev, [id]: false }));
+  };
+
+  const duplicateBlock = (source: CustomLink) => {
+    if (source.type === 'file' && customLinks.filter((item) => item.type === 'file').length >= 2) {
+      alert(isKo ? '베타 기간에는 파일 공유 블록을 2개까지만 사용할 수 있습니다.' : 'During beta, you can use up to 2 file-sharing blocks.');
+      setOpenBlockMenuId(null);
+      return;
+    }
+    const now = Date.now();
+    let sequence = 0;
+    const nextId = (prefix: string) => `${prefix}-${now}-${sequence++}`;
+    const cloneLink = (item: CustomLink, rename = false): CustomLink => {
+      const clone = JSON.parse(JSON.stringify(item)) as CustomLink;
+      clone.id = nextId(item.type || 'link');
+      if (rename) clone.title = `${item.title || (isKo ? '블록' : 'Block')} ${isKo ? '복사본' : 'copy'}`;
+      if (clone.links) clone.links = clone.links.map((child) => cloneLink(child));
+      if (clone.snsLinks) clone.snsLinks = clone.snsLinks.map((social) => ({ ...social, id: nextId('sns') }));
+      if (clone.salesConfig?.products) {
+        clone.salesConfig = {
+          ...clone.salesConfig,
+          products: clone.salesConfig.products.map((product) => ({ ...product, id: nextId('product') })),
+        };
+      }
+      if (clone.reservationConfig?.schedules) {
+        clone.reservationConfig = {
+          ...clone.reservationConfig,
+          schedules: clone.reservationConfig.schedules.map((schedule) => ({ ...schedule, id: nextId('schedule') })),
+        };
+      }
+      if (clone.type === 'file' && clone.fileConfig) {
+        clone.url = '';
+        clone.fileConfig = {
+          ...clone.fileConfig,
+          fileUrl: '',
+          filePath: '',
+          fileName: '',
+          fileSize: '',
+        };
+      }
+      return clone;
+    };
+
+    const duplicate = cloneLink(source, true);
+    const context = findLinkContext(customLinks, source.id);
+    if (context?.parentCollection) {
+      updateCustomLink(context.parentCollection.id, {
+        links: [...(context.parentCollection.links || []), duplicate],
+      });
+    } else {
+      addCustomLink(duplicate);
+    }
+    setCollapsedBlockIds((prev) => ({ ...prev, [duplicate.id]: false }));
+    setOpenBlockMenuId(null);
+    setBlockMenuMode('actions');
+  };
+
+  const requestBlockDelete = (link: CustomLink) => {
+    setOpenBlockMenuId(null);
+    setBlockMenuMode('actions');
+    setPendingDeleteLink(link);
+  };
+
+  const confirmBlockDelete = async () => {
+    if (!pendingDeleteLink) return;
+    if (pendingDeleteLink.type === "file" && user?.uid) {
+      await deletePublicFile(pendingDeleteLink.fileConfig?.filePath, user.uid);
+    }
+    removeCustomLink(pendingDeleteLink.id);
+    setPendingDeleteLink(null);
+  };
+
+  const updateBlockVisual = (link: CustomLink, updates: Partial<CustomLink>) => {
+    if (link.type !== "collection") {
+      updateCustomLink(link.id, updates);
+      return;
+    }
+
+    const updatedChildren = (link.links || []).map((child) => ({
+      ...child,
+      ...updates,
+      ...(updates.customStyle
+        ? { customStyle: { ...(child.customStyle || {}), ...updates.customStyle } }
+        : {}),
+    }));
+    updateCustomLink(link.id, { ...updates, links: updatedChildren });
+  };
+
+  const renderBlockActionMenu = (link: CustomLink, editLabel = "편집") => (
+    <div
+      className="relative shrink-0"
+      data-no-style-editor
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const menuWidth = 288;
+          setBlockMenuPosition({
+            top: rect.bottom + 6,
+            left: Math.max(12, Math.min(window.innerWidth - menuWidth - 12, rect.right - menuWidth)),
+          });
+          setOpenBlockMenuId((current) => {
+            const next = current === link.id ? null : link.id;
+            if (next) setBlockMenuMode("actions");
+            return next;
+          });
+        }}
+        className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black"
+        aria-label={`${link.title || "블록"} 메뉴`}
+        aria-expanded={openBlockMenuId === link.id}
+      >
+        <EllipsisVertical className="h-4 w-4" />
+      </button>
+      {openBlockMenuId === link.id && createPortal(
+        <>
+        <button
+          type="button"
+          aria-label="블록 메뉴 닫기"
+          className="fixed inset-0 z-[9998] cursor-default"
+          onClick={() => {
+            setOpenBlockMenuId(null);
+            setBlockMenuMode("actions");
+          }}
+        />
+        <div
+          className="fixed z-[9999] w-72 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl"
+          style={blockMenuPosition}
+        >
+          {blockMenuMode === "actions" ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  openBlockEditor(link.id);
+                  setOpenBlockMenuId(null);
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+              >
+                <Pencil className="h-4 w-4" />
+                {editLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => setBlockMenuMode("design")}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+              >
+                <Palette className="h-4 w-4" />
+                디자인
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  updateCustomLink(link.id, { isVisible: link.isVisible === false });
+                  setOpenBlockMenuId(null);
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+              >
+                {link.isVisible !== false ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {link.isVisible !== false
+                  ? (isKo ? "숨기기" : "Hide")
+                  : (isKo ? "공개하기" : "Show")}
+              </button>
+              <div className="my-1 border-t border-gray-100" />
+              <button
+                type="button"
+                onClick={() => duplicateBlock(link)}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-gray-700 transition hover:bg-gray-100 hover:text-black"
+              >
+                <Copy className="h-4 w-4" />
+                {isKo ? '복제' : 'Duplicate'}
+              </button>
+              <button
+                type="button"
+                onClick={() => requestBlockDelete(link)}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-red-600 transition hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isKo ? '삭제' : 'Delete'}
+              </button>
+            </>
+          ) : (
+            <div className="space-y-3 p-1">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBlockMenuMode("actions")}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-black text-gray-900 transition hover:bg-gray-100"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  디자인
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateBlockVisual(link, {
+                    buttonColor: undefined,
+                    buttonTextColor: undefined,
+                    customStyle: {
+                      ...(link.customStyle || {}),
+                      opacity: undefined,
+                      textOpacity: undefined,
+                    },
+                  })}
+                  className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold text-gray-500 transition hover:bg-gray-100 hover:text-black"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  초기화
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="mb-1.5 text-[11px] font-bold text-gray-600">배경색</p>
+                  <ColorPickerPopover
+                    label="배경색"
+                    value={link.buttonColor || buttonColor || "#FFFFFF"}
+                    opacity={link.customStyle?.opacity ?? buttonOpacity ?? 100}
+                    onChange={(color) => updateBlockVisual(link, { buttonColor: color })}
+                    onOpacityChange={(opacity) => updateBlockVisual(link, {
+                      customStyle: { ...(link.customStyle || {}), opacity },
+                    })}
+                  />
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[11px] font-bold text-gray-600">글자색</p>
+                  <ColorPickerPopover
+                    label="글자색"
+                    value={link.buttonTextColor || buttonTextColor || "#111827"}
+                    opacity={link.customStyle?.textOpacity ?? buttonTextOpacity ?? 100}
+                    onChange={(color) => updateBlockVisual(link, { buttonTextColor: color })}
+                    onOpacityChange={(textOpacity) => updateBlockVisual(link, {
+                      customStyle: { ...(link.customStyle || {}), textOpacity },
+                    })}
+                  />
+                </div>
+              </div>
+              <p className="px-1 text-[10px] leading-relaxed text-gray-400">이 블록에만 적용됩니다.</p>
+            </div>
+          )}
+        </div>
+        </>,
+        document.body,
+      )}
+    </div>
   );
 
   const collapseAllBlocks = () => {
@@ -268,43 +705,113 @@ const LinksEditor = () => {
   const handleAddLink = () => {
     addCustomLink({
       id: `link-${Date.now()}`,
+      blockKind: "link",
       title: "새 링크",
-      url: "https://",
+      url: "",
       isVisible: true,
+      thumbnailType: "none",
+      iconName: "",
     });
   };
 
-  const handleAddCollection = () => {
+  const handleAddLinkToCollection = (collectionId: string) => {
+    setQuickAddCollectionId(collectionId);
+    setQuickAddLinkTitle("");
+    setQuickAddLinkUrl("");
+    setQuickAddLinkError("");
+  };
+
+  const closeQuickAddLink = () => {
+    setQuickAddCollectionId(null);
+    setQuickAddLinkTitle("");
+    setQuickAddLinkUrl("");
+    setQuickAddLinkError("");
+  };
+
+  const submitQuickAddLink = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!quickAddCollectionId) return;
+    const title = quickAddLinkTitle.trim();
+    const url = normalizeLinkUrl(quickAddLinkUrl);
+    if (!title || !url) {
+      setQuickAddLinkError(isKo ? "텍스트와 링크 주소를 모두 입력해 주세요." : "Enter both text and a link URL.");
+      return;
+    }
+    const newLinkId = `link-${Date.now()}`;
+    addCustomLink({
+      id: newLinkId,
+      type: "link",
+      blockKind: "link",
+      title,
+      url,
+      isVisible: true,
+      thumbnailType: "none",
+      iconName: "",
+      linkLayout: "classic",
+    }, quickAddCollectionId);
+    setCollapsedBlockIds((prev) => ({
+      ...prev,
+      [quickAddCollectionId]: false,
+    }));
+    closeQuickAddLink();
+  };
+
+  const handleAddCollection = (style: "classic" | "image" = "classic") => {
     const newCollectionId = `col-${Date.now()}`;
     addCustomLink({
       id: newCollectionId,
       type: "collection",
+      blockKind: "collection",
       title: "새 링크 그룹",
-      layout: "list",
+      layout: style === "image" ? "grid" : "list",
+      collectionStyle: style,
+      collectionColumns: style === "image" ? 2 : undefined,
       links: [],
     });
     setCollapsedBlockIds((prev) => ({ ...prev, [newCollectionId]: true }));
   };
 
   const handleSelectBlockType = (blockType: string) => {
+    if (blockType === "store" && !STOREFRONT_AVAILABLE) {
+      alert(isKo ? "스토어 기능을 준비하고 있어요." : "The store is coming soon.");
+      return;
+    }
     const userHandle = profile.username || "preview";
-    const addBlockToTarget = (block: CustomLink) => addCustomLink(block, addBlockTargetCollectionId || undefined);
+    const addBlockToTarget = (block: CustomLink) => addCustomLink(
+      { ...block, blockKind: block.blockKind || blockType },
+      addBlockTargetCollectionId || undefined,
+    );
 
     if (blockType === "link") {
       addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "link",
-        title: "내 공식 사이트 바로가기",
-        url: "https://naver.com",
+        title: "새 링크",
+        url: "",
         isVisible: true,
-        iconName: "link",
+        thumbnailType: "none",
+        iconName: "",
       });
+    } else if (blockType === "store") {
+      addBlockToTarget({
+        id: `store-${Date.now()}`,
+        type: "link",
+        blockKind: "store",
+        title: profile.storefront?.name || (isKo ? "내 스토어 보러 가기" : "Visit my store"),
+        url: `/${userHandle}/shop`,
+        isVisible: true,
+        linkLayout: "classic",
+        icon: profile.storefront?.thumbnailUrl || "",
+        thumbnailType: profile.storefront?.thumbnailUrl ? "image" : "icon",
+        iconName: "shopping-bag",
+      });
+      if (!profile.storefront) setIsStoreGuideOpen(true);
     } else if (blockType === "image") {
       addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "image",
         title: "이미지 링크",
-        url: "https://",
+        url: "",
         isVisible: true,
         icon: "",
         thumbnailType: "image",
@@ -317,19 +824,7 @@ const LinksEditor = () => {
         type: "sns",
         title: "SNS",
         isVisible: true,
-        snsLinks: [
-          {
-            id: `sns-${Date.now()}-1`,
-            platform: "phone",
-            value: "010-1234-5678",
-            countryCode: "KR",
-          },
-          {
-            id: `sns-${Date.now()}-2`,
-            platform: "instagram",
-            value: userHandle,
-          },
-        ],
+        snsLinks: [],
       });
     } else if (blockType === "donation") {
       addBlockToTarget({
@@ -351,6 +846,11 @@ const LinksEditor = () => {
         },
       });
     } else if (blockType === "file") {
+      const sharedFileCount = customLinks.filter((item) => item.type === "file").length;
+      if (sharedFileCount >= 2) {
+        alert(isKo ? "베타 기간에는 파일 공유 블록을 2개까지만 추가할 수 있습니다." : "During beta, you can add up to 2 file-sharing blocks.");
+        return;
+      }
       addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "file",
@@ -358,7 +858,8 @@ const LinksEditor = () => {
         url: "",
         isVisible: true,
         icon: "",
-        thumbnailType: "none",
+        thumbnailType: "icon",
+        iconName: "paperclip",
         fileConfig: {
           title: "자료집 및 대표 파일 다운로드",
           description: "누구나 자유롭게 다운로드하실 수 있습니다.",
@@ -368,18 +869,26 @@ const LinksEditor = () => {
         },
       });
     } else if (blockType === "notice") {
+      if (containsNoticeBlock(customLinks)) {
+        alert("공지사항 블록은 하나만 둘 수 있어요. 기존 공지사항 블록에서 공지를 3개까지 관리해 주세요.");
+        return;
+      }
+      const firstNotice: NoticeConfig = {
+        id: `notice-${Date.now()}`,
+        title: "공지사항 제목을 입력하세요",
+        content: "공지 내용을 입력하세요.",
+        date: new Date().toLocaleDateString("ko-KR"),
+      };
       addBlockToTarget({
         id: `link-${Date.now()}`,
         type: "notice",
         title: "공지사항",
         url: `/${userHandle}/notice`,
         isVisible: true,
-        iconName: "megaphone",
-        noticeConfig: {
-          title: "공지사항 제목을 입력하세요",
-          content: "공지 내용을 입력하세요.",
-          date: new Date().toLocaleDateString("ko-KR"),
-        },
+        thumbnailType: "none",
+        iconName: "",
+        noticeConfig: firstNotice,
+        notices: [firstNotice],
       });
     } else if (blockType === "guestbook") {
       addBlockToTarget({
@@ -404,12 +913,13 @@ const LinksEditor = () => {
         id: `link-${Date.now()}`,
         type: "customer_info",
         title: "고객정보 수집",
-        url: `https://linkzip.kr/${userHandle}/customer_info`,
+        url: `/${userHandle}/customer_info`,
         isVisible: true,
         iconName: "clipboard-list",
         customerInfoConfig: {
           mainText: "뉴스레터",
           detailText: "새 소식을 정기적으로 보내드려요",
+          displayMode: "header",
           submitButtonText: "제출하기",
           receiveEmail: true,
           receivePhone: false,
@@ -440,7 +950,6 @@ const LinksEditor = () => {
           description: salesType === "product"
             ? "상품 정보와 배송 안내를 확인해주세요."
             : "구매 후 디지털 파일을 다운로드할 수 있습니다.",
-          descriptionViewType: "simple",
           products: [],
           creatorMessage: "구매해주셔서 감사합니다.",
         },
@@ -450,12 +959,12 @@ const LinksEditor = () => {
         id: `link-${Date.now()}`,
         type: "affiliate_product",
         title: isKo ? "추천 상품" : "Recommended product",
-        url: "https://",
+        url: "",
         isVisible: true,
         iconName: "shopping-bag",
         affiliateProductConfig: {
           imageUrl: "",
-          affiliateUrl: "https://",
+          affiliateUrl: "",
           price: undefined,
           currency: "KRW",
           displayMode: "compact",
@@ -479,23 +988,15 @@ const LinksEditor = () => {
         iconName: "calendar-check",
         reservationConfig: {
           headerText: "",
-          schedules: [
-            {
-              id: `sched-${Date.now()}`,
-              startDate: "07.26 (PM 12)",
-              endDate: "07.26 (PM 01)",
-              title: "공부하기",
-              status: "OPEN"
-            }
-          ],
+          schedules: [],
           autoNotification: false
         }
       });
     } else if (blockType === "customer_inquiry" || blockType === "contact") {
       addBlockToTarget({
         id: `link-${Date.now()}`,
-        title: "📞 비즈니스 섭외 & 1:1 오픈채팅 문의",
-        url: "https://open.kakao.com/o/linkzip",
+        title: "문의 링크",
+        url: "",
         isVisible: true,
         iconName: "message-circle",
       });
@@ -503,90 +1004,11 @@ const LinksEditor = () => {
       addBlockToTarget({
         id: `link-${Date.now()}`,
         title: `${blockType.replace("_", " ")} block`,
-        url: `https://${userHandle}.linkzip.me`,
+        url: "",
         isVisible: true,
         iconName: "sparkles",
       });
     }
-  };
-
-  // Drag handlers
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.stopPropagation();
-    setDraggedId(id);
-    e.dataTransfer.setData("text/plain", id);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragEnd = () => {
-    setDraggedId(null);
-    setDragOverTargetId(null);
-    setDragOverPosition(null);
-    setIsOverRootArea(false);
-  };
-
-  const getDropPosition = (e: React.DragEvent, allowInside = false) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientY - rect.top) / Math.max(rect.height, 1);
-    if (allowInside) {
-      if (ratio < 0.25) return 'before' as const;
-      if (ratio > 0.75) return 'after' as const;
-      return 'inside' as const;
-    }
-    return ratio > 0.5 ? 'after' as const : 'before' as const;
-  };
-
-  const handleDragOver = (e: React.DragEvent, targetId: string, allowInside = false) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (draggedId !== targetId) {
-      setDragOverTargetId(targetId);
-      setDragOverPosition(getDropPosition(e, allowInside));
-    } else {
-      setDragOverTargetId(null);
-      setDragOverPosition(null);
-    }
-  };
-
-  const handleDropOnItem = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverTargetId(null);
-    setDragOverPosition(null);
-
-    const activeId = e.dataTransfer.getData("text/plain");
-    if (!activeId || activeId === targetId) return;
-    const position = getDropPosition(e) === 'after' ? 'after' : 'before';
-    moveItemRelative(activeId, targetId, position);
-    setDraggedId(null);
-  };
-
-  const handleDropOnCollection = (e: React.DragEvent, collectionId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverTargetId(null);
-    setDragOverPosition(null);
-
-    const activeId = e.dataTransfer.getData("text/plain");
-    if (!activeId || activeId === collectionId) return;
-
-    const position = getDropPosition(e, true);
-    if (position === 'inside') moveItemToCollection(activeId, collectionId);
-    else moveItemRelative(activeId, collectionId, position);
-    setDraggedId(null);
-  };
-
-  const handleDropOnRoot = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsOverRootArea(false);
-    setDragOverTargetId(null);
-    setDragOverPosition(null);
-
-    const activeId = e.dataTransfer.getData("text/plain");
-    if (!activeId) return;
-
-    moveItemToRoot(activeId);
-    setDraggedId(null);
   };
 
   // Render standard link item card
@@ -595,33 +1017,39 @@ const LinksEditor = () => {
     isNested = false,
     parentCollectionId?: string
   ) => {
-    const isBeingDragged = draggedId === link.id;
-
-    const isGuestbookLink = link.url?.includes('/guestbook') || link.title?.includes('방명록');
-    const isImage = !isGuestbookLink &&
-      (link.thumbnailType === "image" || (!link.thumbnailType && link.icon));
-    const isIcon = isGuestbookLink ||
-      link.thumbnailType === "icon" || (!link.thumbnailType && link.iconName);
-    const SelectedIconComp = getLinkIcon(isGuestbookLink ? 'book' : link.iconName);
+    const isCollapsed = isBlockCollapsed(link.id, true);
+    const ThumbnailIcon = getLinkIcon(link.iconName || "link");
+    const blockKind = getBlockKind(link);
+    const supportsLinkDisplay = blockKind === "link" || blockKind === "store";
+    const isFixedInternalLink = blockKind === "guestbook" || blockKind === "anonymous_message" || blockKind === "store";
+    const fixedInternalUrl = blockKind === "guestbook"
+      ? `/${profile.username || "preview"}/guestbook`
+      : blockKind === "anonymous_message"
+        ? `/${profile.username || "preview"}/message`
+        : blockKind === "store"
+          ? `/${profile.username || "preview"}/shop`
+        : link.url || "";
+    const isInsideCollection = isNested || customLinks.some((collection) =>
+      collection.type === "collection" && collection.links?.some((nestedLink) => nestedLink.id === link.id),
+    );
 
     return (
       <div
         key={link.id}
         data-testid={`link-card-${link.id}`}
-        draggable
-        onDragStart={(e) => handleDragStart(e, link.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, link.id)}
-        onDrop={(e) => handleDropOnItem(e, link.id)}
+        data-collapsed={isNested ? false : isCollapsed}
+        onClick={isNested ? undefined : (event) => handleCollapsibleCardClick(event, link.id)}
         className={clsx(
-          "bg-white p-4 rounded-2xl border transition-all space-y-3 relative group",
+          "rounded-3xl border bg-white transition-all relative group hover:border-gray-300 hover:shadow-md",
+          isNested && "nested-link-card",
+          isNested ? "cursor-default" : "cursor-pointer",
+          isNested ? "p-4" : isCollapsed ? "p-4" : "space-y-4 p-5",
           isNested
             ? "border-gray-200 bg-gray-50/50 shadow-2xs"
             : "border-gray-200 shadow-2xs",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400"
         )}
       >
-        <div className="flex items-center gap-2.5">
+        {!isNested && <div className="flex items-center gap-2.5">
           {/* Drag Handle & Up/Down Move Buttons */}
           <div className="flex items-center gap-1 shrink-0">
             <div
@@ -650,85 +1078,143 @@ const LinksEditor = () => {
             </div> */}
           </div>
 
-          {/* Thumbnail / Icon Picker Button */}
-          <button
-            type="button"
-            onClick={() => { if (!isGuestbookLink) setActiveThumbnailLink(link); }}
-            disabled={isGuestbookLink}
-            className={clsx("w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 transition relative group/thumb", isGuestbookLink ? "cursor-default" : "hover:border-black cursor-pointer")}
-            title={isGuestbookLink ? "방명록 고정 아이콘" : "썸네일 또는 아이콘 편집"}
-          >
-            {isImage ? (
-              <img
-                src={link.icon}
-                alt={link.title}
-                className="w-full h-full object-cover"
-              />
-            ) : isIcon && SelectedIconComp ? (
-              <span style={{ color: link.customStyle?.iconColor || '#374151', opacity: (link.customStyle?.iconOpacity ?? 100) / 100 }}><SelectedIconComp className="w-5 h-5" /></span>
-            ) : (
-              <ImageIcon className="w-4 h-4 text-gray-400 group-hover/thumb:text-black transition" />
-            )}
-          </button>
+          {renderBlockIdentity(link)}
 
-          {/* Title & URL summary */}
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="truncate text-sm font-black text-gray-900">{link.title || '링크 제목'}</p>
-            <p className="truncate text-[11px] font-medium text-gray-500">{link.url || '링크 주소를 입력하세요'}</p>
-          </div>
-
-          {/* Actions: Visibility Toggle, Edit & Delete */}
+          {/* Actions: Visibility, menu and collapse */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() =>
-                updateCustomLink(link.id, { isVisible: !link.isVisible })
-              }
-              className={clsx(
-                "w-10 h-5 rounded-full transition-colors relative cursor-pointer",
-                link.isVisible !== false ? "bg-black" : "bg-gray-200"
-              )}
-            >
-              <div
-                className={clsx(
-                  "w-4 h-4 rounded-full bg-white transition-transform absolute top-0.5 left-0.5 shadow-xs",
-                  link.isVisible !== false ? "translate-x-5" : "translate-x-0"
-                )}
-              />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveStyleLinkId(link.id)}
-              className="flex cursor-pointer items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-600 transition hover:border-gray-400 hover:bg-gray-50 hover:text-black"
-              aria-label={`${link.title || '링크'} 편집`}
-              title="링크 내용과 디자인 편집"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              <span>편집</span>
-            </button>
-
-            <button
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1.5 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {renderVisibilityControl(link)}
+            {renderBlockActionMenu(link)}
+            {renderCollapseControl(link.id, isCollapsed, true, '링크 ')}
           </div>
-        </div>
+        </div>}
+
+        {(isNested || !isCollapsed) && (link.type === "image" || link.type === "link" || link.type === "anonymous_message" || !link.type) && (
+          <div
+            className={clsx("space-y-3", isNested && "nested-link-form", !isNested && "border-t border-gray-100 pt-4")}
+            data-no-style-editor
+            onClick={(event) => event.stopPropagation()}
+          >
+            <label className={clsx(isNested ? "nested-link-title-row flex items-center gap-3" : "block space-y-1.5")}>
+              <span className={clsx("nested-link-field-label text-xs font-bold text-gray-600", isNested ? "w-20 shrink-0" : "block")}>텍스트</span>
+              <input
+                value={link.title || ""}
+                onChange={(event) => updateCustomLink(link.id, { title: event.target.value })}
+                placeholder={link.type === "image" ? "이미지 링크" : "링크 제목"}
+                className={clsx("min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-sm font-semibold outline-none transition focus:border-black", !isNested && "block w-full")}
+              />
+              {isNested && <div className="flex shrink-0 items-center gap-1.5">{renderVisibilityControl(link)}{renderBlockActionMenu(link)}</div>}
+            </label>
+            <div className={clsx(isNested ? "nested-link-url-row flex items-center gap-3" : "space-y-1.5")}>
+              <span className={clsx("nested-link-field-label text-xs font-bold text-gray-600", isNested ? "w-20 shrink-0" : "block")}>링크 주소</span>
+              <div className="nested-link-url-controls flex min-w-0 flex-1 items-stretch gap-2">
+                {isFixedInternalLink ? (
+                  <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-3" aria-label={isKo ? "수정할 수 없는 고정 링크" : "Read-only fixed link"}>
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-700">{fixedInternalUrl}</span>
+                    <span className="shrink-0 rounded-full bg-gray-200 px-2 py-1 text-[9px] font-black text-gray-500">{isKo ? "고정 링크" : "FIXED"}</span>
+                  </div>
+                ) : (
+                  <input
+                    value={link.url || ""}
+                    onChange={(event) => updateCustomLink(link.id, { url: event.target.value })}
+                    onBlur={(event) => {
+                      const normalizedUrl = normalizeLinkUrl(event.target.value);
+                      if (normalizedUrl !== event.target.value) updateCustomLink(link.id, { url: normalizedUrl });
+                    }}
+                    placeholder={isKo ? "링크 주소를 입력하세요" : "Enter a link URL"}
+                    inputMode="url"
+                    className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-sm font-semibold outline-none transition focus:border-black"
+                  />
+                )}
+                {supportsLinkDisplay && (
+                  link.thumbnailType === "image" && link.icon ? (
+                    <div className="relative flex shrink-0 items-stretch gap-1.5">
+                      <button type="button" onClick={() => setActiveThumbnailLink(link)} className="h-12 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-gray-100 transition hover:border-black" style={{ aspectRatio: (link.imageAspectRatio || "4:3").replace(":", " / ") }} aria-label="링크 썸네일 편집">
+                        <img
+                          src={link.icon}
+                          alt="링크 썸네일"
+                          className="h-full w-full object-cover"
+                          style={getThumbnailPreviewStyle(link)}
+                        />
+                      </button>
+                      <button type="button" onClick={() => updateCustomLink(link.id, { thumbnailType: "none", icon: "", iconName: "", linkLayout: "classic" })} className="flex w-8 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-red-500 text-white transition hover:bg-red-600" aria-label="링크 썸네일 삭제" title="썸네일 삭제"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  ) : link.thumbnailType === "icon" && link.iconName ? (
+                    <div className="relative flex shrink-0 items-stretch gap-1.5">
+                      <button type="button" onClick={() => setActiveThumbnailLink(link)} className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-gray-200 bg-gray-100 text-gray-700 transition hover:border-black" aria-label="링크 썸네일 편집">
+                        <ThumbnailIcon className="h-5 w-5" />
+                      </button>
+                      <button type="button" onClick={() => updateCustomLink(link.id, { thumbnailType: "none", icon: "", iconName: "", linkLayout: "classic" })} className="flex w-8 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-red-500 text-white transition hover:bg-red-600" aria-label="링크 썸네일 삭제" title="썸네일 삭제"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setActiveThumbnailLink(link)} className="flex w-20 shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-gray-100 px-2 text-[10px] font-black text-gray-600 transition hover:border-gray-400 hover:bg-gray-200" aria-label="링크 썸네일 추가">
+                      <ImageIcon className="mb-0.5 h-4 w-4" />썸네일
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+
+            {supportsLinkDisplay && !isInsideCollection && (
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs font-black text-gray-800">링크 디스플레이</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => updateCustomLink(link.id, { linkLayout: "classic" })}
+                      className={clsx(
+                        "flex min-h-28 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border bg-white p-4 transition",
+                        (link.linkLayout || "classic") === "classic" ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-400",
+                      )}
+                    >
+                      <span className="flex h-11 w-full items-center gap-2 rounded-full bg-gray-100 px-3">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-500"><Link2 className="h-4 w-4" /></span>
+                        <span className="h-2 flex-1 rounded-full bg-gray-300" />
+                      </span>
+                      <span className="text-xs font-black text-gray-900">기본형</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateCustomLink(link.id, {
+                        linkLayout: "image",
+                        thumbnailType: "image",
+                        icon: link.icon || (blockKind === "store" ? profile.storefront?.thumbnailUrl || "" : ""),
+                      })}
+                      className={clsx(
+                        "flex min-h-28 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border bg-white p-4 transition",
+                        link.linkLayout === "image" ? "border-black ring-1 ring-black" : "border-gray-200 hover:border-gray-400",
+                      )}
+                    >
+                      <span className="flex h-12 w-20 flex-col overflow-hidden rounded-xl bg-gray-100">
+                        <span className="h-8 bg-gradient-to-br from-cyan-200 to-blue-200" />
+                        <span className="mx-auto mt-1 h-1.5 w-10 rounded-full bg-gray-300" />
+                      </span>
+                      <span className="text-xs font-black text-gray-900">이미지형</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
 
   // Render Collection (Group) Block Card
   const renderCollection = (collection: CustomLink) => {
-    const isBeingDragged = draggedId === collection.id;
     const isCollapsed = isBlockCollapsed(collection.id, true);
     const hasCollectionItems = (collection.links || []).length > 0;
+    const collectionStyle = collection.collectionStyle || (collection.layout && collection.layout !== "list" ? "image" : "classic");
+    const collectionStyleLabel = collectionStyle === "image" ? "이미지형" : "기본형";
 
     return (
       <div
         key={collection.id}
-        className={clsx("relative", isCollapsed && hasCollectionItems && "mb-4")}
+        className={clsx("collection-card-shell relative", isCollapsed && hasCollectionItems && "mb-4")}
       >
         {isCollapsed && hasCollectionItems && (
           <div
@@ -740,11 +1226,6 @@ const LinksEditor = () => {
         data-testid={`collection-card-${collection.id}`}
         data-collapsed={isCollapsed}
         onClick={(event) => handleCollectionCardClick(event, collection.id)}
-        draggable
-        onDragStart={(e) => handleDragStart(e, collection.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, collection.id, true)}
-        onDrop={(e) => handleDropOnCollection(e, collection.id)}
         className={clsx(
           "group-card relative z-10 cursor-pointer rounded-3xl border bg-white transition-[border-color,background-color]",
           isCollapsed
@@ -752,7 +1233,6 @@ const LinksEditor = () => {
               ? "p-4"
               : "p-4 shadow-xs"
             : "p-5 space-y-4 shadow-sm",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
           "border-gray-200"
         )}
       >
@@ -787,40 +1267,20 @@ const LinksEditor = () => {
               </div> */}
             </div>
 
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50" aria-label="컬렉션 아이콘">
-              <Folder className="h-5 w-5 fill-gray-300 text-gray-400" strokeWidth={1.8} />
-            </span>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-black text-gray-900">
-                {collection.title || (isKo ? "그룹명" : "Group name")}
-              </p>
-              {isCollapsed && (
-                <p className="mt-0.5 truncate text-[11px] font-medium text-gray-500">
-                  {(collection.layout === "grid" ? "그리드" : collection.layout === "carousel" ? "캐러셀" : "리스트")} · {(collection.links || []).length}개 블록
-                </p>
-              )}
-            </div>
+            {renderBlockIdentity(
+              collection,
+              collection.title,
+              <span className={clsx(
+                "shrink-0 rounded-full px-2 py-1 text-[10px] font-black",
+                collectionStyle === "image" ? "bg-[#ffcf4a] text-[#171714]" : "bg-gray-100 text-gray-600",
+              )}>{collectionStyleLabel}</span>,
+            )}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             {renderVisibilityControl(collection)}
-            <button
-              type="button"
-              onClick={() => setActiveStyleLinkId(collection.id)}
-              className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black"
-              aria-label="그룹 디자인 수정"
-              title="그룹 디자인 수정"
-            >
-              <Palette className="h-4 w-4" />
-            </button>
+            {renderBlockActionMenu(collection)}
             {renderCollapseControl(collection.id, isCollapsed, true, "컬렉션 ")}
-            <button
-              onClick={() => removeCustomLink(collection.id)}
-              className="p-1.5 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
@@ -829,31 +1289,83 @@ const LinksEditor = () => {
           <div className="space-y-3 pt-1 animate-in fade-in duration-200">
             <div className="rounded-2xl border border-gray-200 bg-white px-3 py-3" data-no-style-editor>
               <label htmlFor={`collection-name-${collection.id}`} className="mb-2 block text-xs font-black text-gray-800">그룹명</label>
-              <input id={`collection-name-${collection.id}`} type="text" value={collection.title} onChange={(event) => updateCustomLink(collection.id, { title: event.target.value })} placeholder="관리할 그룹명을 입력하세요" className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:bg-white focus:ring-3 focus:ring-gray-100" />
+              <input id={`collection-name-${collection.id}`} type="text" value={collection.title} onChange={(event) => updateCustomLink(collection.id, { title: event.target.value, publicTitle: undefined, hideTitle: false })} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold text-gray-900 outline-none transition focus:border-gray-400 focus:bg-white focus:ring-3 focus:ring-gray-100" />
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white px-3 py-3" data-no-style-editor>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <label htmlFor={`collection-public-title-${collection.id}`} className="text-xs font-black text-gray-800">공개 타이틀</label>
-                <button type="button" role="switch" aria-checked={!collection.hideTitle} onClick={() => updateCustomLink(collection.id, { hideTitle: !collection.hideTitle })} className={clsx("relative h-6 w-10 shrink-0 cursor-pointer rounded-full transition-colors", collection.hideTitle ? "bg-gray-200" : "bg-black")} aria-label="공개 화면에 컬렉션 제목 표시" title={collection.hideTitle ? "공개 타이틀 표시하기" : "공개 타이틀 숨기기"}>
-                  <span className={clsx("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform", collection.hideTitle ? "translate-x-0" : "translate-x-4")} />
-                </button>
+            {collectionStyle === "classic" && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3" data-no-style-editor>
+                <p className="text-xs font-black text-gray-800">링크 표시 방식</p>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {([
+                    { value: "list", label: "한 줄형" },
+                    { value: "grid", label: "그리드" },
+                    { value: "carousel", label: "캐러셀" },
+                  ] as const).map((option) => {
+                    const isSelected = (collection.layout || "list") === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updateCustomLink(collection.id, { layout: option.value })}
+                        className={clsx(
+                          "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border bg-white px-2 py-3 text-xs font-black transition",
+                          isSelected
+                            ? "border-black text-black shadow-sm ring-1 ring-black"
+                            : "border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-800",
+                        )}
+                        aria-label={`${option.label}${option.value === "list" ? "으로" : "로"} 표시`}
+                        aria-pressed={isSelected}
+                      >
+                        {option.value === "list" && (
+                          <span className="flex h-9 w-14 flex-col justify-center gap-1.5">
+                            <span className="h-2 rounded-full bg-current opacity-60" />
+                            <span className="h-2 rounded-full bg-current opacity-35" />
+                          </span>
+                        )}
+                        {option.value === "grid" && (
+                          <span className="grid h-9 w-12 grid-cols-2 gap-1.5">
+                            {Array.from({ length: 4 }).map((_, index) => <span key={index} className="rounded bg-current opacity-50" />)}
+                          </span>
+                        )}
+                        {option.value === "carousel" && (
+                          <span className="flex h-9 w-14 items-center gap-1 overflow-hidden">
+                            <span className="h-8 w-8 shrink-0 rounded bg-current opacity-55" />
+                            <span className="h-8 w-8 shrink-0 rounded bg-current opacity-25" />
+                          </span>
+                        )}
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <input id={`collection-public-title-${collection.id}`} type="text" value={collection.publicTitle ?? collection.title} onChange={(event) => updateCustomLink(collection.id, { publicTitle: event.target.value })} placeholder="공개 화면에 표시할 타이틀" className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-indigo-400 focus:bg-white focus:ring-3 focus:ring-indigo-100" />
-              <p className="mt-1.5 text-[10px] font-medium text-gray-500">방문자에게 보이는 제목입니다. 위 그룹명과 다르게 설정할 수 있습니다.</p>
-            </div>
-            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3" data-no-style-editor>
-              <div><p className="text-xs font-black text-gray-800">컬렉션 표시 방식</p><p className="mt-0.5 text-[10px] font-medium text-gray-500">내부 링크가 공개 화면에 보이는 방식을 선택합니다.</p></div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {([
-                  { value: 'list', label: '리스트', icon: LayoutList },
-                  { value: 'grid', label: '그리드', icon: LayoutGrid },
-                  { value: 'carousel', label: '캐러셀', icon: GalleryHorizontal },
-                ] as const).map(({ value, label, icon: LayoutIcon }) => {
-                  const isSelected = value === 'list' ? !collection.layout || collection.layout === 'list' : collection.layout === value;
-                  return <button key={value} type="button" onClick={() => updateCustomLink(collection.id, { layout: value })} className={clsx("flex min-h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border bg-white px-2 py-3 text-xs font-black transition", isSelected ? "border-black text-black shadow-sm ring-1 ring-black" : "border-gray-200 text-gray-500 hover:-translate-y-0.5 hover:border-gray-400 hover:text-gray-800 hover:shadow-sm")} aria-label={`${label}로 표시`} aria-pressed={isSelected}><LayoutIcon className="h-6 w-6" /><span>{label}</span></button>;
-                })}
+            )}
+            {collectionStyle === "image" && (
+              <div className="rounded-2xl border border-[#171714]/15 bg-[#f4f1e8] p-3" data-no-style-editor>
+                <p className="text-xs font-black text-gray-800">이미지 카드 열 구성</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {([2, 3] as const).map((columns) => {
+                    const isSelected = (collection.collectionColumns || 2) === columns;
+                    return (
+                      <button key={columns} type="button" onClick={() => updateCustomLink(collection.id, { collectionColumns: columns, layout: "grid" })} className={clsx("flex min-h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border bg-white px-3 py-3 text-xs font-black transition", isSelected ? "border-black text-black shadow-sm ring-1 ring-black" : "border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-800")} aria-label={`${columns}열로 표시`} aria-pressed={isSelected}>
+                        <span className={clsx("grid h-10 w-14 gap-1", columns === 2 ? "grid-cols-2" : "grid-cols-3")}>
+                          {Array.from({ length: columns }).map((_, index) => <span key={index} className="rounded-md bg-[#ffcf4a]" />)}
+                        </span>
+                        <span>{columns}열</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={() => handleAddLinkToCollection(collection.id)}
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-black px-4 py-3.5 text-sm font-black text-white shadow-sm transition hover:bg-gray-800 active:scale-[0.99]"
+              data-no-style-editor
+            >
+              <Plus className="h-4 w-4" />
+              <span>{isKo ? "링크 추가" : "Add link"}</span>
+            </button>
             {collection.links && collection.links.length > 0 ? (
               collection.links.map((nestedLink) => {
                 if (nestedLink.type === "reservation") return renderReservationCard(nestedLink);
@@ -869,24 +1381,9 @@ const LinksEditor = () => {
               })
             ) : (
               <div className="text-center py-4 text-xs font-semibold text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                컬렉션이 비어있습니다. 아래 [ + ] 버튼을 눌러 링크를
-                추가해보세요.
+                컬렉션이 비어있습니다. 위의 링크 추가 버튼을 눌러 링크를 추가해보세요.
               </div>
             )}
-
-            {/* Add Nested Link Button */}
-            <div className="pt-1 flex justify-end">
-              <button
-                onClick={() => {
-                  setAddBlockTargetCollectionId(collection.id);
-                  setIsAddBlockModalOpen(true);
-                }}
-                className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{isKo ? '내부 블록 추가' : 'Add block inside'}</span>
-              </button>
-            </div>
           </div>
         )}
         </div>
@@ -898,7 +1395,6 @@ const LinksEditor = () => {
     useState<CustomLink | null>(null);
 
   const renderDonationCard = (link: CustomLink) => {
-    const isBeingDragged = draggedId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const config = link.donationConfig || {
@@ -928,15 +1424,9 @@ const LinksEditor = () => {
           event.stopPropagation();
           toggleBlockCollapse(link.id);
         }}
-        draggable
-        onDragStart={(e) => handleDragStart(e, link.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, link.id)}
-        onDrop={(e) => handleDropOnItem(e, link.id)}
         className={clsx(
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
           "border-gray-200"
         )}
       >
@@ -971,10 +1461,7 @@ const LinksEditor = () => {
               </button>
             </div> */}
 
-            <div className={blockIconClassName}>
-              <HandHeart className="h-5 w-5" />
-            </div>
-            <div className="truncate text-sm font-black text-gray-900">도네이션</div>
+            {renderBlockIdentity(link, config.mainText || link.title)}
           </div>
 
           {/* Right Controls: ON/OFF Switch & Delete */}
@@ -997,15 +1484,8 @@ const LinksEditor = () => {
               />
             </button>
 
-            <button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label="도네이션 디자인 수정" title="도네이션 디자인 수정"><Palette className="h-4 w-4" /></button>
+            {renderBlockActionMenu(link)}
             {renderCollapseControl(link.id, isCollapsed)}
-            <button
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
-              title="블록 삭제"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
@@ -1015,7 +1495,7 @@ const LinksEditor = () => {
             {/* 1. Main Text* */}
             <div className="space-y-1">
               <label className="block text-xs font-bold text-gray-600">
-                main text<span className="text-red-500">*</span>
+                제목<span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -1120,7 +1600,7 @@ const LinksEditor = () => {
                       <div className="flex items-center gap-2.5 truncate">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                         <span className="truncate">
-                          {bank} {accNum} ({owner}) 연동 완료
+                          {bank} {accNum} ({owner}) 등록 완료
                         </span>
                       </div>
                       <button
@@ -1150,7 +1630,6 @@ const LinksEditor = () => {
   };
 
   const renderFileSharingCard = (link: CustomLink) => {
-    const isBeingDragged = draggedId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const config = link.fileConfig || {
@@ -1175,8 +1654,15 @@ const LinksEditor = () => {
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file || !user?.uid) return;
-      if (file.size > 25 * 1024 * 1024) {
-        alert(isKo ? "파일 크기는 25MB 이하여야 합니다." : "The file must be 25MB or smaller.");
+      if (file.size > planEntitlements.maxSharedFileBytes) {
+        const maxMb = Math.round(planEntitlements.maxSharedFileBytes / 1024 / 1024);
+        requestUpgradePrompt({
+          featureLabel: isKo ? '파일 업로드 용량' : 'File upload size',
+          title: isKo ? '더 큰 파일을 공유해 보세요' : 'Share larger files',
+          description: isKo
+            ? `현재 플랜은 파일당 최대 ${maxMb}MB까지 업로드할 수 있습니다. 상위 플랜에서는 더 큰 파일과 더 많은 일일 다운로드를 제공합니다.`
+            : `Your current limit is ${maxMb}MB per file. Higher plans include larger files and more daily downloads.`,
+        });
         return;
       }
       const sizeLabel = file.size < 1024 * 1024
@@ -1184,8 +1670,22 @@ const LinksEditor = () => {
         : `${(file.size / (1024 * 1024)).toFixed(1)}MB`;
       try {
         setUploadingFileId(link.id);
-        const fileUrl = await uploadPublicFile(user.uid, file);
-        updateConfig({ fileUrl, fileName: file.name, fileSize: sizeLabel });
+        const uploadedFile = await uploadPublicFile(
+          user.uid,
+          file,
+          planEntitlements.maxSharedFileBytes,
+          membershipGrant === BETA_LIFETIME_PREMIUM_GRANT,
+        );
+        const previousFilePath = config.filePath;
+        updateConfig({
+          fileUrl: uploadedFile.url,
+          filePath: uploadedFile.path,
+          fileName: file.name,
+          fileSize: sizeLabel,
+        });
+        if (previousFilePath && previousFilePath !== uploadedFile.path) {
+          await deletePublicFile(previousFilePath, user.uid);
+        }
       } catch (error) {
         console.error("Failed to upload shared file", error);
         const message = error instanceof Error ? error.message : "";
@@ -1203,16 +1703,10 @@ const LinksEditor = () => {
         key={link.id}
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
-        onClick={(event) => handleCardStyleClick(event, link.id)}
-        draggable
-        onDragStart={(e) => handleDragStart(e, link.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, link.id)}
-        onDrop={(e) => handleDropOnItem(e, link.id)}
+        onClick={(event) => handleCollapsibleCardClick(event, link.id)}
         className={clsx(
-          "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
+          "sns-block-card bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
           "border-gray-200"
         )}
       >
@@ -1243,25 +1737,7 @@ const LinksEditor = () => {
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
             </div> */}
-            <button
-              type="button"
-              data-no-style-editor
-              onClick={(event) => {
-                event.stopPropagation();
-                setActiveThumbnailLink(link);
-              }}
-              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 text-gray-500 transition hover:border-gray-400 hover:bg-gray-100 cursor-pointer"
-              title={isKo ? "썸네일 이미지 설정" : "Set thumbnail image"}
-            >
-              {link.thumbnailType === "image" && link.icon ? (
-                <img src={link.icon} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <ImageIcon className="h-5 w-5" />
-              )}
-            </button>
-            <span className="truncate text-sm font-black text-gray-900">
-              {config.title || link.title || "파일 공유"}
-            </span>
+            {renderBlockIdentity(link, config.title || link.title)}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -1282,13 +1758,8 @@ const LinksEditor = () => {
                 )}
               />
             </button>
+            {renderBlockActionMenu(link)}
             {renderCollapseControl(link.id, isCollapsed)}
-            <button
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
@@ -1342,6 +1813,11 @@ const LinksEditor = () => {
               <label className="block text-xs font-bold text-gray-600">
                 {isKo ? "공유 파일" : "Shared file"}<span className="text-red-500">*</span>
               </label>
+              <p className="text-[11px] font-semibold text-amber-700">
+                {isKo
+                  ? `현재 플랜: 최대 ${Math.round(planEntitlements.maxSharedFileBytes / 1024 / 1024)}MB · 파일당 하루 ${planEntitlements.maxSharedFileDownloadsPerDay}회`
+                  : `Plan limit: ${Math.round(planEntitlements.maxSharedFileBytes / 1024 / 1024)}MB · ${planEntitlements.maxSharedFileDownloadsPerDay} downloads/day`}
+              </p>
 
               {config.fileName && (
                 <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between text-xs font-bold text-gray-800">
@@ -1350,9 +1826,10 @@ const LinksEditor = () => {
                   </span>
                   <button
                     type="button"
-                    onClick={() =>
-                      updateConfig({ fileUrl: "", fileName: "", fileSize: "" })
-                    }
+                    onClick={async () => {
+                      if (user?.uid) await deletePublicFile(config.filePath, user.uid);
+                      updateConfig({ fileUrl: "", filePath: "", fileName: "", fileSize: "" });
+                    }}
                     className="text-gray-400 hover:text-red-500 transition ml-2"
                   >
                     ✕
@@ -1390,29 +1867,33 @@ const LinksEditor = () => {
     blockId: string;
     itemId: string;
   } | null>(null);
+  const [activeSNSAddBlockId, setActiveSNSAddBlockId] = useState<string | null>(null);
+
+  const handleAddSNSPlatform = (platform: string) => {
+    if (!activeSNSAddBlockId) return;
+    const context = findLinkContext(customLinks, activeSNSAddBlockId);
+    if (!context) return;
+    const newItem: import("../../store/useStore").SNSItem = {
+      id: `sns-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      platform,
+      value: "",
+      countryCode: platform === "phone" ? "KR" : undefined,
+    };
+    updateCustomLink(context.link.id, {
+      snsLinks: [...(context.link.snsLinks || []), newItem],
+    });
+    setActiveSNSAddBlockId(null);
+  };
 
   const renderSNSCard = (link: CustomLink) => {
-    const isBeingDragged = draggedId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
-    const items = link.snsLinks || [
-      { id: "sns-1", platform: "phone", value: "", countryCode: "KR" },
-    ];
+    const items = link.snsLinks || [];
 
     const updateItems = (
       newItems: import("../../store/useStore").SNSItem[]
     ) => {
       updateCustomLink(link.id, { snsLinks: newItems });
-    };
-
-    const handleAddItem = (platform: string = "link") => {
-      const newItem: import("../../store/useStore").SNSItem = {
-        id: `sns-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        platform,
-        value: "",
-        countryCode: platform === "phone" ? "KR" : undefined,
-      };
-      updateItems([...items, newItem]);
     };
 
     const handleRemoveItem = (itemId: string) => {
@@ -1431,15 +1912,9 @@ const LinksEditor = () => {
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
         onClick={(event) => handleCollapsibleCardClick(event, link.id)}
-        draggable
-        onDragStart={(e) => handleDragStart(e, link.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, link.id)}
-        onDrop={(e) => handleDropOnItem(e, link.id)}
         className={clsx(
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
           "border-gray-200"
         )}
       >
@@ -1470,12 +1945,7 @@ const LinksEditor = () => {
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
             </div> */}
-            <span className={blockIconClassName} aria-label="SNS 아이콘">
-              <Globe2 className="h-5 w-5" />
-            </span>
-            <span className="truncate text-sm font-black text-gray-900">
-              {link.title || "SNS 아이콘 연동"}
-            </span>
+            {renderBlockIdentity(link)}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -1496,35 +1966,21 @@ const LinksEditor = () => {
                 )}
               />
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveStyleLinkId(link.id)}
-              className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black"
-              aria-label="SNS 디자인 수정"
-              title="SNS 디자인 수정"
-            >
-              <Palette className="h-4 w-4" />
-            </button>
+            {renderBlockActionMenu(link)}
             {renderCollapseControl(link.id, isCollapsed)}
-            <button
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
         {!isCollapsed && (
-          <div className="space-y-4 pt-1">
+          <div className="sns-block-body space-y-4 pt-1">
             {/* SNS Input Rows List */}
-            <div className="space-y-3">
+            <div className="sns-block-items space-y-3">
               {items.map((item) => {
                 const Icon = getSocialIconComp(item.platform);
                 const isPhone = item.platform === "phone";
 
                 return (
-                  <div key={item.id} className="flex items-center gap-2">
+                  <div key={item.id} className="sns-block-item flex items-center gap-2">
                     {/* Drag handle */}
                     <GripVertical className="w-4 h-4 text-gray-400 shrink-0 cursor-grab" />
 
@@ -1537,7 +1993,7 @@ const LinksEditor = () => {
                           itemId: item.id,
                         })
                       }
-                      className="w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 transition cursor-pointer hover:border-black group relative shadow-2xs"
+                      className="sns-block-platform w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 transition cursor-pointer hover:border-black group relative shadow-2xs"
                       title="아이콘 변경하기 (Click to change icon)"
                     >
                       {isPhone ? (
@@ -1590,7 +2046,7 @@ const LinksEditor = () => {
                               item.platform.slice(1)
                             } ID`
                       }
-                      className="flex-1 p-3 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
+                      className="sns-block-input flex-1 p-3 border border-gray-300 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-400"
                     />
 
                     {/* Delete trashcan */}
@@ -1607,13 +2063,13 @@ const LinksEditor = () => {
             </div>
 
             {/* + Add SNS Button */}
-            <div className="pt-2">
+            <div className="sns-block-add pt-2">
               <button
                 type="button"
-                onClick={() => handleAddItem("link")}
+                onClick={() => setActiveSNSAddBlockId(link.id)}
                 className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
               >
-                <span>+ Add SNS</span>
+                <span>+ SNS 추가</span>
               </button>
             </div>
           </div>
@@ -1623,39 +2079,17 @@ const LinksEditor = () => {
   };
 
   const renderReservationCard = (link: CustomLink) => {
-    const isBeingDragged = draggedId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const resConfig = link.reservationConfig || {
       headerText: "",
-      schedules: [
-        {
-          id: `sched-${Date.now()}`,
-          startDate: "07.26 (PM 12)",
-          endDate: "07.26 (PM 01)",
-          title: "공부하기",
-          status: "OPEN"
-        }
-      ],
+      schedules: [],
       autoNotification: false
     };
 
     const handleUpdateConfig = (updates: Partial<ReservationConfig>) => {
       updateCustomLink(link.id, {
         reservationConfig: { ...resConfig, ...updates }
-      });
-    };
-
-    const handleAddSchedule = () => {
-      const newSchedule: ReservationScheduleItem = {
-        id: `sched-${Date.now()}`,
-        startDate: "07.26 (PM 12)",
-        endDate: "07.26 (PM 01)",
-        title: "새 일정",
-        status: "OPEN"
-      };
-      handleUpdateConfig({
-        schedules: [...resConfig.schedules, newSchedule]
       });
     };
 
@@ -1677,15 +2111,9 @@ const LinksEditor = () => {
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
         onClick={(event) => handleCollapsibleCardClick(event, link.id)}
-        draggable
-        onDragStart={(e) => handleDragStart(e, link.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, link.id)}
-        onDrop={(e) => handleDropOnItem(e, link.id)}
         className={clsx(
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
           "border-gray-200"
         )}
       >
@@ -1699,39 +2127,14 @@ const LinksEditor = () => {
               <GripVertical className="w-4 h-4" />
             </div>
 
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-700" aria-label="캘린더 아이콘">
-              <CalendarCheck className="h-5 w-5" />
-            </span>
-
-            {/* Title Input */}
-            <input
-              type="text"
-              value={(["Appointments", "예약 일정", "Calendar"].includes(link.title || "") || !link.title) ? (isKo ? "캘린더" : "Calendar") : link.title}
-              onChange={(e) => updateCustomLink(link.id, { title: e.target.value })}
-              className="min-w-0 flex-1 truncate border-none bg-transparent p-0 text-sm font-black text-gray-900 focus:outline-hidden focus:ring-0"
-            />
+            {renderBlockIdentity(link)}
 
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             {renderVisibilityControl(link)}
-            <button
-              type="button"
-              onClick={() => setActiveStyleLinkId(link.id)}
-              className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black"
-              aria-label="캘린더 디자인 수정"
-              title="캘린더 디자인 수정"
-            >
-              <Palette className="h-4 w-4" />
-            </button>
+            {renderBlockActionMenu(link)}
             {renderCollapseControl(link.id, isCollapsed)}
-            <button
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
-              title="삭제"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
 
           </div>
         </div>
@@ -1808,18 +2211,20 @@ const LinksEditor = () => {
     );
   };
 
-  const [activeNoticeModalLink, setActiveNoticeModalLink] =
-    useState<CustomLink | null>(null);
+  const [activeNoticeEditor, setActiveNoticeEditor] = useState<{
+    link: CustomLink;
+    noticeId?: string;
+    noticeIndex?: number;
+    create?: boolean;
+  } | null>(null);
 
   const renderNoticeCard = (link: CustomLink) => {
-    const isBeingDragged = draggedId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
-
-    const notice = link.noticeConfig || {
-      title: "공지사항",
-      content: "공지 내용을 입력하세요.",
-      date: new Date().toLocaleDateString("ko-KR"),
-    };
+    const notices = link.notices?.length
+      ? link.notices.slice(0, 3)
+      : link.noticeConfig
+        ? [link.noticeConfig]
+        : [];
 
     return (
       <div
@@ -1831,15 +2236,9 @@ const LinksEditor = () => {
           if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return;
           toggleBlockCollapse(link.id);
         }}
-        draggable
-        onDragStart={(e) => handleDragStart(e, link.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, link.id)}
-        onDrop={(e) => handleDropOnItem(e, link.id)}
         className={clsx(
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
           "border-gray-200"
         )}
       >
@@ -1852,9 +2251,6 @@ const LinksEditor = () => {
             >
               <GripVertical className="w-4 h-4" />
             </div>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-amber-50" aria-label="공지사항 아이콘">
-              <Megaphone className="h-4 w-4 text-amber-700" />
-            </span>
             {/* <div className="flex flex-col gap-0.5 shrink-0">
               <button
                 type="button"
@@ -1873,9 +2269,15 @@ const LinksEditor = () => {
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
             </div> */}
-            <span className="truncate text-sm font-black text-gray-900">
-              {notice.title || link.title || "공지사항"}
-            </span>
+            {renderBlockIdentity(
+              link,
+              notices.length > 0 ? `${notices.length}개의 공지` : "아직 작성된 공지가 없어요",
+              notices.length > 0 ? (
+                <span className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-black text-gray-600">
+                  {notices.length}/3
+                </span>
+              ) : undefined,
+            )}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -1896,39 +2298,48 @@ const LinksEditor = () => {
                 )}
               />
             </button>
-            <button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label="공지사항 디자인 수정" title="공지사항 디자인 수정"><Palette className="h-4 w-4" /></button>
+            {renderBlockActionMenu(link)}
             {renderCollapseControl(link.id, isCollapsed)}
-            <button
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
         {!isCollapsed && (
           <div className="space-y-3 pt-1">
-            <div className="p-4 bg-amber-50/50 border border-amber-200/60 rounded-2xl space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-amber-800">
-                  {notice.title}
-                </span>
-                <span className="text-[10px] font-semibold text-amber-600">
-                  {notice.date}
-                </span>
+            {notices.length > 0 && (
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/70">
+                {notices.map((notice, index) => (
+                  <button
+                    key={notice.id || `${link.id}-${index}`}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setActiveNoticeEditor({ link, noticeId: notice.id, noticeIndex: index });
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black"
+                    aria-label={`${notice.title || `공지 ${index + 1}`} 수정`}
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-black text-gray-500 shadow-xs">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-bold text-gray-800">
+                      {notice.title || "제목을 입력하세요"}
+                    </span>
+                    <span className="shrink-0 text-[10px] font-semibold text-gray-400">{notice.date}</span>
+                  </button>
+                ))}
               </div>
-              <p className="text-xs text-gray-600 font-medium line-clamp-2">
-                {notice.content}
-              </p>
-            </div>
-
+            )}
             <button
               type="button"
-              onClick={() => setActiveNoticeModalLink(link)}
-              className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+              onClick={(event) => {
+                event.stopPropagation();
+                setActiveNoticeEditor({ link, create: true });
+              }}
+              disabled={notices.length >= 3}
+              className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-black px-4 text-sm font-black text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
             >
-              <span>📢 공지사항 입력 / 수정하기</span>
+              <Plus className="h-4 w-4" />
+              <span>{notices.length >= 3 ? "공지 3개 등록 완료" : "공지 추가"}</span>
             </button>
           </div>
         )}
@@ -1937,11 +2348,10 @@ const LinksEditor = () => {
   };
 
   const renderCustomerInfoCard = (link: CustomLink) => {
-    const isBeingDragged = draggedId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const storedConfig = link.customerInfoConfig;
-    const config = {
+    const config: import("../../store/useStore").CustomerInfoConfig = {
       ...(storedConfig || {
         receiveEmail: true,
         receivePhone: false,
@@ -1973,15 +2383,9 @@ const LinksEditor = () => {
           event.stopPropagation();
           toggleBlockCollapse(link.id);
         }}
-        draggable
-        onDragStart={(e) => handleDragStart(e, link.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, link.id)}
-        onDrop={(e) => handleDropOnItem(e, link.id)}
         className={clsx(
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
           "border-gray-200"
         )}
       >
@@ -2012,10 +2416,7 @@ const LinksEditor = () => {
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
             </div> */}
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-700" aria-label="뉴스레터 아이콘"><Newspaper className="h-4 w-4" /></span>
-            <div className="flex items-center gap-1.5 truncate text-sm font-black text-gray-900">
-              <span>뉴스레터</span>
-            </div>
+            {renderBlockIdentity(link, config.mainText || link.title)}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -2036,20 +2437,42 @@ const LinksEditor = () => {
                 )}
               />
             </button>
-            <button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label="고객정보 수집 디자인 수정" title="고객정보 수집 디자인 수정"><Palette className="h-4 w-4" /></button>
+            {renderBlockActionMenu(link)}
             {renderCollapseControl(link.id, isCollapsed)}
-            <button
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
         {!isCollapsed && (
           <div className="space-y-4 pt-1">
             {/* Inputs */}
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-600">표시 위치</label>
+              <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1.5" data-no-style-editor>
+                <button
+                  type="button"
+                  onClick={() => updateConfig({ displayMode: "header" })}
+                  className={clsx(
+                    "flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition",
+                    (config.displayMode || "header") === "header" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-black"
+                  )}
+                >
+                  <Bell className="h-4 w-4" />
+                  상단 알림 아이콘
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateConfig({ displayMode: "block" })}
+                  className={clsx(
+                    "flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition",
+                    config.displayMode === "block" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-black"
+                  )}
+                >
+                  <Newspaper className="h-4 w-4" />
+                  일반 블록
+                </button>
+              </div>
+            </div>
 
             {/* 1. Main Text* */}
             <div className="space-y-1">
@@ -2155,17 +2578,14 @@ const LinksEditor = () => {
     useState<ProductItem | null>(null);
 
   const renderSalesCard = (link: CustomLink) => {
-    const isBeingDragged = draggedId === link.id;
     const isCollapsed = isBlockCollapsed(link.id);
 
     const config = link.salesConfig || {
       mainText: "",
       description: "",
-      descriptionViewType: "simple",
       products: [],
       creatorMessage: "",
     };
-    const SalesBlockIcon = config.salesType === "digital_file" ? FileDown : ShoppingBag;
     const salesBlockLabel = config.salesType === "digital_file" ? "디지털 파일 판매" : "실물 상품 판매";
 
     const updateConfig = (
@@ -2214,15 +2634,9 @@ const LinksEditor = () => {
           data-testid={`link-card-${link.id}`}
           data-collapsed={isCollapsed}
           onClick={(event) => handleCollapsibleCardClick(event, link.id)}
-          draggable
-          onDragStart={(e) => handleDragStart(e, link.id)}
-          onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(e, link.id)}
-          onDrop={(e) => handleDropOnItem(e, link.id)}
           className={clsx(
             "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
             isCollapsed ? "p-4" : "p-5 space-y-4",
-            isBeingDragged && "opacity-40 border-dashed border-gray-400",
             "border-gray-200"
           )}
         >
@@ -2253,27 +2667,7 @@ const LinksEditor = () => {
                   <ArrowDown className="w-3.5 h-3.5" />
                 </button>
               </div> */}
-              <button
-                type="button"
-                onClick={() => toggleBlockCollapse(link.id)}
-                className="p-1 text-gray-500 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer shrink-0"
-                title={isCollapsed ? "펼치기" : "접기"}
-              >
-                <ChevronDown
-                  className={clsx(
-                    "w-4 h-4 transition-transform duration-200",
-                    isCollapsed
-                      ? "-rotate-90 text-gray-400"
-                      : "rotate-0 text-black"
-                  )}
-                />
-              </button>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-700">
-                <SalesBlockIcon className="h-5 w-5" />
-              </span>
-              <span className="truncate text-sm font-black text-gray-900">
-                {salesBlockLabel}
-              </span>
+              {renderBlockIdentity(link, salesBlockLabel)}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -2294,14 +2688,8 @@ const LinksEditor = () => {
                   )}
                 />
               </button>
-              <button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label={`${salesBlockLabel} 디자인 수정`} title={`${salesBlockLabel} 디자인 수정`}><Palette className="h-4 w-4" /></button>
+              {renderBlockActionMenu(link)}
               {renderCollapseControl(link.id, isCollapsed)}
-              <button
-                onClick={() => removeCustomLink(link.id)}
-                className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
             </div>
           </div>
 
@@ -2356,15 +2744,9 @@ const LinksEditor = () => {
         data-testid={`link-card-${link.id}`}
         data-collapsed={isCollapsed}
         onClick={(event) => handleCollapsibleCardClick(event, link.id)}
-        draggable
-        onDragStart={(e) => handleDragStart(e, link.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, link.id)}
-        onDrop={(e) => handleDropOnItem(e, link.id)}
         className={clsx(
           "bg-white rounded-3xl border transition-all font-sans relative shadow-2xs",
           isCollapsed ? "p-4" : "p-5 space-y-4",
-          isBeingDragged && "opacity-40 border-dashed border-gray-400",
           "border-gray-200"
         )}
       >
@@ -2395,10 +2777,7 @@ const LinksEditor = () => {
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
             </div> */}
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-700">
-              <SalesBlockIcon className="h-5 w-5" />
-            </span>
-            <span className="truncate text-sm font-black text-gray-900">{salesBlockLabel}</span>
+            {renderBlockIdentity(link, salesBlockLabel)}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -2420,15 +2799,8 @@ const LinksEditor = () => {
               />
             </button>
 
-            <button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label={`${salesBlockLabel} 디자인 수정`} title={`${salesBlockLabel} 디자인 수정`}><Palette className="h-4 w-4" /></button>
+            {renderBlockActionMenu(link)}
             {renderCollapseControl(link.id, isCollapsed)}
-            <button
-              onClick={() => removeCustomLink(link.id)}
-              className="p-1 text-gray-400 hover:text-red-500 transition rounded-md cursor-pointer"
-              title="블록 삭제"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
@@ -2437,7 +2809,7 @@ const LinksEditor = () => {
             {/* 1. Main Text* */}
             <div className="space-y-1">
               <label className="block text-xs font-bold text-gray-600">
-                main text<span className="text-red-500">*</span>
+                제목<span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -2448,19 +2820,15 @@ const LinksEditor = () => {
               />
             </div>
 
-            {/* 2. Image Upload */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <label className="block text-xs font-bold text-gray-600">
-                  image
+            {/* 2. Product image and thumbnail layout */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4">
+                <label className="mb-3 block text-xs font-bold text-gray-700">
+                  대표 상품 이미지
                 </label>
-                <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">
-                  i
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                 <label className={clsx(
-                  "relative flex h-24 w-24 shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-gray-50 transition",
+                  "relative flex h-20 w-20 shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-white transition",
                   uploadingSalesImageId === link.id
                     ? "cursor-wait border-gray-300 opacity-70"
                     : "cursor-pointer border-gray-300 hover:border-black",
@@ -2492,71 +2860,78 @@ const LinksEditor = () => {
                     className="hidden"
                   />
                 </label>
-                <p className="text-[11px] text-gray-400 font-medium">
-                  대표 상품 이미지를 등록해보세요.
-                </p>
+                {!config.image && (
+                  <p className="text-[11px] text-gray-400 font-medium">
+                    상품을 대표하는<br />이미지를 등록하세요.
+                  </p>
+                )}
+                {config.image && (
+                  <p className="text-[11px] font-semibold text-gray-500">
+                    이미지를 누르면<br />교체할 수 있어요.
+                  </p>
+                )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 lg:border-l-2">
+                <p className="mb-3 text-xs font-bold text-gray-700">상품 썸네일</p>
+                <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateCustomLink(link.id, { linkLayout: "classic" })}
+                  className={clsx(
+                    "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border bg-white p-2.5 transition",
+                    (link.linkLayout || "classic") === "classic"
+                      ? "border-black ring-1 ring-black"
+                      : "border-gray-200 hover:border-gray-400",
+                  )}
+                >
+                  <span className="flex h-10 w-full items-center gap-2 rounded-full bg-gray-100 px-3">
+                    <span className="h-7 w-7 rounded-xl bg-gray-300" />
+                    <span className="h-2 flex-1 rounded-full bg-gray-300" />
+                  </span>
+                  <span className="text-xs font-black text-gray-900">기본형</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateCustomLink(link.id, { linkLayout: "image" })}
+                  className={clsx(
+                    "flex min-h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border bg-white p-2.5 transition",
+                    link.linkLayout === "image"
+                      ? "border-black ring-1 ring-black"
+                      : "border-gray-200 hover:border-gray-400",
+                  )}
+                >
+                  <span className="flex h-12 w-20 flex-col overflow-hidden rounded-xl bg-gray-100">
+                    <span className="h-8 bg-gradient-to-br from-cyan-200 to-blue-200" />
+                    <span className="mx-auto mt-1 h-1.5 w-10 rounded-full bg-gray-300" />
+                  </span>
+                  <span className="text-xs font-black text-gray-900">이미지형</span>
+                </button>
+                </div>
               </div>
             </div>
 
             {/* 3. Description* */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <label className="block text-xs font-bold text-gray-600">
-                    Description<span className="text-red-500">*</span>
-                  </label>
-                  <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">
-                    i
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3 text-xs font-bold text-gray-600">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input
-                      type="radio"
-                      name={`desc-view-${link.id}`}
-                      checked={config.descriptionViewType !== "detail"}
-                      onChange={() =>
-                        updateConfig({ descriptionViewType: "simple" })
-                      }
-                      className="cursor-pointer"
-                    />
-                    <span>{isKo ? '간단히 보기' : 'Simple view'}</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input
-                      type="radio"
-                      name={`desc-view-${link.id}`}
-                      checked={config.descriptionViewType === "detail"}
-                      onChange={() =>
-                        updateConfig({ descriptionViewType: "detail" })
-                      }
-                      className="cursor-pointer"
-                    />
-                    <span>{isKo ? '자세히 보기' : 'Detail view'}</span>
-                  </label>
-                </div>
-              </div>
+              <label className="block text-xs font-bold text-gray-600">
+                상품 설명<span className="text-red-500">*</span>
+              </label>
 
               <textarea
                 value={config.description || ""}
                 onChange={(e) => updateConfig({ description: e.target.value })}
                 placeholder="거래 조건, 상품 설명, 교환 및 환불 정책 등을 입력하세요. 최대 3,000자까지 입력할 수 있습니다."
-                rows={5}
+                rows={3}
                 className="w-full p-3.5 border border-gray-300 rounded-2xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-black placeholder-gray-300 leading-relaxed resize-none"
               />
             </div>
 
             {/* 4. Product List* */}
             <div className="space-y-2">
-              <div className="flex items-center gap-1">
-                <label className="block text-xs font-bold text-gray-600">
-                  Product list<span className="text-red-500">*</span>
-                </label>
-                <span className="w-4 h-4 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-[10px]">
-                  i
-                </span>
-              </div>
+              <label className="block text-xs font-bold text-gray-600">
+                상품 목록<span className="text-red-500">*</span>
+              </label>
 
               {/* Registered Products List */}
               {config.products && config.products.length > 0 && (
@@ -2572,7 +2947,7 @@ const LinksEditor = () => {
                         </span>
                         <span>{prod.name}</span>
                         <span className="text-gray-500">
-                          ({prod.price.toLocaleString()} KRW)
+                          ({prod.price.toLocaleString()}원)
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -2584,7 +2959,7 @@ const LinksEditor = () => {
                           }}
                           className="p-1.5 text-gray-400 hover:text-black hover:bg-white rounded-lg transition cursor-pointer"
                           aria-label={`${prod.name} 수정`}
-                          title={isKo ? "상품 수정" : "Edit product"}
+                          title="상품 수정"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -2615,14 +2990,14 @@ const LinksEditor = () => {
                 }}
                 className="w-full py-4 bg-black hover:bg-gray-800 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
               >
-                <span>{isKo ? '상품 등록' : 'Register product'}</span>
+                <span>{config.products?.length ? '상품 추가' : '상품 등록'}</span>
               </button>
             </div>
 
             {/* 5. Creator Message */}
             <div className="space-y-1">
               <label className="block text-xs font-bold text-gray-600">
-                Creator Message
+                구매 완료 메시지
               </label>
               <input
                 type="text"
@@ -2657,7 +3032,7 @@ const LinksEditor = () => {
                 <div className="space-y-2 pt-2 border-t border-gray-100">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-gray-600">
-                      Account connect<span className="text-red-500">*</span>
+                      정산 계좌<span className="text-red-500">*</span>
                     </label>
                     <span
                       className={clsx(
@@ -2668,8 +3043,8 @@ const LinksEditor = () => {
                       )}
                     >
                       {isConnected
-                        ? "✓ Account connected"
-                        : "! Link profit account (required)"}
+                        ? "✓ 계좌 등록 완료"
+                        : "! 정산 계좌 등록 필요"}
                     </span>
                   </div>
 
@@ -2679,7 +3054,7 @@ const LinksEditor = () => {
                       <div className="flex items-center gap-2.5 truncate">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                         <span className="truncate">
-                          {bank} {accNum} ({owner}) 연동 완료
+                          {bank} {accNum} ({owner}) 등록 완료
                         </span>
                       </div>
                       <button
@@ -2697,7 +3072,7 @@ const LinksEditor = () => {
                       onClick={() => setActiveProfitAccountLink(link)}
                       className="w-full py-4 bg-[#F24E1E] hover:bg-orange-600 text-white rounded-2xl font-black text-sm transition cursor-pointer shadow-md flex items-center justify-center gap-2"
                     >
-                      <span>+ Register a profit account</span>
+                      <span>+ 정산 계좌 등록</span>
                     </button>
                   )}
                 </div>
@@ -2710,7 +3085,7 @@ const LinksEditor = () => {
   };
 
   const renderAffiliateProductCard = (link: CustomLink) => {
-    const config = link.affiliateProductConfig || { affiliateUrl: link.url || "https://", imageUrl: link.icon || "", currency: "KRW" as const, displayMode: "compact" as const };
+    const config = link.affiliateProductConfig || { affiliateUrl: link.url || "", imageUrl: link.icon || "", currency: "KRW" as const, displayMode: "compact" as const };
     const isCollapsed = isBlockCollapsed(link.id);
     const updateConfig = (updates: Partial<NonNullable<CustomLink["affiliateProductConfig"]>>) => {
       const nextConfig = { ...config, ...updates };
@@ -2737,14 +3112,13 @@ const LinksEditor = () => {
     };
 
     return (
-      <div key={link.id} data-testid={`affiliate-card-${link.id}`} data-collapsed={isCollapsed} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return; toggleBlockCollapse(link.id); }} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
+      <div key={link.id} data-testid={`affiliate-card-${link.id}`} data-collapsed={isCollapsed} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, textarea, select, a, [data-no-style-editor]')) return; toggleBlockCollapse(link.id); }} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
         <div className={clsx("flex items-center justify-between gap-3", !isCollapsed && "border-b border-gray-100 pb-3")}>
-          <div className="flex min-w-0 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" /><span className={blockIconClassName}><BadgeDollarSign className="h-5 w-5" /></span><span className="truncate text-sm font-black">{link.title || (isKo ? "추천 상품" : "Recommended product")}</span></div>
+          <div className="flex min-w-0 flex-1 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" />{renderBlockIdentity(link)}</div>
           <div className="flex shrink-0 items-center gap-2">
             <button type="button" onClick={() => updateCustomLink(link.id, { isVisible: !link.isVisible })} className={clsx("relative h-5 w-10 cursor-pointer rounded-full transition-colors", link.isVisible !== false ? "bg-black" : "bg-gray-200")} aria-label={isKo ? "공개 여부" : "Visibility"}><span className={clsx("absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-transform", link.isVisible !== false && "translate-x-5")} /></button>
-            <button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label="추천 상품 디자인 수정" title="추천 상품 디자인 수정"><Palette className="h-4 w-4" /></button>
+            {renderBlockActionMenu(link)}
             {renderCollapseControl(link.id, isCollapsed)}
-            <button type="button" onClick={() => removeCustomLink(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" aria-label={isKo ? "상품 삭제" : "Delete product"}><Trash2 className="h-4 w-4" /></button>
           </div>
         </div>
         {!isCollapsed && (
@@ -2764,12 +3138,12 @@ const LinksEditor = () => {
               <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-gray-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-black"><Upload className="h-3.5 w-3.5" />{uploadingAffiliateId === link.id ? (isKo ? "업로드 중..." : "Uploading...") : (isKo ? "이미지 업로드" : "Upload image")}<input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingAffiliateId === link.id} className="hidden" /></label>
             </div>
             <div className="space-y-3">
-              <label className="block text-xs font-black text-gray-700">{isKo ? "상품명" : "Product title"}<input value={link.title} onChange={(event) => updateCustomLink(link.id, { title: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-bold outline-none focus:border-fuchsia-400" placeholder={isKo ? "상품명을 입력하세요" : "Enter a product title"} /></label>
-              <label className="block text-xs font-black text-gray-700">{isKo ? "제휴 링크" : "Affiliate link"}<input value={config.affiliateUrl} onChange={(event) => updateConfig({ affiliateUrl: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-fuchsia-400" placeholder="https://" /></label>
-              <label className="block text-xs font-black text-gray-700">{isKo ? "이미지 주소" : "Image URL"}<input value={config.imageUrl || ""} onChange={(event) => updateConfig({ imageUrl: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-fuchsia-400" placeholder="https://..." /></label>
+              <label className="block text-xs font-black text-gray-700">{isKo ? "상품명" : "Product title"}<input value={link.title} onChange={(event) => updateCustomLink(link.id, { title: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-bold outline-none focus:border-[#ff5f35]" placeholder={isKo ? "상품명을 입력하세요" : "Enter a product title"} /></label>
+              <label className="block text-xs font-black text-gray-700">{isKo ? "제휴 링크" : "Affiliate link"}<input value={config.affiliateUrl} onChange={(event) => updateConfig({ affiliateUrl: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-[#ff5f35]" placeholder="https://" /></label>
+              <label className="block text-xs font-black text-gray-700">{isKo ? "이미지 주소" : "Image URL"}<input value={config.imageUrl || ""} onChange={(event) => updateConfig({ imageUrl: event.target.value })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-[#ff5f35]" placeholder="https://..." /></label>
               <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
-                <label className="block text-xs font-black text-gray-700">{isKo ? "가격" : "Price"}<input type="number" min="0" value={config.price ?? ""} onChange={(event) => updateConfig({ price: event.target.value === "" ? undefined : Number(event.target.value) })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-fuchsia-400" placeholder={isKo ? "선택 입력" : "Optional"} /></label>
-                <label className="block text-xs font-black text-gray-700">{isKo ? "통화" : "Currency"}<select value={config.currency || "KRW"} onChange={(event) => updateConfig({ currency: event.target.value as NonNullable<typeof config.currency> })} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-fuchsia-400"><option value="KRW">KRW</option><option value="USD">USD</option><option value="JPY">JPY</option><option value="EUR">EUR</option></select></label>
+                <label className="block text-xs font-black text-gray-700">{isKo ? "가격" : "Price"}<input type="number" min="0" value={config.price ?? ""} onChange={(event) => updateConfig({ price: event.target.value === "" ? undefined : Number(event.target.value) })} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-[#ff5f35]" placeholder={isKo ? "선택 입력" : "Optional"} /></label>
+                <label className="block text-xs font-black text-gray-700">{isKo ? "통화" : "Currency"}<select value={config.currency || "KRW"} onChange={(event) => updateConfig({ currency: event.target.value as NonNullable<typeof config.currency> })} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#ff5f35]"><option value="KRW">KRW</option><option value="USD">USD</option><option value="JPY">JPY</option><option value="EUR">EUR</option></select></label>
               </div>
             </div>
             </div>
@@ -2786,10 +3160,10 @@ const LinksEditor = () => {
     const mapSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
     const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;
     return (
-      <div key={link.id} data-testid={`map-card-${link.id}`} data-collapsed={isCollapsed} onClick={(event) => handleCollapsibleCardClick(event, link.id)} draggable onDragStart={(event) => handleDragStart(event, link.id)} onDragEnd={handleDragEnd} onDragOver={(event) => handleDragOver(event, link.id)} onDrop={(event) => handleDropOnItem(event, link.id)} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
+      <div key={link.id} data-testid={`map-card-${link.id}`} data-collapsed={isCollapsed} onClick={(event) => handleCollapsibleCardClick(event, link.id)} className={clsx("rounded-3xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md", isCollapsed ? "p-4" : "space-y-4 p-5")}>
         <div className={clsx("flex items-center justify-between gap-3", !isCollapsed && "border-b border-gray-100 pb-3")}>
-          <div className="flex min-w-0 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" /><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-700" aria-label="기본 위치 아이콘"><MapPinned className="h-5 w-5" /></span><span className="truncate text-sm font-black">{link.title || (isKo ? "오시는 길" : "Location")}</span></div>
-          <div className="flex shrink-0 items-center gap-2">{renderVisibilityControl(link)}<button type="button" onClick={() => setActiveStyleLinkId(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-black" aria-label={isKo ? "거주지 디자인 수정" : "Edit location design"} title={isKo ? "거주지 디자인 수정" : "Edit location design"}><Palette className="h-4 w-4" /></button>{renderCollapseControl(link.id, isCollapsed)}<button type="button" onClick={() => removeCustomLink(link.id)} className="cursor-pointer rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" aria-label={isKo ? "지도 삭제" : "Delete map"}><Trash2 className="h-4 w-4" /></button></div>
+          <div className="flex min-w-0 flex-1 items-center gap-2"><GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" />{renderBlockIdentity(link, link.mapConfig?.query || link.title)}</div>
+          <div className="flex shrink-0 items-center gap-2">{renderVisibilityControl(link)}{renderBlockActionMenu(link)}{renderCollapseControl(link.id, isCollapsed)}</div>
         </div>
         {!isCollapsed && <div className="space-y-3">
           <div data-no-style-editor>
@@ -2807,93 +3181,147 @@ const LinksEditor = () => {
     );
   };
 
-  if (activeStyleLink) {
-    return (
-      <LinkStyleEditorModal
-        link={activeStyleLink}
-        parentCollection={activeStyleContext?.parentCollection}
-        themeDefaults={{
-          templateType,
-          templateValue,
-          buttonColor,
-          buttonTextColor,
-          buttonOpacity,
-          buttonTextOpacity,
-          buttonRoundness,
-          buttonShadow,
-        }}
-        onClose={() => setActiveStyleLinkId(null)}
-        onUpdate={(updates) => updateCustomLink(activeStyleLink.id, updates)}
-        designOnly={activeStyleLink.type === "collection" || activeStyleLink.type === "reservation" || activeStyleLink.type === "map" || activeStyleLink.type === "donation" || activeStyleLink.type === "sales" || activeStyleLink.type === "affiliate_product" || activeStyleLink.type === "notice" || activeStyleLink.type === "customer_info" || activeStyleLink.type === "sns"}
-        onUpdateChildren={activeStyleLink.type === "collection" ? (updates) => {
-          const updatedChildren = (activeStyleLink.links || []).map((child) => ({
-            ...child,
-            ...updates,
-            ...(updates.customStyle !== undefined ? { customStyle: updates.customStyle } : {}),
-          }));
-          updateCustomLink(activeStyleLink.id, { ...updates, links: updatedChildren });
-        } : undefined}
-      />
-    );
-  }
-
   return (
     <div className="admin-link-editor space-y-6 animate-fade-in pb-20 font-sans">
       {/* Top User Profile Header with Social Icons (Matching User Screenshot) */}
-      <div className="flex items-center gap-4 py-1">
-        {/* Avatar */}
-        <div className="w-14 h-14 rounded-full bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
-          {profile.avatarUrl ? (
-            <img
-              src={profile.avatarUrl}
-              alt="Avatar"
-              className="w-full h-full object-cover rounded-full"
-            />
+      <div className="admin-link-profile space-y-4 py-1">
+        <div className="grid grid-cols-[minmax(0,1fr)_52px] gap-2 sm:grid-cols-2 sm:gap-3">
+        <div className="flex min-w-0 items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white p-3 shadow-xs">
+          <button
+            type="button"
+            onClick={() => quickAvatarInputRef.current?.click()}
+            disabled={isQuickAvatarUploading}
+            className="group relative flex shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+            aria-label={isKo ? "프로필 이미지 변경" : "Change profile image"}
+          >
+            <span className="admin-link-profile-avatar relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 shadow-xs">
+              {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar" className="h-full w-full rounded-full object-cover" /> : <span className="text-2xl">👤</span>}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100"><Pencil className="h-5 w-5" /></span>
+            </span>
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-black text-white"><Pencil className="h-2.5 w-2.5" /></span>
+          </button>
+          <input ref={quickAvatarInputRef} type="file" accept="image/*" onChange={handleQuickAvatarSelect} className="sr-only" />
+
+          {isQuickProfileOpen ? (
+            <form
+              className="flex min-w-0 flex-1 items-center gap-1.5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveQuickProfileName();
+              }}
+            >
+              <input
+                type="text"
+                value={quickProfileName}
+                onChange={(event) => setQuickProfileName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") closeQuickProfileNameEditor();
+                }}
+                maxLength={50}
+                autoFocus
+                aria-label={isKo ? "닉네임" : "Nickname"}
+                className="min-w-0 flex-1 rounded-xl border border-black bg-white px-3 py-2 text-sm font-black text-gray-900 outline-none ring-2 ring-gray-200"
+              />
+              <button
+                type="submit"
+                disabled={!quickProfileName.trim()}
+                className="h-9 shrink-0 cursor-pointer rounded-xl bg-black px-3 text-xs font-black text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                {isKo ? "저장" : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={closeQuickProfileNameEditor}
+                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl text-gray-400 transition hover:bg-gray-100 hover:text-black"
+                aria-label={isKo ? "취소" : "Cancel"}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </form>
           ) : (
-            <span className="text-2xl">👤</span>
+            <button
+              type="button"
+              onClick={openQuickProfileNameEditor}
+              className="group min-w-0 flex-1 cursor-pointer rounded-2xl px-1 py-2 text-left transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+              aria-label={isKo ? "닉네임 수정" : "Edit nickname"}
+            >
+              <span className="flex min-w-0 items-center gap-2 text-lg font-black leading-none tracking-tight text-gray-900">
+                <span className="truncate">{profile.name || profile.username || "brownrice0916"}</span>
+                <Pencil className="h-4 w-4 shrink-0 text-gray-300 transition group-hover:text-gray-700" />
+              </span>
+            </button>
           )}
-        </div>
 
-        {/* Username & Social Icons Row */}
-        <div className="space-y-1.5 min-w-0">
-          <h3 className="text-lg font-bold text-gray-900 tracking-tight leading-none">
-            {profile.username || profile.name || "brownrice0916"}
-          </h3>
-
-          {/* Social Icons Inline List */}
-          <div className="flex items-center gap-2.5 flex-wrap pt-0.5">
+          <div className="flex shrink-0 items-center gap-2.5 flex-wrap">
             {socialLinks.map((s) => {
               const Icon = getSocialIconComp(s.platform);
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => handleEditSocial(s)}
-                  className="text-gray-800 hover:text-black transition cursor-pointer hover:scale-110"
-                  title={`Edit ${s.platform}`}
-                >
-                  <Icon className="w-5 h-5" />
-                </button>
-              );
+              return <button key={s.id} type="button" onClick={() => handleEditSocial(s)} className="cursor-pointer text-gray-800 transition hover:scale-110 hover:text-black" title={`Edit ${s.platform}`}><Icon className="h-5 w-5" /></button>;
             })}
-
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={handleStoreEntry}
+          className="relative flex h-[52px] w-[52px] cursor-pointer items-center justify-center self-center rounded-2xl border border-gray-200 bg-white text-gray-950 shadow-xs transition hover:-translate-y-0.5 hover:border-black hover:shadow-md sm:hidden"
+          aria-label={profile.storefront ? (isKo ? "내 스토어 관리" : "Manage my store") : (isKo ? "스토어 추가" : "Add store")}
+          title={profile.storefront ? (isKo ? "내 스토어" : "My store") : (isKo ? "스토어 추가" : "Add store")}
+        >
+          <ShoppingBag className="h-5 w-5" />
+          {!profile.storefront && <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-black text-white"><Plus className="h-3 w-3 stroke-[3]" /></span>}
+          {profile.storefront?.enabled && <span className="absolute bottom-1.5 right-1.5 h-2 w-2 rounded-full border border-white bg-emerald-500" />}
+        </button>
+
+        <div className="group hidden min-w-0 items-center gap-2 rounded-3xl border border-gray-200 bg-white p-3 shadow-xs transition hover:-translate-y-0.5 hover:border-black hover:shadow-md sm:flex">
+          <button
+            type="button"
+            onClick={handleStoreEntry}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+            aria-label={profile.storefront ? (isKo ? "내 스토어 관리" : "Manage my store") : (isKo ? "스토어 만들기" : "Create store")}
+          >
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#111827] bg-[#111827] text-white shadow-sm">
+              <ShoppingBag className="h-6 w-6" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-black text-gray-950">
+                {STOREFRONT_AVAILABLE ? (profile.storefront ? (profile.storefront.name || (isKo ? "내 스토어" : "My store")) : (isKo ? "스토어 추가" : "Add store")) : (isKo ? "스토어 준비 중" : "Store coming soon")}
+              </span>
+              <span className="mt-1 block text-[11px] font-semibold text-gray-400">
+                {STOREFRONT_AVAILABLE ? (profile.storefront ? (isKo ? "상품과 스토어 꾸미기" : "Products and store design") : (isKo ? "독립 스토어를 만들어 보세요" : "Create a standalone store")) : (isKo ? "기존 데이터는 안전하게 보관돼요" : "Your existing data is preserved")}
+              </span>
+            </span>
+            {!profile.storefront && <ChevronRight className="h-5 w-5 shrink-0 text-gray-400 transition group-hover:translate-x-0.5 group-hover:text-black" />}
+          </button>
+          {profile.storefront && STOREFRONT_AVAILABLE && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={profile.storefront.enabled}
+              aria-label={isKo ? "스토어 공개 여부" : "Store visibility"}
+              onClick={() => {
+                setProfile({ ...profile, storefront: { ...profile.storefront!, enabled: !profile.storefront!.enabled } });
+              }}
+              className={clsx("relative h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-black transition", profile.storefront.enabled ? "bg-black" : "bg-gray-200")}
+            >
+              <span className={clsx("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform", profile.storefront.enabled && "translate-x-5")} />
+            </button>
+          )}
+        </div>
+        </div>
+
       </div>
 
       {/* Action Pill Buttons Row (Add + Expand All / Collapse All) */}
-      <div className="flex items-center gap-2.5">
+      <div className="admin-link-actions flex items-center gap-2.5">
         <button
-          onClick={handleAddCollection}
+          onClick={() => setIsGroupTypeModalOpen(true)}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-full font-bold text-sm transition cursor-pointer"
         >
           <Folder className="w-4 h-4" />
           <span>{isKo ? '그룹 추가' : 'Add group'}</span>
         </button>
         <button
-          onClick={() => {
-            setAddBlockTargetCollectionId(null);
-            setIsAddBlockModalOpen(true);
-          }}
+          onClick={openRootAddBlockModal}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-black hover:bg-gray-800 text-white rounded-full font-bold text-sm transition cursor-pointer shadow-md"
         >
           <Plus className="w-4 h-4" />
@@ -2902,9 +3330,10 @@ const LinksEditor = () => {
       </div>
 
       {/* Custom Links & Collections List */}
-      <div className="space-y-4">
+      <div ref={blockListRef} className="admin-link-blocks space-y-4">
         <BlockList
           links={customLinks}
+          onReorder={reorderLinks}
           renderLink={renderLinkItem}
           renderCollection={renderCollection}
           renderDonation={renderDonationCard}
@@ -2916,26 +3345,28 @@ const LinksEditor = () => {
           renderSales={renderSalesCard}
           renderAffiliateProduct={renderAffiliateProductCard}
           renderMap={renderMapCard}
+          onBlockSelect={focusPreviewBlock}
         />
       </div>
 
-      {/* Only reveal the root drop target while an item is actively being dragged. */}
-      {draggedId && (
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsOverRootArea(true);
-          }}
-          onDragLeave={() => setIsOverRootArea(false)}
-          onDrop={handleDropOnRoot}
-          className={clsx(
-            "p-5 rounded-2xl border-2 border-dashed text-center transition-all mt-6",
-            isOverRootArea
-              ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-              : "border-gray-300 text-gray-400 bg-white/70"
-          )}
-        >
-          <p className="text-xs font-semibold">{isKo ? '기본 목록으로 이동' : 'Move to main list'}</p>
+      {showBottomAddButton && (
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsGroupTypeModalOpen(true)}
+            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gray-100 px-5 py-4 text-sm font-black text-gray-900 transition hover:bg-gray-200"
+          >
+            <Folder className="h-4 w-4" />
+            <span>{isKo ? "그룹 추가" : "Add group"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={openRootAddBlockModal}
+            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-6 py-4 text-sm font-black text-white shadow-md transition hover:bg-gray-800"
+          >
+            <Plus className="h-4 w-4" />
+            <span>{isKo ? "블록 추가" : "Add block"}</span>
+          </button>
         </div>
       )}
 
@@ -2960,6 +3391,10 @@ const LinksEditor = () => {
             const productExists = currentProducts.some(
               (item) => item.id === product.id
             );
+            if (!productExists && planEntitlements.maxProductsPerProfile !== null && workspaceUsage({ customLinks: useStore.getState().customLinks }).products >= planEntitlements.maxProductsPerProfile) {
+              alert(`현재 플랜에서는 상품을 최대 ${planEntitlements.maxProductsPerProfile}개까지 등록할 수 있습니다.`);
+              return;
+            }
             const updatedProducts = productExists
               ? currentProducts.map((item) =>
                   item.id === product.id ? product : item
@@ -2975,6 +3410,55 @@ const LinksEditor = () => {
             setActiveProductToEdit(null);
           }}
         />
+      )}
+
+      {isGroupTypeModalOpen && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div><h2 className="text-xl font-black tracking-tight text-gray-950">그룹 유형 선택</h2><p className="mt-1 text-xs font-semibold text-gray-500">링크를 보여줄 기본 방식을 선택해 주세요.</p></div>
+              <button type="button" onClick={() => setIsGroupTypeModalOpen(false)} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-black" aria-label="그룹 유형 선택 닫기"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => { handleAddCollection("classic"); setIsGroupTypeModalOpen(false); }} className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-4 rounded-3xl border border-gray-200 bg-white p-5 transition hover:border-black hover:shadow-md">
+                <span className="flex h-14 w-full items-center gap-2 rounded-full bg-gray-100 px-4"><span className="h-9 w-9 rounded-full bg-white shadow-sm" /><span className="h-2 flex-1 rounded-full bg-gray-300" /></span>
+                <span><strong className="block text-sm font-black text-gray-950">기본형</strong><span className="mt-1 block text-[10px] font-semibold text-gray-500">링크를 목록으로 표시</span></span>
+              </button>
+              <button type="button" onClick={() => { handleAddCollection("image"); setIsGroupTypeModalOpen(false); }} className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-4 rounded-3xl border border-gray-200 bg-white p-5 transition hover:border-black hover:shadow-md">
+                <span className="grid h-20 w-full grid-cols-2 gap-2"><span className="rounded-xl bg-[#d9ff67]" /><span className="rounded-xl bg-[#ffcf4a]" /></span>
+                <span><strong className="block text-sm font-black text-gray-950">이미지형</strong><span className="mt-1 block text-[10px] font-semibold text-gray-500">이미지 카드로 표시</span></span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {quickAddCollectionId && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/45 p-3 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeQuickAddLink(); }}>
+          <form onSubmit={submitQuickAddLink} className="w-full max-w-md rounded-[24px] border border-gray-200 bg-white p-5 shadow-2xl sm:p-6">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-xl font-black tracking-tight text-gray-950">{isKo ? "링크 추가" : "Add link"}</h2>
+              <button type="button" onClick={closeQuickAddLink} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-black" aria-label={isKo ? "링크 추가 닫기" : "Close add link"}><X className="h-4 w-4" /></button>
+            </div>
+            <div className="mt-5 space-y-4">
+              <label className="block text-xs font-black text-gray-700">
+                {isKo ? "텍스트" : "Text"}<span className="ml-0.5 text-red-500">*</span>
+                <input autoFocus type="text" value={quickAddLinkTitle} onChange={(event) => { setQuickAddLinkTitle(event.target.value); setQuickAddLinkError(""); }} placeholder={isKo ? "버튼에 표시할 텍스트" : "Text on the button"} className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-base font-bold text-gray-950 outline-none transition placeholder:text-gray-300 focus:border-black focus:ring-3 focus:ring-gray-100" />
+              </label>
+              <label className="block text-xs font-black text-gray-700">
+                {isKo ? "링크 주소" : "Link URL"}<span className="ml-0.5 text-red-500">*</span>
+                <input type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" value={quickAddLinkUrl} onChange={(event) => { setQuickAddLinkUrl(event.target.value); setQuickAddLinkError(""); }} placeholder={isKo ? "예: naver.com" : "e.g. example.com"} className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-base font-semibold text-gray-950 outline-none transition placeholder:text-gray-300 focus:border-black focus:ring-3 focus:ring-gray-100" />
+              </label>
+              {quickAddLinkError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">{quickAddLinkError}</p>}
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2.5">
+              <button type="button" onClick={closeQuickAddLink} className="cursor-pointer rounded-2xl border border-gray-300 bg-white px-4 py-3.5 text-sm font-black text-gray-800 transition hover:bg-gray-50">{isKo ? "취소" : "Cancel"}</button>
+              <button type="submit" className="cursor-pointer rounded-2xl bg-black px-4 py-3.5 text-sm font-black text-white transition hover:bg-gray-800">{isKo ? "추가" : "Add"}</button>
+            </div>
+          </form>
+        </div>,
+        document.body,
       )}
 
       {/* Add Block Modal (Matching Littly) */}
@@ -3051,18 +3535,26 @@ const LinksEditor = () => {
       )}
 
       {/* Notice Editor Modal */}
-      {activeNoticeModalLink && (
+      {activeNoticeEditor && (
         <NoticeModal
-          isOpen={!!activeNoticeModalLink}
-          onClose={() => setActiveNoticeModalLink(null)}
-          initialNotice={activeNoticeModalLink.noticeConfig}
+          key={`${activeNoticeEditor.link.id}-${activeNoticeEditor.noticeId || activeNoticeEditor.noticeIndex || 'new'}-${activeNoticeEditor.create ? 'create' : 'edit'}`}
+          isOpen={!!activeNoticeEditor}
+          onClose={() => setActiveNoticeEditor(null)}
+          initialNotices={activeNoticeEditor.link.notices}
+          initialNotice={activeNoticeEditor.link.noticeConfig}
+          initialEditingId={activeNoticeEditor.noticeId}
+          initialEditingIndex={activeNoticeEditor.noticeIndex}
+          createOnOpen={activeNoticeEditor.create}
           onSave={(noticeData) => {
-            updateCustomLink(activeNoticeModalLink.id, {
-              title: `📢 ${noticeData.title}`,
+            updateCustomLink(activeNoticeEditor.link.id, {
+              title: "공지사항",
               url: `/${profile.username || "preview"}/notice`,
-              noticeConfig: noticeData,
+              thumbnailType: "none",
+              iconName: "",
+              noticeConfig: noticeData[0],
+              notices: noticeData,
             });
-            setActiveNoticeModalLink(null);
+            setActiveNoticeEditor(null);
           }}
         />
       )}
@@ -3073,15 +3565,40 @@ const LinksEditor = () => {
           isOpen={!!activeThumbnailLink}
           onClose={() => setActiveThumbnailLink(null)}
           currentType={
-            activeThumbnailLink.thumbnailType ||
-            (activeThumbnailLink.icon ? "image" : "none")
+            activeThumbnailLink.type === "file" &&
+            !activeThumbnailLink.icon &&
+            !activeThumbnailLink.iconName
+              ? "icon"
+              : activeThumbnailLink.thumbnailType ||
+                (activeThumbnailLink.icon ? "image" : "none")
           }
           currentImageUrl={activeThumbnailLink.icon || ""}
-          currentIconName={activeThumbnailLink.iconName || "link"}
+          currentIconName={
+            activeThumbnailLink.iconName ||
+            (activeThumbnailLink.type === "file" ? "paperclip" : "link")
+          }
+          currentAspectRatio={activeThumbnailLink.imageAspectRatio || "4:3"}
+          currentPositionX={activeThumbnailLink.imagePositionX ?? 50}
+          currentPositionY={activeThumbnailLink.imagePositionY ?? 50}
+          currentZoom={activeThumbnailLink.imageZoom ?? 100}
+          imageOnly={activeThumbnailLink.type === "image"}
           onSave={(updates) => {
-            updateCustomLink(activeThumbnailLink.id, updates);
+            updateCustomLink(activeThumbnailLink.id, {
+              ...updates,
+              ...(updates.thumbnailType === "icon" ? { linkLayout: "classic" as const } : {}),
+            });
             setActiveThumbnailLink(null);
           }}
+        />
+      )}
+
+      {quickAvatarCrop && (
+        <ProfileImageCropModal
+          isOpen
+          imageSrc={quickAvatarCrop.src}
+          fileName={quickAvatarCrop.fileName}
+          onClose={closeQuickAvatarCrop}
+          onApply={handleQuickAvatarUpload}
         />
       )}
 
@@ -3094,6 +3611,14 @@ const LinksEditor = () => {
         onDelete={handleDeleteSocial}
       />
 
+      {activeSNSAddBlockId && (
+        <SNSPlatformPickerModal
+          isOpen
+          onClose={() => setActiveSNSAddBlockId(null)}
+          onSelect={handleAddSNSPlatform}
+        />
+      )}
+
       {/* SNS Row Icon Picker Modal */}
       {activeSNSIconPick && (
         <ThumbnailModal
@@ -3101,15 +3626,13 @@ const LinksEditor = () => {
           onClose={() => setActiveSNSIconPick(null)}
           currentType="icon"
           currentIconName={
-            customLinks
-              .find((l) => l.id === activeSNSIconPick.blockId)
+            findLinkContext(customLinks, activeSNSIconPick.blockId)
+              ?.link
               ?.snsLinks?.find((i) => i.id === activeSNSIconPick.itemId)
               ?.platform || "link"
           }
           onSave={(updates) => {
-            const targetBlock = customLinks.find(
-              (l) => l.id === activeSNSIconPick.blockId
-            );
+            const targetBlock = findLinkContext(customLinks, activeSNSIconPick.blockId)?.link;
             if (targetBlock && targetBlock.snsLinks) {
               const newPlatform = updates.iconName || "link";
               const updatedSnsLinks = targetBlock.snsLinks.map((i) =>
@@ -3180,6 +3703,91 @@ const LinksEditor = () => {
             setActiveReservationScheduleLink(null);
           }}
         />
+      )}
+
+      {isStoreGuideOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsStoreGuideOpen(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="store-guide-title"
+            className="w-full rounded-t-[30px] border-2 border-black bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:max-w-md sm:rounded-[30px] sm:p-7 sm:shadow-[7px_7px_0_#cfd3d8]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#111827] bg-[#111827] text-white shadow-sm">
+                <ShoppingBag className="h-6 w-6" />
+              </span>
+              <button type="button" onClick={() => setIsStoreGuideOpen(false)} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/5 text-gray-500 transition hover:bg-black hover:text-white" aria-label={isKo ? "안내 닫기" : "Close guide"}><X className="h-5 w-5" /></button>
+            </div>
+            <h2 id="store-guide-title" className="mt-5 text-2xl font-black tracking-[-0.04em] text-gray-950">
+              {isKo ? "내 스토어를 만들어 볼까요?" : "Create your store"}
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-gray-500">
+              {isKo ? "링크집과는 별도로 상품을 모아 보여주는 판매 페이지예요. 준비가 끝난 뒤 공개할 수 있습니다." : "Build a separate storefront for your products and publish it when you are ready."}
+            </p>
+            <div className="mt-5 space-y-2.5">
+              <div className="flex items-center gap-3 rounded-2xl bg-gray-100 p-3.5"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white"><Plus className="h-4 w-4" /></span><span><strong className="block text-sm font-black">{isKo ? "상품과 판매 정보 등록" : "Add products"}</strong><span className="text-xs font-semibold text-gray-500">{isKo ? "사진, 가격, 배송·교환 안내를 입력해요." : "Add images, prices, and shipping details."}</span></span></div>
+              <div className="flex items-center gap-3 rounded-2xl bg-gray-100 p-3.5"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white"><Link2 className="h-4 w-4" /></span><span><strong className="block text-sm font-black">{isKo ? "프로필과 간편하게 연결" : "Connect your profile"}</strong><span className="text-xs font-semibold text-gray-500">{isKo ? "상단 스토어 버튼이나 원하는 위치의 블록으로 연결해요." : "Link it from the profile header or a block."}</span></span></div>
+              <div className="flex items-center gap-3 rounded-2xl bg-gray-100 p-3.5"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white"><Eye className="h-4 w-4" /></span><span><strong className="block text-sm font-black">{isKo ? "준비될 때 공개" : "Publish when ready"}</strong><span className="text-xs font-semibold text-gray-500">{isKo ? "공개 스위치는 언제든 켜고 끌 수 있어요." : "Turn visibility on or off at any time."}</span></span></div>
+            </div>
+            <div className="mt-6 grid grid-cols-[0.8fr_1.2fr] gap-2.5">
+              <button type="button" onClick={() => setIsStoreGuideOpen(false)} className="h-13 cursor-pointer rounded-2xl border-2 border-black bg-white text-sm font-black transition hover:bg-gray-100">{isKo ? "나중에" : "Later"}</button>
+              <button type="button" onClick={() => { setIsStoreGuideOpen(false); navigate("/admin/store"); }} className="h-13 cursor-pointer rounded-2xl border-2 border-black bg-black text-sm font-black text-white shadow-[3px_3px_0_#cfd3d8] transition hover:-translate-y-0.5">{isKo ? "스토어 만들기" : "Create store"}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {pendingDeleteLink && createPortal(
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/45 px-5 backdrop-blur-[2px]"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPendingDeleteLink(null);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-block-title"
+            aria-describedby="delete-block-description"
+            className="w-full max-w-sm rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h2 id="delete-block-title" className="mt-5 text-xl font-black tracking-tight text-gray-950">
+              {isKo ? '이 블록을 삭제할까요?' : 'Delete this block?'}
+            </h2>
+            <p id="delete-block-description" className="mt-2 text-sm font-medium leading-6 text-gray-500">
+              {isKo
+                ? `“${pendingDeleteLink.title || '제목 없는 블록'}” 블록과 입력한 내용이 함께 삭제됩니다.`
+                : `“${pendingDeleteLink.title || 'Untitled block'}” and its contents will be deleted.`}
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteLink(null)}
+                className="h-12 cursor-pointer rounded-2xl border border-gray-200 bg-white text-sm font-black text-gray-700 transition hover:bg-gray-50"
+              >
+                {isKo ? '취소' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={confirmBlockDelete}
+                className="h-12 cursor-pointer rounded-2xl bg-red-600 text-sm font-black text-white transition hover:bg-red-700"
+              >
+                {isKo ? '삭제' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
     </div>

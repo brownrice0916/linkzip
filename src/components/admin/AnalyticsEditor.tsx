@@ -14,21 +14,50 @@ import {
   Megaphone, 
   Users, 
   ShoppingBag,
-  Sparkles
+  Sparkles,
+  CalendarDays,
+  ChevronDown,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { requestUpgradePrompt } from '../UpgradePromptHost';
 import { subscribeToAnalytics } from '../../services/analyticsService';
 import {
+  filterAnalyticsByDateRange,
   filterAnalyticsByPeriod,
   sumAnalytics,
+  sumLinkClicks,
+  toLocalDateKey,
   type AnalyticsPeriod,
 } from '../../domain/analytics';
+import { entitlementsForPlan } from '../../domain/membershipPlans';
 
-const PERIOD_OPTIONS: Array<{ value: AnalyticsPeriod; label: string; description: string }> = [
+type AnalyticsRangeMode = AnalyticsPeriod | 'date' | 'range';
+
+const PERIOD_OPTIONS: Array<{ value: AnalyticsRangeMode; label: string; description: string }> = [
   { value: 'day', label: '일간', description: '오늘' },
   { value: 'week', label: '주간', description: '최근 7일' },
   { value: 'month', label: '월간', description: '최근 30일' },
+  { value: 'date', label: '날짜 지정', description: '선택 날짜' },
+  { value: 'range', label: '기간 지정', description: '선택 기간' },
 ];
+
+const createDateKey = (offsetDays = 0) => {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  return toLocalDateKey(date);
+};
+
+const formatDateLabel = (dateKey: string) =>
+  new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).format(new Date(`${dateKey}T00:00:00`));
+
+const formatCompactDateLabel = (dateKey: string, includeYear = true) => {
+  const [year, month, day] = dateKey.split('-');
+  return includeYear ? `${year}.${month}.${day}` : `${month}.${day}`;
+};
 
 export const AnalyticsEditor: React.FC = () => {
   const {
@@ -39,10 +68,16 @@ export const AnalyticsEditor: React.FC = () => {
     analyticsDailyHistory,
     analyticsLinkClicks,
     loadAnalytics,
+    membershipPlan,
   } = useStore();
+  const planEntitlements = entitlementsForPlan(membershipPlan);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'clicks' | 'ctr' | 'title'>('clicks');
-  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>('week');
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsRangeMode>('week');
+  const [selectedDate, setSelectedDate] = useState(() => createDateKey());
+  const [rangeStart, setRangeStart] = useState(() => createDateKey(-6));
+  const [rangeEnd, setRangeEnd] = useState(() => createDateKey());
+  const [isCustomPeriodOpen, setIsCustomPeriodOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -74,9 +109,33 @@ export const AnalyticsEditor: React.FC = () => {
   const flatLinks = [...getAllLinks(customLinks), ...socialAnalyticsLinks];
 
   // Period summary is based on daily source data so views, clicks and CTR use the same range.
-  const periodHistory = filterAnalyticsByPeriod(analyticsDailyHistory, analyticsPeriod);
+  const earliestAvailableDate = planEntitlements.analyticsDays === null
+    ? null
+    : createDateKey(-(planEntitlements.analyticsDays - 1));
+  const availableHistory = earliestAvailableDate
+    ? analyticsDailyHistory.filter((item) => item.date >= earliestAvailableDate)
+    : analyticsDailyHistory;
+  const periodHistory = analyticsPeriod === 'date'
+    ? filterAnalyticsByDateRange(availableHistory, selectedDate, selectedDate)
+    : analyticsPeriod === 'range'
+      ? filterAnalyticsByDateRange(availableHistory, rangeStart, rangeEnd)
+      : filterAnalyticsByPeriod(availableHistory, analyticsPeriod);
   const periodSummary = sumAnalytics(periodHistory);
-  const periodLabel = PERIOD_OPTIONS.find((option) => option.value === analyticsPeriod)?.description || '최근 7일';
+  const periodLinkClicks = sumLinkClicks(periodHistory);
+  const periodLinks = flatLinks.map((link) => ({
+    ...link,
+    clicks: periodLinkClicks[link.id] || 0,
+  }));
+  const periodLabel = analyticsPeriod === 'date'
+    ? formatDateLabel(selectedDate)
+    : analyticsPeriod === 'range'
+      ? `${formatDateLabel(rangeStart <= rangeEnd ? rangeStart : rangeEnd)} ~ ${formatDateLabel(rangeStart <= rangeEnd ? rangeEnd : rangeStart)}`
+      : PERIOD_OPTIONS.find((option) => option.value === analyticsPeriod)?.description || '최근 7일';
+  const periodControlLabel = analyticsPeriod === 'date'
+    ? formatCompactDateLabel(selectedDate)
+    : analyticsPeriod === 'range'
+      ? `${formatCompactDateLabel(rangeStart <= rangeEnd ? rangeStart : rangeEnd)} – ${formatCompactDateLabel(rangeStart <= rangeEnd ? rangeEnd : rangeStart, false)}`
+      : '기간 선택';
   const totalClicks = periodSummary.clicks;
   const periodPageViews = periodSummary.views;
 
@@ -84,14 +143,14 @@ export const AnalyticsEditor: React.FC = () => {
   const overallCtr = periodPageViews > 0 ? ((totalClicks / periodPageViews) * 100).toFixed(1) : '0.0';
 
   // Top Performing Link
-  const topLinkCandidate = [...flatLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0];
+  const topLinkCandidate = [...periodLinks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0];
   const topLink = (topLinkCandidate?.clicks || 0) > 0 ? topLinkCandidate : undefined;
 
   // Maximum daily views for bar chart scaling
   const maxDailyViews = Math.max(...periodHistory.map((d) => d.views), 1);
 
   // Filtered and Sorted links list
-  const filteredLinks = flatLinks.filter((link) => {
+  const filteredLinks = periodLinks.filter((link) => {
     if (selectedTypeFilter === 'all') return true;
     if (selectedTypeFilter === 'link') return !link.type || link.type === 'link';
     return link.type === selectedTypeFilter;
@@ -100,8 +159,8 @@ export const AnalyticsEditor: React.FC = () => {
   const sortedLinks = [...filteredLinks].sort((a, b) => {
     const clicksA = a.clicks || 0;
     const clicksB = b.clicks || 0;
-    const ctrA = pageViews > 0 ? (clicksA / pageViews) * 100 : 0;
-    const ctrB = pageViews > 0 ? (clicksB / pageViews) * 100 : 0;
+    const ctrA = periodPageViews > 0 ? (clicksA / periodPageViews) * 100 : 0;
+    const ctrB = periodPageViews > 0 ? (clicksB / periodPageViews) * 100 : 0;
 
     if (sortBy === 'clicks') return clicksB - clicksA;
     if (sortBy === 'ctr') return ctrB - ctrA;
@@ -115,7 +174,7 @@ export const AnalyticsEditor: React.FC = () => {
       case 'file': return <FileText className="w-4 h-4 text-blue-500" />;
       case 'sns': return <Globe className="w-4 h-4 text-emerald-500" />;
       case 'notice': return <Megaphone className="w-4 h-4 text-amber-500" />;
-      case 'customer_info': return <Users className="w-4 h-4 text-purple-500" />;
+      case 'customer_info': return <Users className="w-4 h-4 text-slate-600" />;
       case 'sales': return <ShoppingBag className="w-4 h-4 text-orange-500" />;
       default: return <Link2 className="w-4 h-4 text-gray-700" />;
     }
@@ -134,44 +193,96 @@ export const AnalyticsEditor: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16 font-sans">
+    <div className="space-y-5 animate-fade-in pb-20 font-sans sm:space-y-8 sm:pb-16">
       
-      {/* Compact realtime information */}
-      <div className="flex items-center gap-3 bg-gray-50 text-gray-900 p-4 rounded-2xl border border-gray-200">
-        <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-purple-600" /></div>
-        <div><p className="text-xs font-black">실시간 성과 데이터</p><p className="text-[11px] text-gray-500 mt-0.5">프로필 조회수, 링크 클릭수, 클릭률을 실제 집계 데이터로 보여줍니다.</p></div>
-      </div>
-
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h2 className="text-lg font-black text-gray-950">페이지 조회수 및 클릭률</h2>
-          <p className="mt-1 text-xs font-semibold text-gray-500">선택한 기간의 실제 데이터만 집계합니다.</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-black text-gray-950">페이지 성과</h2>
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-black text-gray-800"><Sparkles className="h-3 w-3" />실시간 집계</span>
+          </div>
+          <p className="mt-1 text-xs font-semibold text-gray-500">{periodLabel}</p>
         </div>
-        <div className="flex shrink-0 rounded-2xl bg-gray-100 p-1" aria-label="통계 조회 기간">
-          {PERIOD_OPTIONS.map((option) => (
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex w-full rounded-xl bg-gray-100 p-1 sm:w-auto" aria-label="빠른 통계 조회 기간">
+            {PERIOD_OPTIONS.slice(0, planEntitlements.analyticsDays === 7 ? 2 : 3).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setAnalyticsPeriod(option.value);
+                  setIsCustomPeriodOpen(false);
+                }}
+                aria-pressed={analyticsPeriod === option.value}
+                className={clsx(
+                  'min-w-0 flex-1 rounded-lg px-2 py-2 text-xs font-black transition sm:min-w-14 sm:flex-none sm:px-3',
+                  analyticsPeriod === option.value
+                    ? 'bg-white text-gray-950 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative min-w-0 sm:w-auto">
+            {isCustomPeriodOpen && <button type="button" aria-label="기간 선택 닫기" onClick={() => setIsCustomPeriodOpen(false)} className="fixed inset-0 z-20 cursor-default" />}
             <button
-              key={option.value}
               type="button"
-              onClick={() => setAnalyticsPeriod(option.value)}
-              aria-pressed={analyticsPeriod === option.value}
+              onClick={() => {
+                if (planEntitlements.analyticsDays === 7) {
+                  requestUpgradePrompt({
+                    featureLabel: 'Detailed analytics',
+                    title: '더 긴 기간의 통계를 확인해 보세요',
+                    description: '현재 베이직 플랜에서는 최근 7일 통계를 확인할 수 있습니다. 스탠다드는 최근 90일, 프리미엄은 전체 기간을 직접 지정해 분석할 수 있어요.',
+                  });
+                  return;
+                }
+                setIsCustomPeriodOpen((open) => !open);
+              }}
+              aria-expanded={isCustomPeriodOpen}
               className={clsx(
-                'min-w-16 rounded-xl px-3 py-2 text-xs font-black transition',
-                analyticsPeriod === option.value
-                  ? 'bg-white text-gray-950 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-900',
+                'relative z-30 flex h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl border px-3.5 text-xs font-black transition sm:h-10 sm:w-auto sm:max-w-[220px] sm:justify-start',
+                analyticsPeriod === 'date' || analyticsPeriod === 'range'
+                  ? 'border-gray-950 bg-gray-950 text-white'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400',
               )}
             >
-              {option.label}
+              <CalendarDays className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 truncate">{periodControlLabel}</span>
+              <ChevronDown className={clsx('h-3.5 w-3.5 shrink-0 transition', isCustomPeriodOpen && 'rotate-180')} />
             </button>
-          ))}
+
+            {isCustomPeriodOpen && (
+              <div className="fixed inset-x-3 top-1/2 z-30 max-h-[calc(100dvh-1.5rem)] w-auto -translate-y-1/2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-[0_18px_55px_rgba(15,23,42,0.18)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[320px] sm:translate-y-0 sm:p-4">
+                <div className="mb-4 flex rounded-xl bg-gray-100 p-1">
+                  <button type="button" onClick={() => setAnalyticsPeriod('date')} className={clsx('flex-1 rounded-lg py-2 text-xs font-black transition', analyticsPeriod === 'date' ? 'bg-white text-black shadow-sm' : 'text-gray-500')}>날짜 지정</button>
+                  <button type="button" onClick={() => setAnalyticsPeriod('range')} className={clsx('flex-1 rounded-lg py-2 text-xs font-black transition', analyticsPeriod === 'range' ? 'bg-white text-black shadow-sm' : 'text-gray-500')}>기간 지정</button>
+                </div>
+
+                {analyticsPeriod === 'range' ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="min-w-0 space-y-1.5 text-[11px] font-black text-gray-500">시작일<input type="date" value={rangeStart} max={createDateKey()} onChange={(event) => setRangeStart(event.target.value || createDateKey(-6))} className="block h-12 w-full min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-3 text-base font-bold text-gray-900 outline-none focus:border-black sm:h-11 sm:text-xs" /></label>
+                    <label className="min-w-0 space-y-1.5 text-[11px] font-black text-gray-500">종료일<input type="date" value={rangeEnd} max={createDateKey()} onChange={(event) => setRangeEnd(event.target.value || createDateKey())} className="block h-12 w-full min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-3 text-base font-bold text-gray-900 outline-none focus:border-black sm:h-11 sm:text-xs" /></label>
+                  </div>
+                ) : analyticsPeriod === 'date' ? (
+                  <label className="min-w-0 space-y-1.5 text-[11px] font-black text-gray-500">조회 날짜<input type="date" value={selectedDate} max={createDateKey()} onChange={(event) => setSelectedDate(event.target.value || createDateKey())} className="block h-12 w-full min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-3 text-base font-bold text-gray-900 outline-none focus:border-black sm:h-11 sm:text-xs" /></label>
+                ) : (
+                  <p className="rounded-xl bg-gray-50 px-4 py-5 text-center text-xs font-bold text-gray-500">날짜 한 개 또는 조회 기간을 선택해 주세요.</p>
+                )}
+
+                <button type="button" onClick={() => setIsCustomPeriodOpen(false)} disabled={analyticsPeriod !== 'date' && analyticsPeriod !== 'range'} className="mt-4 h-11 w-full rounded-xl bg-gray-950 text-xs font-black text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400">적용</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 4 Summary Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         
         {/* 1. Total Page Views */}
-        <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs space-y-3 relative overflow-hidden group hover:border-gray-300 transition">
+        <div className="group relative space-y-3 overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition hover:border-gray-300 sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-gray-500">페이지 조회수</span>
             <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
@@ -189,10 +300,10 @@ export const AnalyticsEditor: React.FC = () => {
         </div>
 
         {/* 2. Total Link Clicks */}
-        <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs space-y-3 relative overflow-hidden group hover:border-gray-300 transition">
+        <div className="group relative space-y-3 overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition hover:border-gray-300 sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-gray-500">링크 클릭수</span>
-            <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-2xl bg-gray-100 text-gray-900 flex items-center justify-center font-bold">
               <MousePointerClick className="w-5 h-5" />
             </div>
           </div>
@@ -207,7 +318,7 @@ export const AnalyticsEditor: React.FC = () => {
         </div>
 
         {/* 3. Average Click-Through Rate (CTR) */}
-        <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs space-y-3 relative overflow-hidden group hover:border-purple-300 transition">
+        <div className="group relative space-y-3 overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition hover:border-gray-400 sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-gray-500">평균 클릭률 (CTR)</span>
             <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
@@ -215,7 +326,7 @@ export const AnalyticsEditor: React.FC = () => {
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-purple-700 tracking-tight flex items-baseline gap-1">
+            <div className="text-2xl sm:text-3xl font-black text-gray-950 tracking-tight flex items-baseline gap-1">
               {overallCtr}%
             </div>
             <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-amber-600">
@@ -225,7 +336,7 @@ export const AnalyticsEditor: React.FC = () => {
         </div>
 
         {/* 4. Top Performing Block */}
-        <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-2xs space-y-3 relative overflow-hidden group hover:border-gray-300 transition">
+        <div className="group relative space-y-3 overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition hover:border-gray-300 sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-gray-500">최고 인기 블록</span>
             <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
@@ -237,7 +348,7 @@ export const AnalyticsEditor: React.FC = () => {
               {topLink?.title || '등록된 블록 없음'}
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-bold text-gray-500">
-              <span className="text-purple-600 font-extrabold">{topLink?.clicks || 0}회 클릭</span>
+              <span className="text-gray-950 font-extrabold">{topLink?.clicks || 0}회 클릭</span>
               <span>• CTR {pageViews > 0 ? (((topLink?.clicks || 0) / pageViews) * 100).toFixed(1) : '0.0'}%</span>
             </div>
           </div>
@@ -246,29 +357,29 @@ export const AnalyticsEditor: React.FC = () => {
       </div>
 
       {/* 7-Day Traffic Visual Chart */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-2xs space-y-5">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+      <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:space-y-5 sm:rounded-3xl sm:p-6">
+        <div className="flex flex-col gap-3 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:justify-between sm:pb-4">
           <div className="space-y-0.5">
             <h3 className="font-extrabold text-base text-gray-900 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-purple-600" />
+              <BarChart3 className="w-5 h-5 text-gray-950" />
               <span>{periodLabel} 트래픽 및 클릭 추이</span>
             </h3>
             <p className="text-xs text-gray-500">일별 조회수 대비 실제 클릭수 비교 차트</p>
           </div>
-          <div className="flex items-center gap-4 text-xs font-bold">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-bold sm:text-xs">
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-gray-200"></span>
               <span className="text-gray-600">조회수 (Views)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-purple-600"></span>
+              <span className="w-3 h-3 rounded-full bg-gray-950"></span>
               <span className="text-gray-900 font-extrabold">클릭수 (Clicks)</span>
             </div>
           </div>
         </div>
 
         {/* CSS Bar Chart */}
-        <div className="h-48 flex items-end justify-between gap-3 pt-6 px-2 border-b border-gray-100 pb-4">
+        <div className="flex h-44 items-end justify-between gap-1.5 border-b border-gray-100 px-0.5 pb-4 pt-4 sm:h-48 sm:gap-3 sm:px-2 sm:pt-6">
           {periodHistory.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400">
               아직 집계된 트래픽이 없습니다.
@@ -284,7 +395,7 @@ export const AnalyticsEditor: React.FC = () => {
                 {/* Tooltip on hover */}
                 <div className="absolute -top-12 bg-black text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-md whitespace-nowrap">
                   <div>{item.date}</div>
-                  <div className="text-purple-300">조회: {item.views} | 클릭: {item.clicks} ({dailyCtr}%)</div>
+                  <div className="text-gray-300">조회: {item.views} | 클릭: {item.clicks} ({dailyCtr}%)</div>
                 </div>
 
                 {/* Bars Pair */}
@@ -297,7 +408,7 @@ export const AnalyticsEditor: React.FC = () => {
                   />
                   {/* Clicks Bar */}
                   <div 
-                    className="w-1/3 bg-gradient-to-t from-purple-700 to-indigo-500 rounded-t-lg transition-all shadow-xs group-hover:from-purple-800 group-hover:to-indigo-600"
+                    className="w-1/3 rounded-t-lg bg-gray-950 shadow-xs transition-all group-hover:bg-black"
                     style={{ height: `${clicksHeightPercent}%` }}
                     title={`클릭수: ${item.clicks}`}
                   />
@@ -314,26 +425,26 @@ export const AnalyticsEditor: React.FC = () => {
       </div>
 
       {/* Link-by-Link Detailed Breakdown List */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-2xs space-y-5">
+      <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:space-y-5 sm:rounded-3xl sm:p-6">
         
         {/* Table Filter & Sorting Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+        <div className="flex flex-col justify-between gap-3 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:gap-4 sm:pb-4">
           <div className="space-y-0.5">
             <h3 className="font-extrabold text-base text-gray-900 flex items-center gap-2">
-              <MousePointerClick className="w-5 h-5 text-purple-600" />
+              <MousePointerClick className="w-5 h-5 text-gray-950" />
               <span>링크별 클릭수 & 클릭률 (CTR) 상세 분석</span>
             </h3>
-            <p className="text-xs text-gray-500">개별 블록 및 링크의 성과 지표 목록입니다.</p>
+            <p className="text-xs text-gray-500">{periodLabel} 기준 개별 블록 및 링크의 성과입니다.</p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
             {/* Filter by Type */}
-            <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-2xl text-xs font-bold">
-              <Filter className="w-3.5 h-3.5 ml-2 text-gray-500" />
+            <div className="flex h-10 min-w-0 items-center gap-1 rounded-xl bg-gray-100 px-2 text-[11px] font-bold sm:h-auto sm:gap-1.5 sm:rounded-2xl sm:p-1 sm:text-xs">
+              <Filter className="h-3.5 w-3.5 shrink-0 text-gray-500 sm:ml-2" />
               <select
                 value={selectedTypeFilter}
                 onChange={(e) => setSelectedTypeFilter(e.target.value)}
-                className="bg-transparent border-none text-xs font-bold text-gray-800 focus:ring-0 cursor-pointer pr-4"
+                className="min-w-0 w-full cursor-pointer border-none bg-transparent py-0 pl-0 pr-4 text-[11px] font-bold text-gray-800 focus:ring-0 sm:w-auto sm:pr-4 sm:text-xs"
               >
                 <option value="all">전체 블록</option>
                 <option value="link">일반 링크</option>
@@ -347,12 +458,12 @@ export const AnalyticsEditor: React.FC = () => {
             </div>
 
             {/* Sort by */}
-            <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-2xl text-xs font-bold">
-              <ArrowUpDown className="w-3.5 h-3.5 ml-2 text-gray-500" />
+            <div className="flex h-10 min-w-0 items-center gap-1 rounded-xl bg-gray-100 px-2 text-[11px] font-bold sm:h-auto sm:gap-1.5 sm:rounded-2xl sm:p-1 sm:text-xs">
+              <ArrowUpDown className="h-3.5 w-3.5 shrink-0 text-gray-500 sm:ml-2" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-transparent border-none text-xs font-bold text-gray-800 focus:ring-0 cursor-pointer pr-4"
+                className="min-w-0 w-full cursor-pointer border-none bg-transparent py-0 pl-0 pr-4 text-[11px] font-bold text-gray-800 focus:ring-0 sm:w-auto sm:pr-4 sm:text-xs"
               >
                 <option value="clicks">클릭수 높은 순</option>
                 <option value="ctr">클릭률 (CTR) 높은 순</option>
@@ -371,15 +482,15 @@ export const AnalyticsEditor: React.FC = () => {
           <div className="space-y-3">
             {sortedLinks.map((link, idx) => {
               const linkClicks = link.clicks || 0;
-              const linkCtr = pageViews > 0 ? ((linkClicks / pageViews) * 100).toFixed(1) : '0.0';
+              const linkCtr = periodPageViews > 0 ? ((linkClicks / periodPageViews) * 100).toFixed(1) : '0.0';
               const ctrNum = parseFloat(linkCtr);
 
               return (
                 <div
                   key={link.id}
-                  className="p-4 rounded-2xl border border-gray-200 hover:border-purple-300 transition-all bg-white hover:bg-purple-50/20 shadow-2xs space-y-3"
+                  className="space-y-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xs transition-all hover:border-gray-400 hover:bg-gray-50 sm:p-4"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     
                     {/* Rank & Link Title */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -410,7 +521,7 @@ export const AnalyticsEditor: React.FC = () => {
                     </div>
 
                     {/* Stats: Clicks & CTR % */}
-                    <div className="flex items-center gap-6 shrink-0 text-right">
+                    <div className="grid w-full shrink-0 grid-cols-2 gap-3 border-t border-gray-100 pt-3 text-left sm:flex sm:w-auto sm:items-center sm:gap-6 sm:border-0 sm:pt-0 sm:text-right">
                       <div>
                         <div className="text-xs text-gray-500 font-semibold">클릭수</div>
                         <div className="text-sm font-black text-gray-900">{linkClicks.toLocaleString()} 회</div>
@@ -420,7 +531,7 @@ export const AnalyticsEditor: React.FC = () => {
                         <div className="text-xs text-gray-500 font-semibold">클릭률 (CTR)</div>
                         <div className={clsx(
                           "text-sm font-black",
-                          ctrNum > 15 ? "text-purple-600" : ctrNum > 5 ? "text-blue-600" : "text-gray-700"
+                          ctrNum > 15 ? "text-gray-950" : ctrNum > 5 ? "text-slate-700" : "text-gray-600"
                         )}>
                           {linkCtr}%
                         </div>
@@ -436,9 +547,9 @@ export const AnalyticsEditor: React.FC = () => {
                         className={clsx(
                           "h-full rounded-full transition-all duration-500",
                           ctrNum > 15 
-                            ? "bg-gradient-to-r from-purple-600 to-indigo-500" 
+                            ? "bg-gray-950"
                             : ctrNum > 5 
-                            ? "bg-gradient-to-r from-blue-500 to-indigo-400" 
+                            ? "bg-gray-700"
                             : "bg-gray-400"
                         )}
                         style={{ width: `${Math.min(ctrNum * 3, 100)}%` }}

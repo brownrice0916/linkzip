@@ -47,9 +47,9 @@ const ProfileSetup = () => {
           template: { type: templateType, value: templateValue },
           socialLinks,
           customLinks,
-          onboardingSurvey: readOnboardingSurvey(),
+          onboardingSurvey: readOnboardingSurvey(user.uid),
         });
-        clearOnboardingSurvey();
+        clearOnboardingSurvey(user.uid);
       }
       navigate('/admin');
     } catch (error) {

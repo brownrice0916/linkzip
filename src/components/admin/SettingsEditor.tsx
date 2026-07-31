@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { auth, logout } from '../../lib/firebase';
-import { deleteUser } from 'firebase/auth';
-import { deleteUserData } from '../../services/userService';
+import { deleteMyAccount } from '../../services/accountService';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldAlert, 
@@ -36,17 +35,10 @@ const SettingsEditor = () => {
     setErrorMsg('');
 
     try {
-      if (user?.uid) {
-        // 1. Delete user document from Firestore
-        await deleteUserData(user.uid, state.profile.username);
-      }
+      await deleteMyAccount();
 
-      // 2. Delete user authentication account
-      if (auth.currentUser) {
-        await deleteUser(auth.currentUser);
-      }
-
-      // 3. Clear store state & redirect to home
+      // The server removes the Auth user last. Clear local state after the
+      // complete cleanup succeeds so a failed request never looks successful.
       state.setUser(null);
       alert('회원 탈퇴가 완료되었습니다. 그동안 이용해주셔서 감사합니다.');
       navigate('/');
@@ -54,7 +46,7 @@ const SettingsEditor = () => {
       console.error('Account deletion error:', error);
       setIsDeleting(false);
 
-      if (error.code === 'auth/requires-recent-login') {
+      if (error.code === 'functions/failed-precondition') {
         setErrorMsg('보안을 위해 다시 로그인하신 직후에 회원 탈퇴를 진행해주세요.');
       } else {
         setErrorMsg('탈퇴 처리 중 오류가 발생했습니다: ' + (error.message || '다시 시도해주세요.'));
@@ -85,7 +77,7 @@ const SettingsEditor = () => {
 
           <div className="flex items-center justify-between text-xs py-2 border-b border-gray-50">
             <span className="font-semibold text-gray-500">프로필 URL 아이디</span>
-            <span className="font-bold text-purple-600">@{state.profile.username || 'username'}</span>
+            <span className="font-bold text-[#ff5f35]">@{state.profile.username || 'username'}</span>
           </div>
 
           <div className="flex items-center justify-between text-xs py-2">
@@ -98,9 +90,9 @@ const SettingsEditor = () => {
       </div>
 
       {user?.email?.toLowerCase() === 'brownrice0916@gmail.com' && (
-        <button type="button" onClick={() => navigate('/site-admin')} className="flex w-full cursor-pointer items-center gap-4 rounded-3xl border border-indigo-200 bg-indigo-50/70 p-6 text-left transition hover:-translate-y-0.5 hover:bg-indigo-50">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white"><Key className="h-5 w-5" /></span>
-          <span className="min-w-0 flex-1"><strong className="block text-sm font-black text-indigo-950">사이트 관리자</strong><span className="mt-1 block text-xs font-medium text-indigo-700">가입자와 비공개 베타 초대코드를 관리합니다.</span></span>
+        <button type="button" onClick={() => navigate('/site-admin')} className="group flex w-full cursor-pointer items-center gap-4 rounded-3xl border-2 border-[#171714] bg-[#fff4c7] p-6 text-left shadow-[5px_5px_0_#ff5f35] transition hover:-translate-y-0.5 hover:bg-[#ffed9c]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-[#171714] bg-[#ffcf4a] text-[#171714] transition group-hover:rotate-[-3deg]"><Key className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1"><strong className="block text-sm font-black text-[#171714]">사이트 관리자</strong><span className="mt-1 block text-xs font-semibold text-[#6d6558]">가입자와 비공개 베타 초대코드를 관리합니다.</span></span>
         </button>
       )}
 
@@ -124,14 +116,14 @@ const SettingsEditor = () => {
       </div>
 
       {/* 3. Danger Zone / Withdraw Account Card */}
-      <div className="bg-red-50/60 border border-red-200 rounded-3xl p-6 space-y-4">
+      <div className="space-y-4 rounded-3xl border-2 border-[#d8d2c7] bg-[#fffdf8] p-6 shadow-[4px_4px_0_#e8e1d5]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-red-500 text-white flex items-center justify-center shadow-md shadow-red-500/20 shrink-0">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-[#171714] bg-[#ffcf4a] text-[#171714]">
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-red-900">{tr('위험 구역', 'Danger zone')}</h3>
-            <p className="text-xs text-red-600 font-medium">계정 삭제 및 데이터 영구 제거</p>
+            <h3 className="text-sm font-black text-[#171714]">{tr('계정 삭제', 'Delete account')}</h3>
+            <p className="text-xs font-semibold text-[#8a6a15]">계정과 저장된 데이터를 영구적으로 제거합니다.</p>
           </div>
         </div>
 
@@ -146,7 +138,7 @@ const SettingsEditor = () => {
               setErrorMsg('');
               setIsDeleteModalOpen(true);
             }}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-bold shadow-md shadow-red-600/20 transition flex items-center gap-2 cursor-pointer"
+            className="flex cursor-pointer items-center gap-2 rounded-full border-2 border-[#171714] bg-[#171714] px-6 py-3 text-xs font-black text-white shadow-[3px_3px_0_#ff5f35] transition hover:-translate-y-0.5 hover:bg-black"
           >
             <Trash2 className="w-4 h-4" />
             {tr('회원 탈퇴', 'Delete account')}
@@ -156,21 +148,21 @@ const SettingsEditor = () => {
 
       {/* Delete Account Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center gap-3 text-red-600">
-              <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-7 h-7 text-red-600" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#171714]/55 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md space-y-5 rounded-3xl border-2 border-[#171714] bg-[#fffdf8] p-6 shadow-[8px_8px_0_#ff5f35] animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-[#171714] bg-[#ffcf4a]">
+                <AlertTriangle className="h-7 w-7 text-[#171714]" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900">정말 회원 탈퇴하시겠습니까?</h3>
-                <p className="text-xs text-red-600 font-bold">이 작업은 취소할 수 없습니다.</p>
+                <p className="text-xs font-bold text-[#8a6a15]">이 작업은 취소할 수 없습니다.</p>
               </div>
             </div>
 
             <p className="text-xs text-gray-600 leading-relaxed">
               탈퇴 시 사용자의 모든 링크 데이터, 커스텀 디자인, 프로필 정보가 시스템에서 영구히 삭제됩니다.
-              확인을 위해 아래 입력창에 <strong className="text-red-600 font-bold">'탈퇴합니다'</strong>를 입력해 주세요.
+              확인을 위해 아래 입력창에 <strong className="font-black text-[#171714]">'탈퇴합니다'</strong>를 입력해 주세요.
             </p>
 
             <div className="space-y-1">
@@ -179,10 +171,10 @@ const SettingsEditor = () => {
                 value={confirmInput}
                 onChange={(e) => setConfirmInput(e.target.value)}
                 placeholder="탈퇴합니다"
-                className="w-full px-4 py-3 rounded-2xl border border-gray-300 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 bg-gray-50 focus:bg-white"
+                className="w-full rounded-2xl border-2 border-[#d8d2c7] bg-[#f4f1e8] px-4 py-3 text-sm font-bold text-gray-900 focus:border-[#171714] focus:bg-white focus:outline-none focus:ring-0"
               />
               {errorMsg && (
-                <p className="text-xs font-bold text-red-600 pt-1">{errorMsg}</p>
+                <p className="pt-1 text-xs font-bold text-[#b45309]">{errorMsg}</p>
               )}
             </div>
 
@@ -190,7 +182,7 @@ const SettingsEditor = () => {
               <button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting || confirmInput.trim() !== '탈퇴합니다'}
-                className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-full shadow-md shadow-red-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border-2 border-[#171714] bg-[#171714] py-3 text-xs font-black text-white shadow-[3px_3px_0_#ff5f35] transition hover:bg-black disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-300 disabled:shadow-none"
               >
                 <Trash2 className="w-4 h-4" />
                 {isDeleting ? '탈퇴 처리 중...' : '회원 탈퇴 확정'}
@@ -199,7 +191,7 @@ const SettingsEditor = () => {
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
                 disabled={isDeleting}
-                className="w-full py-2.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 text-xs font-bold rounded-full transition cursor-pointer"
+                className="w-full cursor-pointer rounded-full border-2 border-[#d8d2c7] bg-[#f4f1e8] py-2.5 text-xs font-bold text-gray-800 transition hover:border-[#171714] hover:bg-white"
               >
                 취소하고 계속 이용하기
               </button>

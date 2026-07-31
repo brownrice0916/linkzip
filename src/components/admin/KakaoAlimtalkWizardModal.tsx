@@ -31,8 +31,8 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
   const { alimtalkSettings, setAlimtalkSettings, profile } = state;
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [channelName, setChannelName] = useState(profile.name || 'LinkZip Official');
-  const [phoneNumber, setPhoneNumber] = useState(profile.phone || '010-1234-5678');
+  const [channelName, setChannelName] = useState(profile.name || '');
+  const [phoneNumber, setPhoneNumber] = useState(profile.phone || '');
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('TP_LINKZIP_AUTO_WELCOME');
   const [testSent, setTestSent] = useState(false);
@@ -40,6 +40,10 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
   if (!isOpen) return null;
 
   const handleStartAutoConnect = async () => {
+    if (!channelName.trim()) {
+      alert('카카오톡 비즈니스 채널 이름을 입력해주세요.');
+      return;
+    }
     if (!phoneNumber.trim()) {
       alert('발신 대표 전화번호를 입력해주세요.');
       return;
@@ -236,7 +240,7 @@ export const KakaoAlimtalkWizardModal: React.FC<KakaoAlimtalkWizardModalProps> =
                 <div className="flex items-center justify-between border-b border-black/10 pb-2">
                   <div className="flex items-center gap-2 font-black text-xs">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    <span>[알림톡 도착] {channelName || 'LinkZip 공식 채널'}</span>
+                    <span>[알림톡 도착] {channelName}</span>
                   </div>
                   <span className="text-[10px] text-gray-700 font-bold">방금 전</span>
                 </div>

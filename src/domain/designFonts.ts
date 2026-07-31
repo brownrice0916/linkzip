@@ -6,6 +6,15 @@ export interface DesignFontOption {
   category: 'korean' | 'global';
 }
 
+// Keep a small, useful starter set: two Korean-friendly sans fonts and one
+// global default. Free options intentionally have no badge in the picker.
+export const BASIC_DESIGN_FONT_IDS = ['Pretendard', 'Gowun Dodum', 'Inter'] as const;
+
+export const isPremiumDesignFont = (value: unknown) =>
+  typeof value === 'string'
+  && value.length > 0
+  && !BASIC_DESIGN_FONT_IDS.includes(value as (typeof BASIC_DESIGN_FONT_IDS)[number]);
+
 export const designFonts: DesignFontOption[] = [
   { id: 'Pretendard', name: '프리텐다드 (Pretendard)', font: 'Pretendard', badge: 'bolt', category: 'korean' },
   { id: 'Gowun Batang', name: '고운 바탕 (Gowun Batang)', font: 'Gowun Batang', badge: 'bolt', category: 'korean' },

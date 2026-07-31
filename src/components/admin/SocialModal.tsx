@@ -182,7 +182,7 @@ export const SocialModal: React.FC<SocialModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-bold shadow-md shadow-purple-500/20 transition cursor-pointer"
+                className="cursor-pointer rounded-full border-2 border-[#171714] bg-[#171714] px-6 py-2.5 text-sm font-bold text-white shadow-[3px_3px_0_#ff5f35] transition hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#ff5f35]"
               >
                 {editingLink ? tr('수정', 'Update') : tr('아이콘 추가', 'Add icon')}
               </button>

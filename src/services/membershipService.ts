@@ -1,4 +1,6 @@
 import { auth } from '../lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '../lib/firebase';
 import type { MembershipBillingCycle, MembershipPlan } from '../domain/membershipPlans';
 import type { BankTransferInstructions } from './commerceService';
 
@@ -23,6 +25,14 @@ export interface MembershipPaymentConfirmation {
   orderNumber: string;
   periodEndsAt: string;
   approvedAt: string | null;
+}
+
+export async function setOwnAdminMembershipPlan(planId: MembershipPlan) {
+  const callable = httpsCallable<{planId: MembershipPlan}, {planId: MembershipPlan; periodEndsAt: string | null}>(
+    getFunctions(app, 'asia-northeast3'),
+    'setOwnAdminMembershipPlan',
+  );
+  return (await callable({ planId })).data;
 }
 
 async function authenticatedHeaders() {

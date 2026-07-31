@@ -10,6 +10,57 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isSiteAdmin() {
+      return signedIn()
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.get('email', '') == 'brownrice0916@gmail.com';
+    }
+
+    function paidMembershipActive(uid) {
+      // Accounts created before plan fields were introduced are Basic users.
+      // Reading a missing map field directly makes the whole rule evaluation
+      // fail, which previously blocked every profile save for those accounts.
+      return exists(/databases/$(database)/documents/users/$(uid))
+        && (
+          get(/databases/$(database)/documents/users/$(uid)).data.get('membershipGrant', '') == 'beta_lifetime_premium'
+          || (
+            get(/databases/$(database)/documents/users/$(uid)).data.get('membershipPlan', 'basic') in ['standard', 'premium']
+            && get(/databases/$(database)/documents/users/$(uid)).data.get('membershipPeriodEndsAt', request.time) is timestamp
+            && get(/databases/$(database)/documents/users/$(uid)).data.get('membershipPeriodEndsAt', request.time) > request.time
+          )
+        );
+    }
+
+    function premiumMembershipActive(uid) {
+      return paidMembershipActive(uid)
+        && (
+          get(/databases/$(database)/documents/users/$(uid)).data.get('membershipGrant', '') == 'beta_lifetime_premium'
+          || get(/databases/$(database)/documents/users/$(uid)).data.get('membershipPlan', 'basic') == 'premium'
+        );
+    }
+
+    function currentProfileLimit(uid) {
+      return premiumMembershipActive(uid) ? 5 : (paidMembershipActive(uid) ? 3 : 1);
+    }
+
+    function validProfileWorkspaceCount(uid) {
+      return !request.resource.data.keys().hasAny(['profileWorkspaces'])
+        || (request.resource.data.profileWorkspaces is list
+          && (request.resource.data.profileWorkspaces.size() <= currentProfileLimit(uid)
+            || (resource != null
+              && resource.data.profileWorkspaces is list
+              && request.resource.data.profileWorkspaces.size() <= resource.data.profileWorkspaces.size())));
+    }
+
+    function membershipFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'membershipPlan', 'membershipBillingCycle', 'membershipPeriodStartedAt',
+        'membershipPeriodEndsAt', 'membershipPaymentProvider', 'membershipUpdatedAt',
+        'membershipPaidAmount', 'membershipLastOrderNumber', 'membershipGrant',
+        'membershipGrantedAt', 'sellerVerification'
+      ]);
+    }
+
     function hasBetaAccess() {
       return signedIn() && (
         (!exists(/databases/$(database)/documents/betaMembers/$(request.auth.uid))
@@ -17,12 +68,6 @@ service cloud.firestore {
         || (exists(/databases/$(database)/documents/betaMembers/$(request.auth.uid))
           && get(/databases/$(database)/documents/betaMembers/$(request.auth.uid)).data.status == 'active')
       );
-    }
-
-    function isOwnedPublicProfile(profileId) {
-      return signedIn()
-        && (profileId == request.auth.uid
-          || profileId.matches(request.auth.uid + '_.*'));
     }
 
     function ownsUsername(username) {
@@ -53,13 +98,27 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read, create, update, delete: if isOwner(uid) && hasBetaAccess();
+      allow read: if isOwner(uid) && hasBetaAccess();
+      // Account deletion must run through the server so authentication, nested
+      // documents, public profiles, OAuth identities and uploaded files are
+      // removed together instead of leaving a partially deleted account.
+      allow delete: if false;
+      allow create: if isOwner(uid) && hasBetaAccess()
+        && !request.resource.data.keys().hasAny([
+          'membershipPlan', 'membershipBillingCycle', 'membershipPeriodStartedAt',
+          'membershipPeriodEndsAt', 'membershipPaymentProvider', 'membershipUpdatedAt',
+          'membershipPaidAmount', 'membershipLastOrderNumber', 'membershipGrant',
+          'membershipGrantedAt', 'sellerVerification'
+        ])
+        && validProfileWorkspaceCount(uid);
+      allow update: if isOwner(uid) && hasBetaAccess()
+        && membershipFieldsUnchanged()
+        && validProfileWorkspaceCount(uid);
 
       match /collected_customer_data/{entryId} {
-        allow create: if request.resource.data.keys().hasOnly([
-          'blockId', 'email', 'phone', 'name', 'createdAt'
-        ]) && request.resource.data.blockId is string;
-        allow read, delete: if isOwner(uid);
+        allow create: if false;
+        allow read: if false;
+        allow delete: if false;
         allow update: if false;
       }
 
@@ -96,15 +155,35 @@ service cloud.firestore {
       }
 
       match /donations/{donationId} {
-        allow read: if true;
+        allow read: if isOwner(uid);
         allow create: if false;
         allow update, delete: if isOwner(uid);
+      }
+
+      match /publicDonations/{donationId} {
+        allow read: if true;
+        allow write: if false;
       }
     }
 
     match /publicProfiles/{profileId} {
       allow read: if true;
-      allow create, update, delete: if isOwnedPublicProfile(profileId) && hasBetaAccess();
+      // Ownership is stored in the document instead of inferred from its ID.
+      // This also supports custom-auth UIDs such as "naver:..." and
+      // "kakao:..." without relying on a dynamic regular expression.
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && hasBetaAccess()
+        && !request.resource.data.keys().hasAny(['planPaused', 'forceWatermark']);
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && hasBetaAccess()
+        && request.resource.data.get('planPaused', false) == resource.data.get('planPaused', false)
+        && request.resource.data.get('forceWatermark', false) == resource.data.get('forceWatermark', false);
+      allow delete: if signedIn()
+        && (resource.data.ownerUid == request.auth.uid || profileId == request.auth.uid)
+        && hasBetaAccess();
     }
 
     match /usernames/{username} {
@@ -124,6 +203,68 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /bugReports/{reportId} {
+      allow create: if hasBetaAccess()
+        && request.resource.data.keys().hasOnly([
+          'uid', 'reporterName', 'category', 'title', 'description',
+          'reproductionSteps', 'expectedResult', 'actualResult',
+          'attachmentUrl', 'cardColor', 'status', 'visibilityVersion', 'createdAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 100
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 2000
+        && request.resource.data.category in ['버그', '개선사항', '건의사항', '기타']
+        && request.resource.data.reproductionSteps is string
+        && request.resource.data.reproductionSteps.size() <= 2000
+        && request.resource.data.cardColor is string
+        && request.resource.data.cardColor.matches('^#[0-9a-fA-F]{6}$')
+        && request.resource.data.visibilityVersion == 2
+        && request.resource.data.status == 'new';
+      allow read: if hasBetaAccess() && resource.data.get('visibilityVersion', 0) == 2;
+      allow update: if hasBetaAccess()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['description', 'category', 'attachmentUrl', 'updatedAt'])
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 2000
+        && request.resource.data.category in ['버그', '개선사항', '건의사항', '기타']
+        && request.resource.data.attachmentUrl is string;
+      allow update: if isSiteAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['new', 'in_progress', 'resolved'];
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+
+      match /replies/{replyId} {
+        allow read: if hasBetaAccess();
+        allow create: if hasBetaAccess()
+          && request.resource.data.keys().hasOnly(['uid', 'authorName', 'message', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() > 0
+          && request.resource.data.authorName.size() <= 50
+          && request.resource.data.message is string
+          && request.resource.data.message.size() > 0
+          && request.resource.data.message.size() <= 1000;
+        allow update: if false;
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      }
+    }
+
+    match /bugReportPrivate/{reportId} {
+      allow create: if hasBetaAccess()
+        && request.resource.data.keys().hasOnly([
+          'uid', 'reporterEmail', 'sourceUrl', 'userAgent', 'viewport', 'createdAt'
+        ])
+        && request.resource.data.uid == request.auth.uid;
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isSiteAdmin());
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
     match /analytics/{uid} {
       allow read: if isOwner(uid);
       allow create: if request.resource.data.pageViews == 1;
@@ -136,13 +277,18 @@ service cloud.firestore {
         allow read, delete: if isOwner(uid);
         allow create: if request.resource.data.date == date
           && ((request.resource.data.views == 1 && request.resource.data.clicks == 0)
-            || (request.resource.data.views == 0 && request.resource.data.clicks == 1));
+            || (request.resource.data.views == 0
+              && request.resource.data.clicks == 1
+              && request.resource.data.linkClicks is map
+              && request.resource.data.linkClicks.size() == 1));
         allow update: if isOwner(uid) || (
           request.resource.data.date == resource.data.date
           && ((request.resource.data.views == resource.data.views + 1
               && request.resource.data.clicks == resource.data.clicks)
             || (request.resource.data.clicks == resource.data.clicks + 1
-              && request.resource.data.views == resource.data.views))
+              && request.resource.data.views == resource.data.views
+              && request.resource.data.linkClicks is map
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks', 'linkClicks'])))
         );
       }
 

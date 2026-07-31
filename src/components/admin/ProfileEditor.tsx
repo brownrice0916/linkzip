@@ -4,6 +4,7 @@ import { User, FileText, UploadCloud, Image as ImageIcon, Type, Palette, Plus, C
 import { uploadPublicImage } from '../../services/storageService';
 import clsx from 'clsx';
 import { GiphyPicker } from './GiphyPicker';
+import { ColorPickerPopover } from './ColorPickerPopover';
 
 const layouts = [
   { id: 'classic', label: 'Classic', desc: 'Standard circular avatar' },
@@ -61,11 +62,11 @@ const ProfileEditor = () => {
   return (
     <div className="space-y-8 animate-fade-in pb-20 font-sans">
       
-      <div className="space-y-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <div className="space-y-8 rounded-[24px] bg-white p-6">
 
         {/* 1. Layout Picker */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-gray-900">{isKo ? '레이아웃' : 'Layout'}</h3>
+        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+          <h3 className="pt-2 text-sm font-bold text-gray-900">{isKo ? '레이아웃' : 'Layout'}</h3>
           <div className="grid grid-cols-3 gap-3">
             {layouts.map((l) => {
               const isSelected = activeLayout === l.id;
@@ -130,13 +131,10 @@ const ProfileEditor = () => {
 
         {/* 2. Profile Image & Banner Image */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-gray-900">{isKo ? '프로필 이미지' : 'Profile image'}</h3>
-              <p className="text-xs text-gray-400">{isKo ? '눌러서 프로필 이미지를 업로드하세요' : 'Click to upload your avatar'}</p>
-            </div>
+          <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+            <h3 className="text-sm font-bold text-gray-900">{isKo ? '프로필 이미지' : 'Profile image'}</h3>
 
-            <div className="relative w-16 h-16 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
+            <div className="relative ml-auto w-16 h-16 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
               {profile.avatarUrl ? (
                 <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover group-hover:opacity-60 transition-opacity" />
               ) : (
@@ -159,13 +157,10 @@ const ProfileEditor = () => {
           {/* Banner Upload Option if layout === 'banner' */}
           {activeLayout === 'banner' && (
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900">{isKo ? '배너 커버 이미지' : 'Banner cover image'}</h3>
-                <p className="text-xs text-gray-400">{isKo ? '내 파일 또는 움직이는 GIF를 사용할 수 있습니다' : 'Use your own file or an animated GIF'}</p>
-              </div>
+              <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+              <h3 className="text-sm font-bold text-gray-900">{isKo ? '배너 커버 이미지' : 'Banner cover image'}</h3>
 
-              <div className="relative w-24 h-14 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
+              <div className="relative ml-auto w-24 h-14 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
                 {profile.bannerUrl ? (
                   <img src={profile.bannerUrl} alt="Banner" className="w-full h-full object-cover group-hover:opacity-60 transition-opacity" />
                 ) : (
@@ -180,7 +175,10 @@ const ProfileEditor = () => {
                 />
               </div>
               </div>
-              <button type="button" onClick={() => setShowBannerGifPicker((open) => !open)} className={clsx("w-full rounded-2xl border py-3 text-xs font-black transition", showBannerGifPicker ? "border-black bg-black text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400")}>{showBannerGifPicker ? 'GIF 검색 닫기' : 'GIPHY GIF 검색'}</button>
+              <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+                <span className="text-sm font-bold text-gray-900">GIF</span>
+                <button type="button" onClick={() => setShowBannerGifPicker((open) => !open)} className={clsx("w-full rounded-2xl border py-3 text-xs font-black transition", showBannerGifPicker ? "border-black bg-black text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400")}>{showBannerGifPicker ? 'GIF 검색 닫기' : 'GIPHY GIF 검색'}</button>
+              </div>
               {showBannerGifPicker && <GiphyPicker kind="gifs" onSelect={(url) => { setProfile({ ...useStore.getState().profile, bannerUrl: url }); setShowBannerGifPicker(false); }} />}
             </div>
           )}
@@ -189,9 +187,9 @@ const ProfileEditor = () => {
         <hr className="border-gray-100" />
 
         {/* 3. Title & Username & Bio */}
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-700">{isKo ? '사용자 이름(URL)' : 'Username (URL)'}</label>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+            <label className="text-sm font-bold text-gray-900">{isKo ? '사용자 이름(URL)' : 'Username (URL)'}</label>
             <div className="flex rounded-xl shadow-sm border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-black">
               <span className="inline-flex items-center px-3 bg-gray-50 text-gray-500 text-xs font-medium border-r border-gray-200">
                 {window.location.host}/
@@ -207,8 +205,8 @@ const ProfileEditor = () => {
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-gray-700">{isKo ? '프로필 제목' : 'Title'}</label>
+          <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+            <label className="text-sm font-bold text-gray-900">{isKo ? '프로필 제목' : 'Title'}</label>
             <input
               type="text"
               name="name"
@@ -219,20 +217,28 @@ const ProfileEditor = () => {
             />
           </div>
 
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <label className="block text-xs font-bold text-gray-700">{isKo ? '자기소개' : 'Bio'}</label>
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+            <label className="pt-3 text-sm font-bold text-gray-900">{isKo ? '자기소개' : 'Bio'}</label>
+            <div className="space-y-2">
+              <div className="flex justify-end items-center">
               <div className="flex items-center gap-3">
                 <span className="text-[11px] text-gray-400">{profile.bio.length}/160</span>
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
-                  <input
-                    type="checkbox"
-                    checked={profile.showBio !== false}
-                    onChange={(e) => setProfile({ ...profile, showBio: e.target.checked })}
-                    className="w-3.5 h-3.5 text-black rounded focus:ring-black cursor-pointer"
-                  />
-                  <span>{profile.showBio !== false ? "👁️ 공개 중" : "🙈 숨김"}</span>
-                </label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={profile.showBio !== false}
+                  aria-label={isKo ? '자기소개 공개' : 'Show bio'}
+                  onClick={() => setProfile({ ...profile, showBio: profile.showBio === false })}
+                  className={clsx(
+                    "relative h-5 w-10 shrink-0 cursor-pointer rounded-full transition-colors",
+                    profile.showBio !== false ? "bg-black" : "bg-gray-200"
+                  )}
+                >
+                  <span className={clsx(
+                    "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-transform",
+                    profile.showBio !== false && "translate-x-5"
+                  )} />
+                </button>
               </div>
             </div>
             <textarea
@@ -244,20 +250,29 @@ const ProfileEditor = () => {
               className="block w-full text-xs p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-black resize-none"
               placeholder={isKo ? '프로필에 표시할 자기소개를 입력하세요.' : 'Digital creator sharing unique insights through art...'}
             />
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <label className="block text-xs font-bold text-gray-700">{isKo ? '연락처 이메일' : 'Contact Email'}</label>
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
-                <input
-                  type="checkbox"
-                  checked={profile.showEmail !== false}
-                  onChange={(e) => setProfile({ ...profile, showEmail: e.target.checked })}
-                  className="w-3.5 h-3.5 text-black rounded focus:ring-black cursor-pointer"
-                />
-                <span>{profile.showEmail !== false ? "👁️ 공개 중" : "🙈 숨김"}</span>
-              </label>
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+            <label className="pt-3 text-sm font-bold text-gray-900">{isKo ? '이메일' : 'Email'}</label>
+            <div className="space-y-2">
+              <div className="flex justify-end items-center">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={profile.showEmail !== false}
+                aria-label={isKo ? '이메일 공개' : 'Show email'}
+                onClick={() => setProfile({ ...profile, showEmail: profile.showEmail === false })}
+                className={clsx(
+                  "relative h-5 w-10 shrink-0 cursor-pointer rounded-full transition-colors",
+                  profile.showEmail !== false ? "bg-black" : "bg-gray-200"
+                )}
+              >
+                <span className={clsx(
+                  "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-transform",
+                  profile.showEmail !== false && "translate-x-5"
+                )} />
+              </button>
             </div>
             <input
               type="email"
@@ -267,17 +282,19 @@ const ProfileEditor = () => {
               className="block w-full text-xs font-semibold p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-black"
               placeholder="contact@example.com"
             />
+            </div>
           </div>
         </div>
 
         <hr className="border-gray-100" />
 
         {/* 4. Title Style (Text vs Logo) */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold text-gray-900">{isKo ? '제목 스타일' : 'Title style'}</h3>
-          
-          <div className="flex gap-4">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+            <h3 className="text-sm font-bold text-gray-900">{isKo ? '제목 스타일' : 'Title style'}</h3>
+            <div className="flex gap-4">
             <button
+              type="button"
               onClick={() => setProfile({ ...profile, titleStyle: 'text' })}
               className={clsx(
                 "flex-1 flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-1",
@@ -289,6 +306,7 @@ const ProfileEditor = () => {
             </button>
 
             <button
+              type="button"
               onClick={() => setProfile({ ...profile, titleStyle: 'logo' })}
               className={clsx(
                 "flex-1 flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-1",
@@ -298,17 +316,15 @@ const ProfileEditor = () => {
               <ImageIcon className="w-6 h-6 text-gray-800" />
               <span className="text-xs font-semibold text-gray-700">{isKo ? '로고' : 'Logo'}</span>
             </button>
+            </div>
           </div>
 
           {/* If Logo selected -> Show Logo Image Upload */}
           {activeTitleStyle === 'logo' && (
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-gray-900">{isKo ? '브랜드 로고 이미지' : 'Brand Logo Image'}</h4>
-                <p className="text-[11px] text-gray-500">{isKo ? '텍스트 제목 대신 로고를 표시합니다' : 'Replaces text title with your logo'}</p>
-              </div>
+            <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+              <h4 className="text-sm font-bold text-gray-900">{isKo ? '브랜드 로고' : 'Brand logo'}</h4>
 
-              <div className="relative w-20 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center overflow-hidden group cursor-pointer">
+              <div className="relative ml-auto w-20 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center overflow-hidden group cursor-pointer">
                 {profile.logoUrl ? (
                   <img src={profile.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
                 ) : (
@@ -327,29 +343,14 @@ const ProfileEditor = () => {
 
           {/* If Text selected -> Show Title Color Picker */}
           {activeTitleStyle === 'text' && (
-            <div className="pt-2 space-y-2">
-              <label className="block text-xs font-bold text-gray-700">{isKo ? '제목 색상' : 'Title color'}</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={profile.titleColor || '#000000'}
-                  onChange={(e) => setProfile({ ...profile, titleColor: e.target.value })}
-                  className="w-10 h-10 rounded-xl cursor-pointer border border-gray-200"
-                />
-                <span className="text-xs font-mono font-bold uppercase text-gray-600">
-                  {profile.titleColor || '#000000'}
-                </span>
-                <div className="flex gap-1.5 ml-auto flex-wrap">
-                  {titleColors.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setProfile({ ...profile, titleColor: c })}
-                      className="w-6 h-6 rounded-full border border-gray-300 shadow-xs"
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-              </div>
+            <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
+              <label className="text-sm font-bold text-gray-900">{isKo ? '제목 색상' : 'Title color'}</label>
+              <ColorPickerPopover
+                label={isKo ? '제목 색상' : 'Title color'}
+                value={profile.titleColor || '#000000'}
+                onChange={(titleColor) => setProfile({ ...profile, titleColor })}
+                suggested={titleColors}
+              />
             </div>
           )}
 

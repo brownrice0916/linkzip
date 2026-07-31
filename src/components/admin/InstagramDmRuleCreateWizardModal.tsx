@@ -1,38 +1,45 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useStore, type DMAutomationRule } from '../../store/useStore';
+import { listInstagramMedia, type InstagramMediaItem } from '../../services/instagramService';
 import { 
   X, 
   ChevronLeft, 
   Check, 
   Plus, 
   Info, 
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import clsx from 'clsx';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  editingRule?: DMAutomationRule | null;
 }
 
 // Mock Instagram Posts for Selection Grid (Step 1)
 const mockPosts = [
-  { id: 'post-1', title: '해외 출장이라 쓰고 관광데이트라 읽는다', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80', gradient: 'from-purple-600 to-indigo-600' },
+  { id: 'post-1', title: '해외 출장이라 쓰고 관광데이트라 읽는다', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80', gradient: 'from-orange-400 to-rose-500' },
   { id: 'post-2', title: '괴짜 철학관 다녀온 후기(완)', image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80', gradient: 'from-emerald-600 to-teal-700' },
   { id: 'post-3', title: '좋소 IT 회사에 CC가 없는 이유', image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80', gradient: 'from-blue-600 to-cyan-600' },
   { id: 'post-4', title: '괴짜 철학관 다녀온 후기(2)', image: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=300&auto=format&fit=crop&q=80', gradient: 'from-pink-500 to-rose-600' },
   { id: 'post-5', title: '집구석에만 있으니 님 심심해서', image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80', gradient: 'from-amber-500 to-orange-600' },
-  { id: 'post-6', title: '프로젝트 폭망과 우울증', image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&auto=format&fit=crop&q=80', gradient: 'from-violet-600 to-purple-800' },
+  { id: 'post-6', title: '프로젝트 폭망과 우울증', image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&auto=format&fit=crop&q=80', gradient: 'from-amber-400 to-orange-600' },
   { id: 'post-7', title: '왜 힘든 일은 한번에 일어날까', image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80', gradient: 'from-slate-700 to-slate-900' },
-  { id: 'post-8', title: '무능한 대표가 폭주하면 생기는 일', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80', gradient: 'from-indigo-600 to-blue-700' },
+  { id: 'post-8', title: '무능한 대표가 폭주하면 생기는 일', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80', gradient: 'from-lime-300 to-emerald-500' },
   { id: 'post-9', title: '능력없는 직원이 팀장 되면 벌어지는 일', image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80', gradient: 'from-rose-500 to-pink-700' }
 ];
 
 export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
   isOpen,
-  onClose
+  onClose,
+  editingRule = null,
 }) => {
   const state = useStore();
+  const [posts, setPosts] = useState<InstagramMediaItem[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsError, setPostsError] = useState('');
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
@@ -57,11 +64,67 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
   ]);
   const [currentButtonIndex, setCurrentButtonIndex] = useState<number>(0);
   const [urlMode, setUrlMode] = useState<'new' | 'blocks'>('new');
+  const [buttonUrlError, setButtonUrlError] = useState('');
 
   // Step 5: Comment Reply Option
   const [wantCommentReply, setWantCommentReply] = useState<'no' | 'yes'>('no');
   const [commentReplies, setCommentReplies] = useState<string[]>([]);
   const [newReplyInput, setNewReplyInput] = useState('');
+
+  const availableLinks = useMemo(() => {
+    const result: Array<{id: string; title: string; url: string}> = [];
+    const visit = (links: typeof state.customLinks) => {
+      links.forEach((link) => {
+        if (link.url?.trim()) result.push({id: link.id, title: link.title || link.url, url: link.url});
+        if (link.links?.length) visit(link.links);
+      });
+    };
+    visit(state.customLinks);
+    return result;
+  }, [state.customLinks]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setStep(1);
+    setPostType(editingRule?.targetMode === 'next' ? 'upcoming' : 'uploaded');
+    setSelectedPostId(editingRule?.postIds?.[0] || '');
+    const isAllKeywords = editingRule?.keyword === '*' || editingRule?.keyword === '모두';
+    setKeywordMode(isAllKeywords ? 'all' : 'specific');
+    setKeywords(editingRule ? (editingRule.keywords?.filter((value) => value !== '*') || (isAllKeywords ? [] : [editingRule.keyword])) : []);
+    setKeywordInput('');
+    setMessage(editingRule?.responseMessage || '');
+    const savedButtons = editingRule?.buttons?.length
+      ? editingRule.buttons.map((button) => ({name: button.label, url: button.url}))
+      : editingRule?.targetLinkUrl
+        ? [{name: '링크 보기', url: editingRule.targetLinkUrl}]
+        : [];
+    setButtonCount(Math.min(savedButtons.length, 3) as 0 | 1 | 2 | 3);
+    setButtons([0, 1, 2].map((index) => savedButtons[index] || {name: '', url: ''}));
+    setCurrentButtonIndex(0);
+    setUrlMode('new');
+    setButtonUrlError('');
+    const savedReplies = editingRule?.commentReplies || [];
+    setWantCommentReply(savedReplies.length ? 'yes' : 'no');
+    setCommentReplies(savedReplies);
+    setNewReplyInput('');
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    let active = true;
+    setPostsLoading(true);
+    setPostsError('');
+    void listInstagramMedia()
+      .then((media) => { if (active) setPosts(media); })
+      .catch((error) => {
+        if (!active) return;
+        console.error('Failed to load Instagram media', error);
+        setPostsError('게시물을 불러오지 못했습니다. 계정 권한을 확인한 뒤 다시 시도해주세요.');
+      })
+      .finally(() => { if (active) setPostsLoading(false); });
+    return () => {
+      active = false;
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, editingRule]);
 
   if (!isOpen) return null;
 
@@ -78,6 +141,15 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
     setKeywords(keywords.filter(k => k !== kw));
   };
 
+  const handleKeywordStepNext = () => {
+    const pendingKeyword = keywordInput.trim();
+    if (keywordMode === 'specific' && pendingKeyword && !keywords.includes(pendingKeyword)) {
+      setKeywords([...keywords, pendingKeyword]);
+      setKeywordInput('');
+    }
+    setStep(3);
+  };
+
   const handleUpdateButtonName = (index: number, name: string) => {
     const next = [...buttons];
     next[index] = { ...next[index], name };
@@ -88,6 +160,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
     const next = [...buttons];
     next[index] = { ...next[index], url };
     setButtons(next);
+    setButtonUrlError('');
   };
 
   const handleStep3Next = () => {
@@ -100,6 +173,27 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
   };
 
   const handleStep4LinkNext = () => {
+    const currentButton = buttons[currentButtonIndex];
+    if (!currentButton?.name.trim()) {
+      setButtonUrlError('버튼 이름을 입력해주세요.');
+      return;
+    }
+    const rawUrl = currentButton.url.trim();
+    if (!rawUrl) {
+      setButtonUrlError('연결할 URL을 입력해주세요.');
+      return;
+    }
+    const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    try {
+      const parsedUrl = new URL(normalizedUrl);
+      if (!parsedUrl.hostname.includes('.') || !['http:', 'https:'].includes(parsedUrl.protocol)) {
+        throw new Error('invalid url');
+      }
+    } catch {
+      setButtonUrlError('올바른 주소를 입력해주세요. 예: naver.com 또는 https://naver.com');
+      return;
+    }
+    handleUpdateButtonUrl(currentButtonIndex, normalizedUrl);
     if (currentButtonIndex + 1 < buttonCount) {
       setCurrentButtonIndex(currentButtonIndex + 1);
     } else {
@@ -108,24 +202,52 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
   };
 
   const handleSaveAutomationRule = () => {
-    const mainKeyword = keywords[0] || '자동응답';
-    const mainButtonUrl = buttons[0]?.url || 'https://www.naver.com';
+    const mainKeyword = keywordMode === 'all' ? '*' : keywords[0] || '';
+    const mainButtonUrl = buttons[0]?.url?.trim() || '';
+    const selectedPost = posts.find((post) => post.id === selectedPostId);
+    if (buttonCount > 0 && !mainButtonUrl) {
+      alert('버튼으로 연결할 주소를 입력해주세요.');
+      setStep(4);
+      setCurrentButtonIndex(0);
+      return;
+    }
 
     const newRule: DMAutomationRule = {
-      id: `rule-${Date.now()}`,
+      id: editingRule?.id || `rule-${Date.now()}`,
       keyword: mainKeyword,
+      keywords: keywordMode === 'all' ? ['*'] : keywords,
       responseMessage: message || '안녕하세요! 요청하신 정보 링크입니다.',
       targetLinkUrl: mainButtonUrl,
-      isActive: true
+      postIds: postType === 'uploaded' && selectedPostId ? [selectedPostId] : [],
+      applyToAllPosts: false,
+      targetMode: postType === 'upcoming' ? 'next' : 'selected',
+      excludedPostIds: postType === 'upcoming' ? posts.map((post) => post.id) : [],
+      postThumbnailUrl: postType === 'uploaded'
+        ? (selectedPost?.thumbnailUrl || selectedPost?.mediaUrl || editingRule?.postThumbnailUrl || '')
+        : '',
+      postCaption: postType === 'uploaded'
+        ? (selectedPost?.caption || editingRule?.postCaption || '')
+        : '',
+      buttons: buttons.slice(0, buttonCount).map((button) => ({
+        label: button.name.trim(),
+        url: button.url.trim(),
+      })),
+      commentReplies: wantCommentReply === 'yes' ? commentReplies : [],
+      isActive: editingRule?.isActive ?? true
     };
 
-    state.addDMRule(newRule);
-    alert('DM 자동화 규칙이 성공적으로 저장되었습니다!');
+    if (editingRule) {
+      state.updateDMRule(editingRule.id, newRule);
+      alert('DM 자동화가 수정되었습니다.');
+    } else {
+      state.addDMRule(newRule);
+      alert('DM 자동화가 등록되었습니다.');
+    }
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[250] flex items-center justify-center p-4 font-sans">
       <div className="bg-[#EDF2F7] rounded-3xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 border border-gray-200">
         
         {/* Header */}
@@ -143,7 +265,7 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h3 className="text-base font-extrabold text-gray-900">자동화 만들기</h3>
+            <h3 className="text-base font-extrabold text-gray-900">{editingRule ? 'DM 자동화 수정' : '자동화 만들기'}</h3>
           </div>
           <button 
             onClick={onClose}
@@ -196,30 +318,46 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     type="radio"
                     name="postType"
                     checked={postType === 'upcoming'}
-                    onChange={() => setPostType('upcoming')}
+                    onChange={() => {
+                      setPostType('upcoming');
+                      setSelectedPostId('');
+                    }}
                     className="w-4 h-4 text-black focus:ring-black"
                   />
-                  <span>게시 예정 콘텐츠 미리 설정</span>
+                  <span className={postType === 'upcoming' ? 'text-gray-900' : ''}>게시 예정 콘텐츠 미리 설정</span>
                 </label>
               </div>
 
-              {/* Mock Posts Thumbnail Grid */}
-              <div className="grid grid-cols-3 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
-                {mockPosts.map((post) => {
+              {postType === 'upcoming' ? (
+                <div className="rounded-2xl border-2 border-black bg-[#FFDA44] px-5 py-10 text-center shadow-sm">
+                  <p className="text-2xl font-black text-black">NEXT</p>
+                  <p className="mt-3 text-xs font-bold leading-relaxed text-gray-700">
+                    지금 이후 가장 먼저 올리는 게시물에 이 자동화가 한 번 연결됩니다.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {postsLoading && <div className="py-16 text-center text-xs font-bold text-gray-400">게시물을 불러오는 중...</div>}
+                  {postsError && <div role="alert" className="p-4 rounded-2xl bg-red-50 text-red-700 text-xs font-bold">{postsError}</div>}
+                  {!postsLoading && !postsError && posts.length === 0 && (
+                    <div className="py-16 text-center text-xs font-bold text-gray-400">선택할 수 있는 게시물이 없습니다.</div>
+                  )}
+                  <div className="grid grid-cols-3 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
+                {posts.map((post) => {
                   const isSelected = selectedPostId === post.id;
+                  const imageUrl = post.thumbnailUrl || post.mediaUrl;
                   return (
                     <button
                       key={post.id}
                       onClick={() => setSelectedPostId(post.id)}
                       className={clsx(
-                        "aspect-square rounded-2xl overflow-hidden relative border-2 transition-all cursor-pointer group shadow-2xs bg-gradient-to-tr",
-                        post.gradient,
+                        "aspect-square rounded-2xl overflow-hidden relative border-2 transition-all cursor-pointer group shadow-2xs bg-gray-200",
                         isSelected ? "border-black ring-2 ring-black" : "border-transparent opacity-90 hover:opacity-100"
                       )}
                     >
                       <img 
-                        src={post.image} 
-                        alt={post.title} 
+                        src={imageUrl}
+                        alt={post.caption || '인스타그램 게시물'}
                         className="w-full h-full object-cover relative z-0" 
                         onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
                       />
@@ -232,13 +370,15 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                           )}
                         </div>
                         <span className="text-[10px] text-white font-extrabold line-clamp-2 leading-tight drop-shadow-sm">
-                          {post.title}
+                          {post.caption || '내용 없는 게시물'}
                         </span>
                       </div>
                     </button>
                   );
                 })}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -471,14 +611,33 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                     </button>
                   </div>
 
-                  {/* URL Input Field */}
-                  <input
-                    type="url"
-                    value={buttons[currentButtonIndex]?.url || ''}
-                    onChange={(e) => handleUpdateButtonUrl(currentButtonIndex, e.target.value)}
-                    placeholder="https://www.naver.com"
-                    className="w-full p-3.5 rounded-2xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
-                  />
+                  {urlMode === 'new' ? (
+                    <input
+                      type="url"
+                      value={buttons[currentButtonIndex]?.url || ''}
+                      onChange={(e) => handleUpdateButtonUrl(currentButtonIndex, e.target.value)}
+                      placeholder="https://example.com"
+                      className="w-full p-3.5 rounded-2xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
+                    />
+                  ) : (
+                    <select
+                      value={buttons[currentButtonIndex]?.url || ''}
+                      onChange={(e) => handleUpdateButtonUrl(currentButtonIndex, e.target.value)}
+                      className="w-full p-3.5 rounded-2xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-black bg-white shadow-2xs"
+                    >
+                      <option value="">연결할 링크를 선택하세요</option>
+                      {availableLinks.map((link) => (
+                        <option key={link.id} value={link.url}>{link.title}</option>
+                      ))}
+                    </select>
+                  )}
+                  {buttonUrlError ? (
+                    <p role="alert" className="text-[11px] font-bold text-red-600">{buttonUrlError}</p>
+                  ) : urlMode === 'new' && buttons[currentButtonIndex]?.url && !/^https?:\/\//i.test(buttons[currentButtonIndex].url) ? (
+                    <p className="text-[11px] font-semibold text-gray-500">완료할 때 https://가 자동으로 추가됩니다.</p>
+                  ) : (
+                    <p className="text-[11px] font-semibold text-gray-500">naver.com, www.naver.com처럼 입력해도 됩니다.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -526,13 +685,16 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
                   </p>
                   <div className="space-y-2">
                     {commentReplies.map((reply, idx) => (
-                      <div key={idx} className="p-3 bg-white rounded-2xl border border-gray-200 text-xs font-bold text-gray-800 flex items-center justify-between shadow-2xs">
-                        <span>💬 {reply}</span>
+                      <div key={idx} className="p-3 bg-white rounded-2xl border border-gray-200 text-xs font-bold text-gray-800 flex items-center justify-between gap-3 shadow-2xs">
+                        <span className="min-w-0 flex-1 break-words">💬 {reply}</span>
                         <button 
+                          type="button"
                           onClick={() => setCommentReplies(commentReplies.filter((_, i) => i !== idx))}
-                          className="text-gray-400 hover:text-red-500 cursor-pointer"
+                          className="shrink-0 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-red-600 hover:bg-red-50 cursor-pointer"
+                          aria-label={`${reply} 삭제`}
                         >
-                          <X className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>삭제</span>
                         </button>
                       </div>
                     ))}
@@ -571,7 +733,8 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 1 && (
             <button
               onClick={() => setStep(2)}
-              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+              disabled={postType === 'uploaded' ? (!selectedPostId || postsLoading) : postsLoading}
+              className="w-full py-4 bg-black hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
               다음
             </button>
@@ -579,8 +742,9 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
 
           {step === 2 && (
             <button
-              onClick={() => setStep(3)}
-              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+              onClick={handleKeywordStepNext}
+              disabled={keywordMode === 'specific' && keywords.length === 0 && !keywordInput.trim()}
+              className="w-full py-4 bg-black hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
               다음
             </button>
@@ -589,7 +753,8 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 3 && (
             <button
               onClick={handleStep3Next}
-              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+              disabled={!message.trim()}
+              className="w-full py-4 bg-black hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
               다음
             </button>
@@ -598,7 +763,8 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 4 && (
             <button
               onClick={handleStep4LinkNext}
-              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+              disabled={!buttons[currentButtonIndex]?.name.trim() || !buttons[currentButtonIndex]?.url.trim()}
+              className="w-full py-4 bg-black hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
               {currentButtonIndex + 1}/{buttonCount} 링크 설정 완료
             </button>
@@ -607,9 +773,10 @@ export const InstagramDmRuleCreateWizardModal: React.FC<Props> = ({
           {step === 5 && (
             <button
               onClick={handleSaveAutomationRule}
-              className="w-full py-4 bg-black hover:bg-gray-800 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
+              disabled={wantCommentReply === 'yes' && commentReplies.length === 0}
+              className="w-full py-4 bg-black hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer"
             >
-              완료하고 저장
+              {editingRule ? '수정 완료' : '완료하고 저장'}
             </button>
           )}
         </div>

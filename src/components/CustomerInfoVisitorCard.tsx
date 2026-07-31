@@ -10,6 +10,7 @@ interface CustomerInfoVisitorCardProps {
   style?: React.CSSProperties;
   themeActionColor?: string;
   themeActionTextColor?: string;
+  previewBlockId?: string;
 }
 
 export const CustomerInfoVisitorCard: React.FC<CustomerInfoVisitorCardProps> = ({
@@ -19,6 +20,7 @@ export const CustomerInfoVisitorCard: React.FC<CustomerInfoVisitorCardProps> = (
   style,
   themeActionColor,
   themeActionTextColor,
+  previewBlockId,
 }) => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -56,7 +58,7 @@ export const CustomerInfoVisitorCard: React.FC<CustomerInfoVisitorCardProps> = (
       setSubmitted(true);
     } catch (err) {
       console.error('Error submitting customer info:', err);
-      setSubmitted(true);
+      alert(err instanceof Error ? err.message : '정보를 제출하지 못했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
     }
@@ -64,6 +66,7 @@ export const CustomerInfoVisitorCard: React.FC<CustomerInfoVisitorCardProps> = (
 
   return (
     <div 
+      data-preview-block-id={previewBlockId}
       className="w-full bg-white/95 backdrop-blur-md p-6 rounded-3xl border border-gray-200/80 shadow-xs space-y-4 text-center text-gray-900 font-sans my-2 animate-in fade-in transition"
       style={style}
     >

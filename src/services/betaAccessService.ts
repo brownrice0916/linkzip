@@ -43,6 +43,7 @@ export interface BetaMember {
   membershipBillingCycle: 'monthly' | 'annual' | '' | string;
   membershipPeriodStartedAt: string | null;
   membershipPeriodEndsAt: string | null;
+  membershipGrant?: string | null;
   membershipPaymentProvider: string;
   membershipPaymentCount: number;
   membershipPaidAmount: number;
@@ -70,6 +71,23 @@ export interface BetaMember {
   unreadAnonymousMessages: number;
   collectedCustomers: number;
   latestActivityAt: string | null;
+  sellerVerificationStatus: 'not_submitted' | 'pending' | 'approved' | 'rejected' | string;
+  sellerType: 'business' | 'individual_creator' | string;
+  sellerBusinessRegistrationNumber: string;
+  sellerBusinessName: string;
+  sellerRepresentativeName: string;
+  sellerBusinessAddress: string;
+  sellerContactPhone: string;
+  sellerContactEmail: string;
+  sellerMailOrderRegistrationNumber: string;
+  sellerMailOrderExemptionReason: string;
+  sellerBankName: string;
+  sellerAccountHolder: string;
+  sellerAccountNumber: string;
+  sellerShippingPolicy: string;
+  sellerSubmittedAt: string | null;
+  sellerReviewedAt: string | null;
+  sellerRejectionReason: string;
 }
 
 export interface SiteAdminMetrics {
@@ -97,6 +115,26 @@ export const redeemBetaInvite = async (code: string): Promise<BetaAccessResult> 
   return (await callable({ code })).data;
 };
 
+export const validateBetaInvite = async (code: string): Promise<{valid: boolean}> => {
+  const callable = httpsCallable<{code: string}, {valid: boolean}>(functions, 'validateBetaInvite');
+  return (await callable({ code })).data;
+};
+
+export const requestEmailSignupCode = async (input: {email: string; inviteCode: string}) => {
+  const callable = httpsCallable<typeof input, {sent: boolean; expiresInSeconds: number}>(functions, 'requestEmailSignupCode');
+  return (await callable(input)).data;
+};
+
+export const completeEmailSignup = async (input: {
+  email: string;
+  password: string;
+  inviteCode: string;
+  verificationCode: string;
+}) => {
+  const callable = httpsCallable<typeof input, {created: boolean}>(functions, 'completeEmailSignup');
+  return (await callable(input)).data;
+};
+
 export const getSiteAdminDashboard = async () => {
   const callable = httpsCallable<undefined, {members: BetaMember[]; invites: BetaInvite[]; metrics: SiteAdminMetrics}>(functions, 'getSiteAdminDashboard');
   return (await callable()).data;
@@ -117,9 +155,28 @@ export const setBetaMemberStatus = async (uid: string, status: 'active' | 'disab
   return (await callable({ uid, status })).data;
 };
 
+export const setSellerVerificationStatus = async (
+  uid: string,
+  status: 'approved' | 'rejected',
+  rejectionReason = '',
+) => {
+  const callable = httpsCallable<
+    {uid: string; status: 'approved' | 'rejected'; rejectionReason: string},
+    {ok: boolean}
+  >(functions, 'setSellerVerificationStatus');
+  return (await callable({ uid, status, rejectionReason })).data;
+};
+
 export const betaErrorMessage = (error: unknown) => {
+  const code = error && typeof error === 'object' && 'code' in error
+    ? String((error as {code?: unknown}).code || '')
+    : '';
   const message = error && typeof error === 'object' && 'message' in error
     ? String((error as {message?: unknown}).message || '')
     : '';
-  return message.replace(/^Firebase:\s*/i, '').replace(/\s*\(functions\/[\w-]+\)\.?$/i, '') || '초대코드를 확인하지 못했습니다.';
+  const cleaned = message.replace(/^Firebase:\s*/i, '').replace(/\s*\(functions\/[\w-]+\)\.?$/i, '');
+  if (code === 'functions/internal' || code === 'functions/not-found' || cleaned.toLowerCase() === 'internal') {
+    return '요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.';
+  }
+  return cleaned || '초대코드를 확인하지 못했습니다.';
 };

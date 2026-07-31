@@ -7,12 +7,46 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { isValidUsername, normalizeUsername, sanitizePublicLinks } from '../domain/profileData';
+import { resolveActiveMembershipPlan, validateWorkspacesForPlan } from '../domain/membershipPlans';
 import type { CustomLink, ProfileWorkspace, VerifiedAccountInfo } from '../store/useStore';
 
 export interface ResolvedUser {
   uid: string;
   data: DocumentData;
 }
+
+const PUBLIC_PROFILE_CACHE_PREFIX = 'linkzip:public-profile:v2:';
+const PUBLIC_PROFILE_CACHE_TTL = 10 * 60 * 1000;
+const pendingPublicProfiles = new Map<string, Promise<ResolvedUser | null>>();
+
+export const getCachedPublicProfile = (username: string): ResolvedUser | null => {
+  const normalized = normalizeUsername(username);
+  if (!isValidUsername(normalized) || typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(`${PUBLIC_PROFILE_CACHE_PREFIX}${normalized}`);
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as { savedAt?: number; value?: ResolvedUser };
+    if (!cached.savedAt || Date.now() - cached.savedAt > PUBLIC_PROFILE_CACHE_TTL || !cached.value?.uid) {
+      sessionStorage.removeItem(`${PUBLIC_PROFILE_CACHE_PREFIX}${normalized}`);
+      return null;
+    }
+    return cached.value;
+  } catch {
+    return null;
+  }
+};
+
+const cachePublicProfile = (username: string, value: ResolvedUser | null) => {
+  if (!value || typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(
+      `${PUBLIC_PROFILE_CACHE_PREFIX}${normalizeUsername(username)}`,
+      JSON.stringify({ savedAt: Date.now(), value }),
+    );
+  } catch {
+    // Storage can be unavailable in privacy mode. Network loading still works.
+  }
+};
 
 export async function getUserByUid(uid: string): Promise<ResolvedUser | null> {
   const snapshot = await getDoc(doc(db, 'users', uid));
@@ -23,16 +57,30 @@ export async function resolveUserByUsername(username: string): Promise<ResolvedU
   const normalized = normalizeUsername(username);
   if (!isValidUsername(normalized)) return null;
 
-  const usernameSnapshot = await getDoc(doc(db, 'usernames', normalized));
-  const indexedUid = usernameSnapshot.data()?.uid;
-  if (usernameSnapshot.exists() && typeof indexedUid === 'string') {
-    const publicProfileId = usernameSnapshot.data()?.publicProfileId;
-    const publicSnapshot = await getDoc(doc(db, 'publicProfiles', typeof publicProfileId === 'string' ? publicProfileId : indexedUid));
-    return publicSnapshot.exists()
-      ? { uid: indexedUid, data: publicSnapshot.data() }
-      : null;
+  const existingRequest = pendingPublicProfiles.get(normalized);
+  if (existingRequest) return existingRequest;
+
+  const request = (async () => {
+    const usernameSnapshot = await getDoc(doc(db, 'usernames', normalized));
+    const indexedUid = usernameSnapshot.data()?.uid;
+    if (usernameSnapshot.exists() && typeof indexedUid === 'string') {
+      const publicProfileId = usernameSnapshot.data()?.publicProfileId;
+      const publicSnapshot = await getDoc(doc(db, 'publicProfiles', typeof publicProfileId === 'string' ? publicProfileId : indexedUid));
+      const resolved = publicSnapshot.exists() && publicSnapshot.data()?.planPaused !== true
+        ? { uid: indexedUid, data: publicSnapshot.data() }
+        : null;
+      cachePublicProfile(normalized, resolved);
+      return resolved;
+    }
+    return null;
+  })();
+
+  pendingPublicProfiles.set(normalized, request);
+  try {
+    return await request;
+  } finally {
+    pendingPublicProfiles.delete(normalized);
   }
-  return null;
 }
 
 const toPublicProfile = (data: DocumentData, username: string, ownerUid: string) => {
@@ -114,9 +162,17 @@ export async function saveUserProfilesData(
   const userRef = doc(db, 'users', uid);
   await runTransaction(db, async (transaction) => {
     const currentUser = await transaction.get(userRef);
+    const activePlan = resolveActiveMembershipPlan(
+      currentUser.data()?.membershipPlan,
+      currentUser.data()?.membershipPeriodEndsAt,
+      Date.now(),
+      currentUser.data()?.membershipGrant,
+    );
     const previousWorkspaces = Array.isArray(currentUser.data()?.profileWorkspaces)
       ? currentUser.data()?.profileWorkspaces as ProfileWorkspace[]
       : [];
+    const entitlementError = validateWorkspacesForPlan(normalizedWorkspaces, activePlan, previousWorkspaces);
+    if (entitlementError) throw new Error(entitlementError);
     const previousUsernames = previousWorkspaces
       .map((workspace) => normalizeUsername(workspace.profile?.username || ''))
       .filter(Boolean);
@@ -124,6 +180,10 @@ export async function saveUserProfilesData(
     const usernameSnapshots = await Promise.all(
       allUsernames.map((username) => transaction.get(doc(db, 'usernames', username))),
     );
+    const publicProfileSnapshots = await Promise.all(
+      normalizedWorkspaces.map((workspace) => transaction.get(doc(db, 'publicProfiles', `${uid}_${workspace.id}`))),
+    );
+    const legacyPublicProfile = await transaction.get(doc(db, 'publicProfiles', uid));
 
     usernames.forEach((username) => {
       const index = allUsernames.indexOf(username);
@@ -145,8 +205,9 @@ export async function saveUserProfilesData(
       }
     });
 
-    normalizedWorkspaces.forEach((workspace) => {
+    normalizedWorkspaces.forEach((workspace, workspaceIndex) => {
       const publicProfileId = `${uid}_${workspace.id}`;
+      const existingPublicProfile = publicProfileSnapshots[workspaceIndex]?.data();
       transaction.set(doc(db, 'usernames', workspace.profile.username), {
         uid,
         profileId: workspace.id,
@@ -155,11 +216,21 @@ export async function saveUserProfilesData(
       });
       transaction.set(
         doc(db, 'publicProfiles', publicProfileId),
-        toPublicProfile(workspaceToDocumentData(workspace), workspace.profile.username, uid),
+        {
+          ...toPublicProfile(workspaceToDocumentData(workspace), workspace.profile.username, uid),
+          ...(existingPublicProfile?.planPaused === true ? {planPaused: true} : {}),
+          membershipPlan: activePlan,
+          forceWatermark: activePlan === 'basic',
+        },
       );
     });
 
-    transaction.delete(doc(db, 'publicProfiles', uid));
+    // Migrate the original single-profile document only after its workspace
+    // replacement is part of the same successful transaction. Once migrated,
+    // later saves merely verify that the legacy document remains absent.
+    if (legacyPublicProfile.exists()) {
+      transaction.delete(doc(db, 'publicProfiles', uid));
+    }
 
     const activeWorkspace = normalizedWorkspaces.find((workspace) => workspace.id === activeProfileId) || normalizedWorkspaces[0];
     const activeData = workspaceToDocumentData(activeWorkspace);

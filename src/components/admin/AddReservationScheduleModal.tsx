@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import type { ReservationScheduleItem } from '../../store/useStore';
 
+const getTodayInputValue = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 interface AddReservationScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,7 +24,7 @@ export const AddReservationScheduleModal: React.FC<AddReservationScheduleModalPr
   initialData
 }) => {
   const [title, setTitle] = useState(initialData?.title || '');
-  const [startDate, setStartDate] = useState(initialData?.startDate || '2026-07-26');
+  const [startDate, setStartDate] = useState(initialData?.startDate || getTodayInputValue());
   const [startHour, setStartHour] = useState(initialData?.startHour || '12');
   const [endDate, setEndDate] = useState(initialData?.endDate || '');
   const [endHour, setEndHour] = useState(initialData?.endHour || '');

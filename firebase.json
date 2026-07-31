@@ -15,7 +15,38 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "X-Frame-Options", "value": "DENY" },
+          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(self)" }
+        ]
+      },
+      {
+        "source": "/index.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/assets/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        ]
+      }
+    ],
       "rewrites": [
+        {
+          "source": "/api/files/download",
+          "function": {
+            "functionId": "downloadSharedFile",
+            "region": "asia-northeast3"
+          }
+        },
         {
           "source": "/api/orders/download",
           "function": {
@@ -62,6 +93,34 @@
         "source": "/auth/instagram/callback",
         "function": {
           "functionId": "instagramOAuthCallback",
+          "region": "asia-northeast3"
+        }
+      },
+      {
+        "source": "/auth/kakao/start",
+        "function": {
+          "functionId": "kakaoOAuthStart",
+          "region": "asia-northeast3"
+        }
+      },
+      {
+        "source": "/auth/kakao/callback",
+        "function": {
+          "functionId": "kakaoOAuthCallback",
+          "region": "asia-northeast3"
+        }
+      },
+      {
+        "source": "/auth/naver/start",
+        "function": {
+          "functionId": "naverOAuthStart",
+          "region": "asia-northeast3"
+        }
+      },
+      {
+        "source": "/auth/naver/callback",
+        "function": {
+          "functionId": "naverOAuthCallback",
           "region": "asia-northeast3"
         }
       },

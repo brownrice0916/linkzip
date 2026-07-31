@@ -21,6 +21,9 @@ export interface PaymentOrderResult {
   id?: string;
   orderNumber: string;
   amount: number;
+  quantity?: number;
+  productAmount?: number;
+  shippingFee?: number;
   orderName: string;
   paymentProvider: 'toss' | 'bank_transfer';
   bankTransfer?: BankTransferInstructions;
@@ -33,12 +36,16 @@ export interface SalesOrder {
   productId: string;
   productName: string;
   amount: number;
+  quantity?: number;
+  productAmount?: number;
+  shippingFee?: number;
   salesType: 'digital_file' | 'product';
   buyerName: string;
   buyerContact: string;
   buyerEmail: string;
   shippingAddress: string;
   postalCode: string;
+  orderRequest?: string;
   orderNumber: string;
   buyerContactNormalized: string;
   status: 'pending' | 'paid' | 'cancelled';
@@ -59,7 +66,6 @@ export interface DonationRecord {
   nickname: string;
   message: string;
   amount: number;
-  paymentId: string;
   createdAt: { seconds?: number } | null;
 }
 
@@ -79,7 +85,7 @@ export interface TossDonationConfirmation {
 }
 
 const salesOrdersCollection = (ownerUid: string) => collection(db, 'users', ownerUid, 'sales_orders');
-const donationsCollection = (ownerUid: string) => collection(db, 'users', ownerUid, 'donations');
+const publicDonationsCollection = (ownerUid: string) => collection(db, 'users', ownerUid, 'publicDonations');
 
 export async function createSalesOrder(
   ownerUid: string,
@@ -120,13 +126,21 @@ export interface PublicOrderLookupResult {
   downloadError?: string;
 }
 
-export async function lookupSalesOrders(ownerUid: string, lookupValue: string): Promise<PublicOrderLookupResult[]> {
+export async function lookupSalesOrders(
+  ownerUid: string,
+  orderNumber: string,
+  buyerContact: string,
+): Promise<PublicOrderLookupResult[]> {
   const endpoint = import.meta.env.VITE_ORDER_LOOKUP_URL
     || 'https://asia-northeast3-profilelinks-d81ec.cloudfunctions.net/lookupSalesOrder';
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ownerUid, lookupValue: lookupValue.trim() }),
+    body: JSON.stringify({
+      ownerUid,
+      orderNumber: orderNumber.trim(),
+      buyerContact: buyerContact.trim(),
+    }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : '주문 정보를 조회하지 못했습니다.');
@@ -240,7 +254,7 @@ export function subscribeToPublicDonations(
   onDonations: (donations: DonationRecord[]) => void,
   onError: (error: Error) => void,
 ): Unsubscribe {
-  const donationsQuery = query(donationsCollection(ownerUid), where('blockId', '==', blockId));
+  const donationsQuery = query(publicDonationsCollection(ownerUid), where('blockId', '==', blockId));
   return onSnapshot(donationsQuery, (snapshot) => {
     const donations = snapshot.docs.map((item) => ({
       id: item.id,
@@ -253,7 +267,7 @@ export function subscribeToPublicDonations(
 
 export async function manageBankTransferOrder(
   orderNumber: string,
-  action: 'confirm' | 'cancel',
+  action: 'confirm' | 'cancel' | 'restore',
 ): Promise<{ orderNumber: string; status: string; downloadUrl?: string }> {
   const user = auth.currentUser;
   if (!user) throw new Error('로그인이 필요합니다.');

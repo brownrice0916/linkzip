@@ -54,13 +54,13 @@ export const GiphyPicker: React.FC<GiphyPickerProps> = ({ kind, onSelect }) => {
       <label className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 focus-within:border-black"><Search className="h-4 w-4 text-gray-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={kind === 'stickers' ? '스티커 검색' : '움짤 검색'} className="min-w-0 flex-1 border-0 bg-transparent py-3 text-sm font-semibold outline-none" /></label>
       <button type="submit" className="rounded-2xl bg-black px-4 text-xs font-black text-white transition hover:bg-gray-800">검색</button>
     </form>
-    {loading ? <div className="flex h-32 items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin text-gray-400" /></div> : error ? <p className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-600">{error}</p> : <div className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4">
+    {loading ? <div className="flex h-32 items-center justify-center"><LoaderCircle className="h-6 w-6 animate-spin text-gray-400" /></div> : error ? <p className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-600">{error}</p> : <div className="giphy-picker-grid grid max-h-80 grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4">
       {items.map((item) => {
         const url = kind === 'stickers'
-          ? item.images.fixed_width?.webp || item.images.fixed_width_small?.webp || item.images.fixed_width?.url
+          ? item.images.fixed_width?.url || item.images.fixed_width_small?.url || item.images.fixed_width?.webp
           : item.images.downsized_medium?.url || item.images.fixed_width?.webp || item.images.fixed_width?.url;
         if (!url) return null;
-        return <button key={item.id} type="button" onClick={() => onSelect(url)} className="aspect-square overflow-hidden rounded-xl border border-gray-200 bg-[linear-gradient(45deg,#f3f4f6_25%,transparent_25%),linear-gradient(-45deg,#f3f4f6_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f3f4f6_75%),linear-gradient(-45deg,transparent_75%,#f3f4f6_75%)] bg-[length:12px_12px] bg-[position:0_0,0_6px,6px_-6px,-6px_0] transition hover:-translate-y-0.5 hover:border-black hover:shadow-md" title={item.title}><img src={url} alt={item.title || 'GIPHY 이미지'} className="h-full w-full object-contain" loading="lazy" /></button>;
+        return <button key={item.id} type="button" onClick={() => onSelect(url)} className="giphy-picker-item aspect-square overflow-hidden rounded-xl border border-gray-200 bg-[linear-gradient(45deg,#f3f4f6_25%,transparent_25%),linear-gradient(-45deg,#f3f4f6_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f3f4f6_75%),linear-gradient(-45deg,transparent_75%,#f3f4f6_75%)] bg-[length:12px_12px] bg-[position:0_0,0_6px,6px_-6px,-6px_0] transition hover:-translate-y-0.5 hover:border-black hover:shadow-md" title={item.title}><img src={url} alt={item.title || 'GIPHY 이미지'} className="block h-full w-full object-contain" loading="lazy" decoding="async" /></button>;
       })}
     </div>}
     <p className="text-right text-[10px] font-black tracking-wide text-gray-500">POWERED BY GIPHY</p>

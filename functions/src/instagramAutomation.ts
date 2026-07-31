@@ -8,8 +8,17 @@ import {
 export interface InstagramAutomationRule {
   id: string;
   keyword: string;
+  keywords?: string[];
   responseMessage: string;
   targetLinkUrl: string;
+  postIds?: string[];
+  applyToAllPosts?: boolean;
+  targetMode?: "selected" | "next";
+  excludedPostIds?: string[];
+  postThumbnailUrl?: string;
+  postCaption?: string;
+  buttons?: Array<{label: string; url: string}>;
+  commentReplies?: string[];
   isActive: boolean;
 }
 
@@ -20,6 +29,7 @@ export interface InstagramInboundEvent {
   recipientId: string;
   text: string;
   commentId?: string;
+  mediaId?: string;
 }
 
 export interface EncryptedSecret {
@@ -48,6 +58,17 @@ export function normalizeAutomationRules(input: unknown): InstagramAutomationRul
       "Response message",
     );
     const targetLinkUrl = optionalUrl(candidate.targetLinkUrl);
+    const keywords = optionalTextList(candidate.keywords, 20, 100);
+    const postIds = optionalTextList(candidate.postIds, 100, 100);
+    const excludedPostIds = optionalTextList(candidate.excludedPostIds, 100, 100);
+    // Instagram CDN thumbnail URLs contain signed query parameters and can be
+    // substantially longer than a normal destination URL.  Treating them with
+    // the 500 character destination-link limit caused otherwise valid rules to
+    // be rejected when a real post was selected.
+    const postThumbnailUrl = optionalUrl(candidate.postThumbnailUrl, 5000);
+    const postCaption = optionalText(candidate.postCaption, 300);
+    const commentReplies = optionalTextList(candidate.commentReplies, 10, 300);
+    const buttons = optionalButtons(candidate.buttons);
 
     if (ids.has(id)) throw new Error("Rule IDs must be unique");
     ids.add(id);
@@ -55,8 +76,17 @@ export function normalizeAutomationRules(input: unknown): InstagramAutomationRul
     return {
       id,
       keyword,
+      ...(keywords.length ? {keywords} : {}),
       responseMessage,
       targetLinkUrl,
+      ...(postIds.length ? {postIds} : {}),
+      applyToAllPosts: candidate.applyToAllPosts === true,
+      targetMode: candidate.targetMode === "next" ? "next" : "selected",
+      ...(excludedPostIds.length ? {excludedPostIds} : {}),
+      ...(postThumbnailUrl ? {postThumbnailUrl} : {}),
+      ...(postCaption ? {postCaption} : {}),
+      ...(buttons.length ? {buttons} : {}),
+      ...(commentReplies.length ? {commentReplies} : {}),
       isActive: candidate.isActive !== false,
     };
   });
@@ -65,18 +95,29 @@ export function normalizeAutomationRules(input: unknown): InstagramAutomationRul
 export function matchingRule(
   rules: InstagramAutomationRule[],
   text: string,
+  mediaId?: string,
+  sourceKind: InstagramInboundEvent["kind"] = mediaId ? "comment" : "message",
 ): InstagramAutomationRule | undefined {
   const normalizedText = text.normalize("NFKC").toLocaleLowerCase("ko-KR");
   return rules.find((rule) => {
     if (!rule.isActive) return false;
-    const keyword = rule.keyword.normalize("NFKC").toLocaleLowerCase("ko-KR");
-    return keyword === "*" || keyword === "모두" || normalizedText.includes(keyword);
+    if (rule.targetMode === "next") return false;
+    if (sourceKind === "comment" && !rule.applyToAllPosts && rule.postIds?.length && (!mediaId || !rule.postIds.includes(mediaId))) {
+      return false;
+    }
+    const candidates = rule.keywords?.length ? rule.keywords : [rule.keyword];
+    return candidates.some((value) => {
+      const keyword = value.normalize("NFKC").toLocaleLowerCase("ko-KR");
+      return keyword === "*" || keyword === "모두" || normalizedText.includes(keyword);
+    });
   });
 }
 
 export function buildReplyText(rule: InstagramAutomationRule): string {
-  if (!rule.targetLinkUrl) return rule.responseMessage;
-  return `${rule.responseMessage}\n${rule.targetLinkUrl}`;
+  const links = rule.buttons?.length
+    ? rule.buttons.map((button) => `${button.label}: ${button.url}`)
+    : rule.targetLinkUrl ? [rule.targetLinkUrl] : [];
+  return [rule.responseMessage, ...links].filter(Boolean).join("\n");
 }
 
 export function extractInstagramInboundEvents(
@@ -122,6 +163,7 @@ export function extractInstagramInboundEvents(
       const text = stringValue(value?.text);
       const commentId = stringValue(value?.id);
       const senderId = stringValue(from?.id);
+      const mediaId = stringValue(objectValue(value?.media)?.id);
       if (!text || !commentId || !senderId || !entryId) continue;
       result.push({
         kind: "comment",
@@ -130,6 +172,7 @@ export function extractInstagramInboundEvents(
         senderId,
         recipientId: entryId,
         text,
+        ...(mediaId ? {mediaId} : {}),
       });
     }
   }
@@ -188,9 +231,39 @@ function requiredText(value: unknown, maxLength: number, label: string): string 
   return value.trim();
 }
 
-function optionalUrl(value: unknown): string {
+function optionalTextList(
+  value: unknown,
+  maxItems: number,
+  maxLength: number,
+): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, maxItems).flatMap((item) => {
+    if (typeof item !== "string") return [];
+    const text = item.trim();
+    return text && text.length <= maxLength ? [text] : [];
+  });
+}
+
+function optionalText(value: unknown, maxLength: number): string {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, maxLength);
+}
+
+function optionalButtons(value: unknown): Array<{label: string; url: string}> {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 3).flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const candidate = item as Record<string, unknown>;
+    if (typeof candidate.label !== "string") return [];
+    const label = candidate.label.trim().slice(0, 40);
+    const url = optionalUrl(candidate.url);
+    return label && url ? [{label, url}] : [];
+  });
+}
+
+function optionalUrl(value: unknown, maxLength = 500): string {
   if (value === undefined || value === null || value === "") return "";
-  if (typeof value !== "string" || value.length > 500) {
+  if (typeof value !== "string" || value.length > maxLength) {
     throw new Error("Target URL is invalid");
   }
   const url = new URL(value);

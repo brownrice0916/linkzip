@@ -47,6 +47,7 @@ test('applies global button design over individual link overrides', () => {
 
 test('keeps profile content isolated when switching workspaces', () => {
   useStore.setState({
+    membershipPlan: 'standard',
     profile: { name: '첫 프로필', username: 'first-profile', bio: '', avatarUrl: '' },
     profileWorkspaces: [],
     activeProfileId: 'primary',
@@ -58,6 +59,7 @@ test('keeps profile content isolated when switching workspaces', () => {
   });
 
   const secondId = useStore.getState().createProfileWorkspace('두 번째', 'second-profile');
+  assert.ok(secondId);
   useStore.getState().addCustomLink({ id: 'second-link', title: '두 번째 링크', type: 'link' });
   useStore.getState().syncActiveProfileWorkspace();
 
@@ -68,4 +70,44 @@ test('keeps profile content isolated when switching workspaces', () => {
   useStore.getState().switchProfileWorkspace(secondId);
   assert.equal(useStore.getState().profile.username, 'second-profile');
   assert.deepEqual(useStore.getState().customLinks.map((link) => link.id), ['second-link']);
+});
+
+test('adds new root blocks to the bottom of the list', () => {
+  useStore.setState({
+    customLinks: [{ id: 'first-link', title: '첫 링크', type: 'link' }],
+    isDirty: false,
+    undoStack: [],
+    redoStack: [],
+  });
+
+  useStore.getState().addCustomLink({ id: 'second-link', title: '두 번째 링크', type: 'link' });
+
+  assert.deepEqual(useStore.getState().customLinks.map((link) => link.id), ['first-link', 'second-link']);
+});
+
+test('blocks profile creation at the current plan limit inside the store', () => {
+  useStore.setState({
+    membershipPlan: 'standard',
+    profile: { name: '프로필 1', username: 'profile-1', bio: '', avatarUrl: '' },
+    profileWorkspaces: Array.from({ length: 3 }, (_, index) => ({
+      id: index === 0 ? 'primary' : `profile-${index + 1}`,
+      profile: { name: `프로필 ${index + 1}`, username: `profile-${index + 1}`, bio: '', avatarUrl: '' },
+      templateType: 'preset' as const,
+      templateValue: 'minimalist',
+      socialLinks: [],
+      customLinks: [],
+      design: { buttonStyle: 'solid' as const, buttonRoundness: 'full' as const, buttonShadow: 'soft' as const, fontFamily: 'Inter' },
+    })),
+    activeProfileId: 'primary',
+    customLinks: [],
+    socialLinks: [],
+    isDirty: false,
+    undoStack: [],
+    redoStack: [],
+  });
+
+  const createdId = useStore.getState().createProfileWorkspace('프로필 4', 'profile-4');
+
+  assert.equal(createdId, null);
+  assert.equal(useStore.getState().profileWorkspaces.length, 3);
 });

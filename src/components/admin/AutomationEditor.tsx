@@ -68,15 +68,16 @@ const AutomationEditor = () => {
 
   const handleAddDMRule = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKeyword.trim() || !newMessage.trim()) return;
+    if (!newKeyword.trim() || !newMessage.trim() || !newTargetUrl.trim()) {
+      alert("키워드, 메시지, 연결할 주소를 모두 입력해주세요.");
+      return;
+    }
 
     const rule: DMAutomationRule = {
       id: `rule-${Date.now()}`,
       keyword: newKeyword.trim(),
       responseMessage: newMessage.trim(),
-      targetLinkUrl:
-        newTargetUrl.trim() ||
-        `https://linkzip.kr/${state.profile.username || "preview"}`,
+      targetLinkUrl: newTargetUrl.trim(),
       isActive: true,
     };
 
@@ -116,7 +117,7 @@ const AutomationEditor = () => {
       {/* 1. Instagram DM Automation Card */}
       <div
         onClick={() => setIsWizardOpen(true)}
-        className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 hover:border-purple-300 hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+        className="bg-white rounded-3xl p-6 shadow-sm border border-gray-200 hover:border-[#ff5f35] hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
       >
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-gray-950 text-white flex items-center justify-center shrink-0 group-hover:bg-gray-800 transition-colors">
@@ -124,8 +125,8 @@ const AutomationEditor = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
-                무제한 인스타그램 DM 자동화
+              <h3 className="text-base font-bold text-gray-900 group-hover:text-[#ff5f35] transition-colors">
+                인스타그램 DM 자동화
               </h3>
               {state.instagramAccount ? (
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
@@ -333,7 +334,7 @@ const AutomationEditor = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 font-sans">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-2xl border-2 border-[#171714] bg-[#ffcf4a] text-[#171714] flex items-center justify-center font-bold">
                 <Bot className="w-5 h-5" />
               </div>
               <div>
@@ -356,7 +357,7 @@ const AutomationEditor = () => {
                   value={newKeyword}
                   onChange={(e) => setNewKeyword(e.target.value)}
                   placeholder="예: 링크, 이벤트, 할인"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 bg-gray-50 focus:bg-white"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#ff5f35]/25 bg-gray-50 focus:bg-white"
                   required
                 />
               </div>
@@ -370,7 +371,7 @@ const AutomationEditor = () => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="안녕하세요! 문의하신 주소입니다: https://linkzip.kr/username"
                   rows={3}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 bg-gray-50 focus:bg-white resize-none"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#ff5f35]/25 bg-gray-50 focus:bg-white resize-none"
                   required
                 />
               </div>
@@ -384,14 +385,14 @@ const AutomationEditor = () => {
                   value={newTargetUrl}
                   onChange={(e) => setNewTargetUrl(e.target.value)}
                   placeholder="https://linkzip.kr/username"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 bg-gray-50 focus:bg-white"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#ff5f35]/25 bg-gray-50 focus:bg-white"
                 />
               </div>
 
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl text-xs font-bold shadow-md transition cursor-pointer"
+                  className="flex-1 cursor-pointer rounded-2xl border-2 border-[#171714] bg-[#171714] py-3 text-xs font-bold text-white shadow-[3px_3px_0_#ff5f35] transition hover:-translate-y-0.5"
                 >
                   규칙 추가 완료
                 </button>

@@ -6,11 +6,30 @@ const functions = getFunctions(app, 'asia-northeast3');
 
 export interface InstagramConnectionStatus {
   connected: boolean;
+  planLocked?: boolean;
+  plan?: 'basic' | 'standard' | 'premium';
+  monthlyUsage?: number;
+  monthlyLimit?: number | null;
   username?: string;
   name?: string;
   profilePictureUrl?: string;
   tokenExpiresAt?: string | null;
   rules?: DMAutomationRule[];
+  grantedScopes?: string[];
+  subscribedFields?: string[];
+  missingScopes?: string[];
+  missingWebhookFields?: string[];
+  diagnosticError?: string;
+}
+
+export interface InstagramMediaItem {
+  id: string;
+  caption: string;
+  mediaType: string;
+  mediaUrl: string;
+  thumbnailUrl: string;
+  permalink: string;
+  timestamp: string;
 }
 
 export async function startInstagramConnection(): Promise<void> {
@@ -47,4 +66,12 @@ export async function saveInstagramRules(rules: DMAutomationRule[]): Promise<voi
     { saved: boolean; count: number }
   >(functions, 'saveInstagramAutomationRules');
   await callable({ rules });
+}
+
+export async function listInstagramMedia(): Promise<InstagramMediaItem[]> {
+  const callable = httpsCallable<undefined, { media: InstagramMediaItem[] }>(
+    functions,
+    'listInstagramMedia',
+  );
+  return (await callable()).data.media;
 }

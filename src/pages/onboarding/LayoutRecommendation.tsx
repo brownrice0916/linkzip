@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Check, Share2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { readOnboardingSurvey, writeOnboardingSurvey } from '../../domain/onboardingSurvey';
+import { useStore } from '../../store/useStore';
 
 type LayoutPreset = 'simple-list' | 'spotlight' | 'showcase' | 'storefront';
 
@@ -45,7 +46,8 @@ const LayoutCanvas = ({ preset, large = false }: { preset: LayoutPreset; large?:
 
 const LayoutRecommendation = () => {
   const navigate = useNavigate();
-  const survey = readOnboardingSurvey();
+  const user = useStore((state) => state.user);
+  const survey = readOnboardingSurvey(user?.uid);
   const [preview, setPreview] = useState<LayoutPreset | null>(survey?.layoutPreset || null);
 
   const recommendationTitle = useMemo(() => {
@@ -57,7 +59,7 @@ const LayoutRecommendation = () => {
   }, [survey?.goals]);
 
   const applyLayout = (preset: LayoutPreset) => {
-    if (survey) writeOnboardingSurvey({ ...survey, layoutPreset: preset });
+    if (survey) writeOnboardingSurvey(user?.uid, { ...survey, layoutPreset: preset });
     navigate('/onboarding/template');
   };
 

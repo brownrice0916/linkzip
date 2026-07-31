@@ -41,6 +41,9 @@ export async function recordPublicLinkClick(ownerUid: string, linkId: string): P
       date,
       views: increment(0),
       clicks: increment(1),
+      linkClicks: {
+        [linkId]: increment(1),
+      },
     }, { merge: true }),
   ]);
 }
