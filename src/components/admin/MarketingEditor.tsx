@@ -14,6 +14,7 @@ import {
 import { FaInstagram } from 'react-icons/fa';
 import { KakaoAlimtalkWizardModal } from './KakaoAlimtalkWizardModal';
 import { InstagramDmRuleCreateWizardModal } from './InstagramDmRuleCreateWizardModal';
+import { ConfirmActionButton } from '../ui/ConfirmActionButton';
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { entitlementsForPlan } from '../../domain/membershipPlans';
@@ -28,9 +29,10 @@ import {
 // Temporary product switch. Keep connected accounts and saved rules intact
 // while preventing status sync, rule edits, and new OAuth connections.
 // Paused unless explicitly opted in, so a build that forgets about this flag
-// ships the safe state. Set VITE_INSTAGRAM_DM_AUTOMATION=on in .env.local to
-// exercise the flow locally (recording the Meta review screencast, debugging)
-// — .env.local is gitignored, so it cannot reach a deploy.
+// ships the safe state. Set VITE_INSTAGRAM_DM_AUTOMATION=on in
+// .env.development.local to exercise the flow locally (recording the Meta
+// review screencast, debugging). Deliberately not .env.local: Vite loads that
+// one in every mode, production builds included.
 const INSTAGRAM_DM_AUTOMATION_PAUSED =
   import.meta.env.VITE_INSTAGRAM_DM_AUTOMATION !== 'on';
 
@@ -193,14 +195,20 @@ export const MarketingEditor: React.FC = () => {
 
   const handleInstagramDisconnect = async () => {
     if (INSTAGRAM_DM_AUTOMATION_PAUSED) return;
-    if (!confirm('인스타그램 계정 연동을 해제하시겠습니까?')) return;
     setIsInstagramLoading(true);
     setInstagramError('');
     try {
       await disconnectInstagramConnection();
       useStore.setState({ instagramAccount: '' });
     } catch (error) {
-      setInstagramError(error instanceof Error ? error.message : '연동을 해제하지 못했습니다.');
+      // 'internal' is what a callable reports for anything it did not raise as an
+      // HttpsError -- a network failure included -- and showing that bare word
+      // reads like a glitch rather than an answer.
+      setInstagramError(
+        error instanceof Error && error.message !== 'internal'
+          ? error.message
+          : '연동을 해제하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      );
     } finally {
       setIsInstagramLoading(false);
     }
@@ -249,13 +257,13 @@ export const MarketingEditor: React.FC = () => {
 
           <div className="flex items-center gap-2">
             {instagramAccount ? (
-              <button
-                onClick={() => void handleInstagramDisconnect()}
+              <ConfirmActionButton
+                label="연동 해제"
+                question="연동을 해제할까요?"
+                onConfirm={() => void handleInstagramDisconnect()}
                 disabled={isInstagramLoading}
                 className="px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-600 text-xs font-bold rounded-xl transition cursor-pointer"
-              >
-                연동 해제
-              </button>
+              />
             ) : (
               <button
                 onClick={() => void handleInstagramConnect()}
@@ -464,17 +472,12 @@ export const MarketingEditor: React.FC = () => {
 
           <div className="flex items-center gap-2">
             {isKakaoConnected ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('카카오 알림톡 연동을 해제하시겠습니까?')) {
-                    setAlimtalkSettings({ isEnabled: false });
-                  }
-                }}
+              <ConfirmActionButton
+                label="연동 해제"
+                question="연동을 해제할까요?"
+                onConfirm={() => setAlimtalkSettings({ isEnabled: false })}
                 className="px-3.5 py-2 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 text-xs font-bold rounded-xl transition cursor-pointer"
-              >
-                연동 해제
-              </button>
+              />
             ) : (
               <button
                 type="button"
