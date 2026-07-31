@@ -50,11 +50,28 @@ import {
 import { isOnboardingComplete } from "../domain/onboardingSurvey";
 import { startKakaoLogin } from "../services/kakaoAuthService";
 import { startNaverLogin } from "../services/naverAuthService";
-import { LOGIN_INTENT_SESSION_KEY } from "../constants/authFlow";
+import {
+  LOGIN_INTENT_SESSION_KEY,
+  clearParkedAuthError,
+  parkAuthError,
+  takeParkedAuthError,
+} from "../constants/authFlow";
 
 type SignupProvider = 'google' | 'kakao' | 'naver';
 type LoginFeedback = { kind: 'account-not-found' | 'error'; title: string; description: string } | null;
 type AuthPageMode = 'login' | 'signup';
+
+const ACCOUNT_NOT_FOUND_FEEDBACK = {
+  kind: 'account-not-found',
+  title: '가입된 계정이 없어요',
+  description: '처음 오셨다면 회원가입을 진행해주세요. 초대코드가 있으면 바로 시작할 수 있어요.',
+} as const;
+
+const LOGIN_ERROR_FEEDBACK = {
+  kind: 'error',
+  title: '로그인을 완료하지 못했어요',
+  description: '잠시 후 다시 시도하거나 다른 로그인 방법을 이용해주세요.',
+} as const;
 
 interface LandingProps {
   authMode?: AuthPageMode;
@@ -176,10 +193,12 @@ const Landing = ({ authMode }: LandingProps) => {
       if (!resolved) return;
       const destination = isOnboardingComplete(resolved?.data) ? '/admin' : '/onboarding';
       setSignedInDestination(destination);
-      if (authMode || shouldCompleteGoogleNavigation || destination === '/onboarding') {
-        setShouldCompleteGoogleNavigation(false);
-        navigate(destination, { replace: true });
-      }
+      // A signed-in account belongs in its workspace, not on the landing page —
+      // this also covers auth returns that land here without an authMode route.
+      // Logout clears the store user before navigating to '/', so signing out
+      // cannot bounce back here.
+      setShouldCompleteGoogleNavigation(false);
+      navigate(destination, { replace: true });
     }).catch((error) => console.warn('Unable to resolve onboarding state', error));
     return () => { cancelled = true; };
   }, [authMode, isGoogleRedirectPending, navigate, shouldCompleteGoogleNavigation, user?.uid]);
@@ -200,7 +219,7 @@ const Landing = ({ authMode }: LandingProps) => {
   }, [user?.uid]);
 
   useEffect(() => {
-    const handleError = (event: Event) => {
+    const showAccessError = (detail: string) => {
       const isLoginAttempt = sessionStorage.getItem(LOGIN_INTENT_SESSION_KEY) === '1';
       sessionStorage.removeItem(LOGIN_INTENT_SESSION_KEY);
       if (isLoginAttempt) {
@@ -222,14 +241,41 @@ const Landing = ({ authMode }: LandingProps) => {
       // A real access denial signs the Firebase user out before dispatching
       // this event, so logged-out/new users still receive the invite prompt.
       if (auth.currentUser?.uid || useStore.getState().user?.uid) return;
-      setInviteError((event as CustomEvent<string>).detail || '초대코드를 확인해주세요.');
+      setInviteError(detail || '초대코드를 확인해주세요.');
       setIsInviteOpen(true);
       setIsLoginOpen(false);
       setJoiningProvider(null);
     };
+
+    const handleError = (event: Event) => {
+      clearParkedAuthError();
+      showAccessError((event as CustomEvent<string>).detail || '');
+    };
     window.addEventListener(BETA_ACCESS_ERROR_EVENT, handleError);
+
+    // Anything parked while this page was unmounted is replayed here. The
+    // parked verdict carries its own kind, so it no longer depends on the
+    // login-intent flag still being present.
+    const parked = takeParkedAuthError();
+    if (parked) {
+      sessionStorage.removeItem(LOGIN_INTENT_SESSION_KEY);
+      setLoginFeedback({ ...(parked.kind === 'account-not-found' ? ACCOUNT_NOT_FOUND_FEEDBACK : LOGIN_ERROR_FEEDBACK) });
+      setEmailLoginMessage('');
+      setIsInviteOpen(false);
+      setIsLoginOpen(true);
+      setJoiningProvider(null);
+      setLoginProvider(null);
+      authLaunchRef.current = false;
+    }
+
     return () => window.removeEventListener(BETA_ACCESS_ERROR_EVENT, handleError);
   }, []);
+
+  // The page survived long enough to render the message itself, so drop the
+  // parked copy rather than letting it resurface on a later mount.
+  useEffect(() => {
+    if (loginFeedback) clearParkedAuthError();
+  }, [loginFeedback]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -271,11 +317,17 @@ const Landing = ({ authMode }: LandingProps) => {
 
       console.error("Login failed", error);
       sessionStorage.removeItem(LOGIN_INTENT_SESSION_KEY);
+      // The popup resolving already flipped App into its auth bootstrap, which
+      // unmounts this page — so the setState below may be dropped. Park the
+      // verdict too: only this handler still knows a login was in flight, since
+      // the intent flag was cleared just above.
       if (isMissingAccountError(error) || error?.code === 'account-not-found') {
         await firebaseSignOut(auth).catch(() => undefined);
-        setLoginFeedback({ kind: 'account-not-found', title: '가입된 계정이 없어요', description: '처음 오셨다면 회원가입을 진행해주세요. 초대코드가 있으면 바로 시작할 수 있어요.' });
+        parkAuthError({ kind: 'account-not-found' });
+        setLoginFeedback({ ...ACCOUNT_NOT_FOUND_FEEDBACK });
       } else {
-        setLoginFeedback({ kind: 'error', title: '로그인을 완료하지 못했어요', description: '잠시 후 다시 시도하거나 다른 로그인 방법을 이용해주세요.' });
+        parkAuthError({ kind: 'error' });
+        setLoginFeedback({ ...LOGIN_ERROR_FEEDBACK });
       }
       setIsLoginOpen(true);
       authLaunchRef.current = false;

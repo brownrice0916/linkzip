@@ -14,6 +14,7 @@ import {
   checkBetaAccess,
   redeemBetaInvite,
 } from "./services/betaAccessService";
+import { LOGIN_INTENT_SESSION_KEY, parkAuthError } from "./constants/authFlow";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const OnboardingFlow = lazy(() => import("./pages/onboarding/OnboardingFlow"));
@@ -217,6 +218,15 @@ function App() {
           } else {
             await signOut(auth).catch(() => undefined);
           }
+          // Landing is unmounted while `loading` gates the router, so the event
+          // below can land with no listener. Park the reason so Landing can
+          // replay it on mount instead of returning the user to a blank screen.
+          // A sign-in handler that already parked a more precise reason wins:
+          // it knew this was a login attempt before its intent flag was cleared.
+          parkAuthError({
+            kind: sessionStorage.getItem(LOGIN_INTENT_SESSION_KEY) === '1' ? 'account-not-found' : 'error',
+            detail: message,
+          }, { keepExisting: true });
           window.dispatchEvent(new CustomEvent(BETA_ACCESS_ERROR_EVENT, { detail: message }));
           setLoading(false);
           return;
