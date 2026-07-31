@@ -214,13 +214,23 @@ export async function saveUserProfilesData(
         publicProfileId,
         updatedAt: new Date().toISOString(),
       });
+      // planPaused and forceWatermark are plan enforcement the server owns: the
+      // rules reject them outright on create and only allow an update that
+      // leaves them untouched. This write is not a merge, so carry the stored
+      // values through rather than restating them from the local plan — a new
+      // profile gets them from the publicProfiles create trigger instead.
+      const planEnforcement = existingPublicProfile
+        ? {
+          ...(existingPublicProfile.planPaused === true ? {planPaused: true} : {}),
+          ...(existingPublicProfile.forceWatermark === true ? {forceWatermark: true} : {}),
+        }
+        : {};
       transaction.set(
         doc(db, 'publicProfiles', publicProfileId),
         {
           ...toPublicProfile(workspaceToDocumentData(workspace), workspace.profile.username, uid),
-          ...(existingPublicProfile?.planPaused === true ? {planPaused: true} : {}),
+          ...planEnforcement,
           membershipPlan: activePlan,
-          forceWatermark: activePlan === 'basic',
         },
       );
     });

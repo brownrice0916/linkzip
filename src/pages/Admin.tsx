@@ -733,7 +733,7 @@ const Admin = () => {
         </div>
         <div className="admin-preview-stack flex flex-col items-center justify-center gap-3">
           {/* Large live phone preview */}
-          <div data-map-popup-container className="admin-preview-device relative flex max-w-[390px] flex-col overflow-hidden rounded-[3rem] border-[8px] border-[#D9DDE4] bg-white shadow-[0_22px_58px_rgba(15,23,42,0.18)]" style={{ height: 'min(780px, calc(100vh - 150px))', aspectRatio: '1 / 2' }}>
+          <div data-map-popup-container className="admin-preview-device relative flex max-w-[390px] flex-col overflow-hidden rounded-[3rem] border-[8px] border-[#D9DDE4] bg-white shadow-[0_22px_58px_rgba(15,23,42,0.18)]" style={{ height: 'clamp(560px, calc(100vh - 150px), 780px)' }}>
             <div className="h-full w-full overflow-y-auto scrollbar-none">
               <LinkTreePreview
                 stickerEditable={activeTab === 'appearance'}

@@ -273,7 +273,15 @@ const OnboardingFlow = () => {
           <div className="hidden items-center gap-2 sm:flex">
             {stepLabels.map((label, index) => <div key={label} className="flex items-center gap-2"><span className={clsx('flex h-7 w-7 items-center justify-center rounded-full text-xs font-black', index + 1 <= step ? 'bg-black text-white' : 'bg-white text-gray-400')}>{index + 1 < step ? <Check className="h-3.5 w-3.5" /> : index + 1}</span><span className={clsx('text-xs font-bold', index + 1 === step ? 'text-black' : 'text-gray-400')}>{label}</span>{index < stepLabels.length - 1 && <span className="mx-1 h-px w-5 bg-gray-300" />}</div>)}
           </div>
-          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-gray-500 shadow-sm sm:hidden">{step} / 5</span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-gray-500 shadow-sm sm:hidden">{step} / 5</span>
+            {/* 온보딩을 마치기 전에도 계정을 관리할 수 있도록 설정 페이지로 나가는 통로를 둔다. */}
+            <button type="button" onClick={() => navigate('/admin/settings')} aria-label="마이 페이지" title="마이 페이지" className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white text-gray-500 shadow-sm transition hover:-translate-y-0.5 hover:text-black hover:shadow-md">
+              {profile.avatarUrl || user?.photoURL
+                ? <img src={profile.avatarUrl || user?.photoURL || ''} alt="" className="h-full w-full object-cover" />
+                : <UserRound className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
         <div className="h-1 bg-gray-200"><div className="h-full bg-black transition-all duration-500" style={{ width: `${step * 20}%` }} /></div>
       </header>
