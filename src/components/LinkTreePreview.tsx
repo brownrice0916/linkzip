@@ -249,10 +249,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     const previousPreviewOverflow = previewScroller?.style.overflow;
     const previousPreviewTouchAction = previewScroller?.style.touchAction;
 
-    if (isPublic) {
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-    } else if (previewScroller) {
+    if (!isPublic && previewScroller) {
       previewScroller.style.overflow = 'hidden';
       previewScroller.style.touchAction = 'none';
     }

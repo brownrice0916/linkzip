@@ -137,7 +137,7 @@ const PublicProfile = () => {
   const outerBg = templateValue === 'minimalist' ? '#b6aba0' : '#0f172a';
   return (
     <div 
-      className="min-h-screen w-full relative sm:py-8 overflow-y-auto"
+      className="min-h-screen w-full relative sm:py-8"
       style={{ backgroundColor: templateType === 'color' ? '#b6aba0' : outerBg }}
     >
       <LinkTreePreview 
