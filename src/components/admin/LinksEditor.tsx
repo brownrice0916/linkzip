@@ -223,6 +223,7 @@ const LinksEditor = () => {
   const [isQuickProfileOpen, setIsQuickProfileOpen] = useState(false);
   const [quickProfileName, setQuickProfileName] = useState("");
   const [isQuickAvatarUploading, setIsQuickAvatarUploading] = useState(false);
+  const [isQuickAvatarRemoveArmed, setIsQuickAvatarRemoveArmed] = useState(false);
   const quickAvatarInputRef = useRef<HTMLInputElement | null>(null);
   const [quickAvatarCrop, setQuickAvatarCrop] = useState<{ src: string; fileName: string } | null>(null);
   const [isStoreGuideOpen, setIsStoreGuideOpen] = useState(false);
@@ -277,6 +278,13 @@ const LinksEditor = () => {
     } finally {
       setIsQuickAvatarUploading(false);
     }
+  };
+
+  // Same as the profile tab: dropping the URL is enough, because saving cleans
+  // up profile images nothing references any more.
+  const handleQuickAvatarRemove = () => {
+    const latestProfile = useStore.getState().profile;
+    setProfile({ ...latestProfile, avatarUrl: '' });
   };
 
   const handleStoreEntry = () => {
@@ -3195,19 +3203,59 @@ const LinksEditor = () => {
       <div className="admin-link-profile space-y-4 py-1">
         <div className="grid grid-cols-[minmax(0,1fr)_52px] gap-2 sm:grid-cols-2 sm:gap-3">
         <div className="flex min-w-0 items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white p-3 shadow-xs">
-          <button
-            type="button"
-            onClick={() => quickAvatarInputRef.current?.click()}
-            disabled={isQuickAvatarUploading}
-            className="group relative flex shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
-            aria-label={isKo ? "프로필 이미지 변경" : "Change profile image"}
-          >
-            <span className="admin-link-profile-avatar relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 shadow-xs">
-              {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar" className="h-full w-full rounded-full object-cover" /> : <span className="text-2xl">👤</span>}
-              <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100"><Pencil className="h-5 w-5" /></span>
-            </span>
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-black text-white"><Pencil className="h-2.5 w-2.5" /></span>
-          </button>
+          {/* The remove control has to live outside the change button -- a button
+              cannot be nested inside another button. */}
+          <div className="relative flex shrink-0">
+            <button
+              type="button"
+              onClick={() => quickAvatarInputRef.current?.click()}
+              disabled={isQuickAvatarUploading}
+              className="group relative flex shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+              aria-label={isKo ? "프로필 이미지 변경" : "Change profile image"}
+            >
+              <span className="admin-link-profile-avatar relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 shadow-xs">
+                {profile.avatarUrl && <img src={profile.avatarUrl} alt="Avatar" className="h-full w-full rounded-full object-cover" />}
+                <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100"><Pencil className="h-5 w-5" /></span>
+              </span>
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-black text-white"><Pencil className="h-2.5 w-2.5" /></span>
+            </button>
+            {profile.avatarUrl && !isQuickAvatarRemoveArmed && (
+              <button
+                type="button"
+                onClick={() => setIsQuickAvatarRemoveArmed(true)}
+                disabled={isQuickAvatarUploading}
+                className="absolute -right-0.5 -top-0.5 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-gray-500 text-white shadow-xs transition hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1 disabled:cursor-wait disabled:opacity-60"
+                aria-label={isKo ? "프로필 이미지 삭제" : "Remove profile image"}
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
+
+            {/* Confirmed in the page, not via window.confirm: in-app webviews
+                suppress that dialog and the click would silently do nothing. */}
+            {isQuickAvatarRemoveArmed && (
+              <div className="absolute left-0 top-[calc(100%+6px)] z-30 flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-red-50 px-2.5 py-1.5 shadow-md">
+                <span className="text-[11px] font-bold text-red-700">{isKo ? "정말 삭제할까요?" : "Remove this image?"}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsQuickAvatarRemoveArmed(false);
+                    handleQuickAvatarRemove();
+                  }}
+                  className="cursor-pointer rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-black text-white transition hover:bg-red-700"
+                >
+                  {isKo ? "삭제" : "Remove"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAvatarRemoveArmed(false)}
+                  className="cursor-pointer rounded-lg px-2 py-1 text-[11px] font-bold text-gray-500 transition hover:text-gray-800"
+                >
+                  {isKo ? "취소" : "Cancel"}
+                </button>
+              </div>
+            )}
+          </div>
           <input ref={quickAvatarInputRef} type="file" accept="image/*" onChange={handleQuickAvatarSelect} className="sr-only" />
 
           {isQuickProfileOpen ? (

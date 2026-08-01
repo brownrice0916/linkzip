@@ -31,7 +31,7 @@ import { t } from "../lib/i18n";
 import { saveUserProfilesData } from "../services/userService";
 import { deleteOwnedProfileImage } from "../services/storageService";
 import AdminProfilesHome from "../components/admin/AdminProfilesHome";
-import { entitlementsForPlan, isAdvancedTheme } from "../domain/membershipPlans";
+import { entitlementsForPlan, isAdvancedProfileLayout, isAdvancedTheme } from "../domain/membershipPlans";
 import { isPremiumDesignFont } from "../domain/designFonts";
 import { requestUpgradePrompt } from "../components/UpgradePromptHost";
 
@@ -176,7 +176,7 @@ const Admin = () => {
   };
 
   const getLockedDesignFeatures = () => {
-    if (activeTab !== 'appearance' || !state.isDirty) return [];
+    if ((activeTab !== 'appearance' && activeTab !== 'profile') || !state.isDirty) return [];
     const currentEntitlements = entitlementsForPlan(state.membershipPlan);
     const savedDesign = state.savedSnapshot;
     const lockedAdvancedTheme = !currentEntitlements.canUseAdvancedDesign
@@ -188,6 +188,9 @@ const Admin = () => {
     const lockedTitleFont = !currentEntitlements.canUseAdvancedDesign
       && isPremiumDesignFont(state.titleFontFamily)
       && state.titleFontFamily !== savedDesign?.titleFontFamily;
+    const lockedProfileLayout = !currentEntitlements.canUseAdvancedDesign
+      && isAdvancedProfileLayout(state.profile?.profileLayout)
+      && state.profile?.profileLayout !== savedDesign?.profile?.profileLayout;
     const lockedBackgroundImage = !currentEntitlements.canUseAdvancedDesign
       && Boolean(state.backgroundImageUrl)
       && state.backgroundImageUrl !== savedDesign?.backgroundImageUrl;
@@ -202,6 +205,7 @@ const Admin = () => {
 
     return [
       lockedAdvancedTheme ? '고급 테마' : '',
+      lockedProfileLayout ? '히어로·배너 레이아웃' : '',
       lockedPageFont || lockedTitleFont ? '고급 글꼴' : '',
       lockedBackgroundImage ? '직접 업로드한 배경 이미지' : '',
       lockedAnimatedSticker ? '움직이는 스티커' : '',

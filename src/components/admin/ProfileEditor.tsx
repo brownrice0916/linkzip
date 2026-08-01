@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
-import { User, FileText, UploadCloud, Image as ImageIcon, Type, Palette, Plus, Check } from 'lucide-react';
+import { FileText, UploadCloud, Image as ImageIcon, Type, Palette, Plus, Check, X, Zap } from 'lucide-react';
 import { uploadPublicImage } from '../../services/storageService';
 import clsx from 'clsx';
+import { entitlementsForPlan, isAdvancedProfileLayout } from '../../domain/membershipPlans';
 import { GiphyPicker } from './GiphyPicker';
 import { ColorPickerPopover } from './ColorPickerPopover';
 
@@ -24,10 +25,12 @@ const titleColors = [
 ];
 
 const ProfileEditor = () => {
-  const { profile, setProfile, user, language } = useStore();
+  const { profile, setProfile, user, language, membershipPlan } = useStore();
   const isKo = language === 'ko';
+  const entitlements = entitlementsForPlan(membershipPlan);
   const [uploadingField, setUploadingField] = useState<'avatar' | 'banner' | 'logo' | null>(null);
   const [showBannerGifPicker, setShowBannerGifPicker] = useState(false);
+  const [isAvatarRemoveArmed, setIsAvatarRemoveArmed] = useState(false);
 
   const activeLayout = profile.profileLayout || 'classic';
   const activeTitleStyle = profile.titleStyle || 'text';
@@ -35,6 +38,12 @@ const ProfileEditor = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProfile({ ...profile, [name]: value });
+  };
+
+  // Clearing the URL is the whole job -- the manual save already removes any
+  // profile image no workspace still points at, so the stored file goes with it.
+  const handleRemoveImage = (field: 'avatarUrl' | 'bannerUrl' | 'logoUrl') => {
+    setProfile({ ...profile, [field]: '' });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatarUrl' | 'bannerUrl' | 'logoUrl') => {
@@ -70,10 +79,14 @@ const ProfileEditor = () => {
           <div className="grid grid-cols-3 gap-3">
             {layouts.map((l) => {
               const isSelected = activeLayout === l.id;
-              const hasBadge = l.id !== 'classic';
+              // The badge marks what this plan cannot have, so it is pointless
+              // on a plan that already includes every layout.
+              const isLocked = !entitlements.canUseAdvancedDesign && isAdvancedProfileLayout(l.id);
               return (
                 <button
                   key={l.id}
+                  // A locked layout still applies, so it can be previewed. The
+                  // upgrade prompt comes at save time, same as advanced themes.
                   onClick={() => setProfile({ ...profile, profileLayout: l.id })}
                   className={clsx(
                     "flex flex-col items-center justify-between p-2.5 rounded-2xl border-2 transition-all text-center relative overflow-hidden bg-white cursor-pointer",
@@ -82,31 +95,48 @@ const ProfileEditor = () => {
                 >
                   {/* Visual Layout Mockup Icon */}
                   <div className="w-full h-24 bg-[#F7F7F5] rounded-xl flex items-center justify-center relative overflow-hidden p-2">
-                    {hasBadge && (
-                      <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-stone-700 text-white rounded-full flex items-center justify-center text-[10px] font-bold z-20 shadow-xs">
-                        ⚡
-                      </div>
+                    {isLocked && (
+                      <span
+                        className="design-premium-badge absolute right-1.5 top-1.5 z-20"
+                        aria-label={isKo ? '유료 레이아웃' : 'Premium layout'}
+                      >
+                        <Zap aria-hidden="true" />
+                      </span>
                     )}
 
                     {l.id === 'classic' && (
-                      <div className="w-11 h-11 rounded-full bg-rose-500 shadow-xs flex items-center justify-center text-white text-xs font-bold">
-                        {profile.avatarUrl ? (
+                      // Rose only stands in for a missing photo. Once there is
+                      // one, back it with the same faint grey the real layout
+                      // uses, so a transparent PNG does not read as red here
+                      // and grey on the page.
+                      <div className={clsx(
+                        "w-11 h-11 rounded-full shadow-xs flex items-center justify-center overflow-hidden",
+                        profile.avatarUrl ? "bg-black/5" : "bg-rose-500",
+                      )}>
+                        {profile.avatarUrl && (
                           <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-                        ) : (
-                          '👤'
                         )}
                       </div>
                     )}
 
                     {l.id === 'hero' && (
-                      <div className="w-full h-full rounded-xl bg-gradient-to-b from-rose-500 via-rose-400 to-transparent shadow-xs flex flex-col items-center justify-start pt-2 overflow-hidden">
-                        <div className="w-9 h-9 rounded-full bg-white/20 border border-white/40 overflow-hidden flex items-center justify-center">
-                          {profile.avatarUrl ? (
-                            <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                          ) : (
-                            '📸'
-                          )}
-                        </div>
+                      // Hero puts the photo across the full width and fades it
+                      // into the background -- there is no avatar circle, so
+                      // drawing one here misrepresented the layout.
+                      <div className="w-full h-full rounded-xl overflow-hidden shadow-xs">
+                        {profile.avatarUrl ? (
+                          <img
+                            src={profile.avatarUrl}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                            style={{
+                              WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 98%)',
+                              maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 98%)',
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-b from-rose-500 via-rose-400 to-transparent" />
+                        )}
                       </div>
                     )}
 
@@ -114,7 +144,7 @@ const ProfileEditor = () => {
                       <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden rounded-lg">
                         <div className="w-full h-12 bg-rose-500 absolute top-0" />
                         <div className="w-9 h-9 rounded-full bg-white z-10 border-2 border-white/60 shadow-sm overflow-hidden mt-4">
-                          {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-amber-200" />}
+                          {profile.avatarUrl && <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />}
                         </div>
                       </div>
                     )}
@@ -134,22 +164,65 @@ const ProfileEditor = () => {
           <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8">
             <h3 className="text-sm font-bold text-gray-900">{isKo ? '프로필 이미지' : 'Profile image'}</h3>
 
-            <div className="relative ml-auto w-16 h-16 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
-              {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover group-hover:opacity-60 transition-opacity" />
-              ) : (
-                <User className="w-6 h-6 text-gray-400" />
-              )}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity">
-                <Plus className="w-6 h-6 text-white" />
+            <div className="ml-auto relative w-16 h-16">
+              <div className="relative w-16 h-16 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-gray-400 transition-colors">
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover group-hover:opacity-60 transition-opacity" />
+                ) : (
+                  <Plus className="w-6 h-6 text-gray-400" />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity">
+                  <Plus className="w-6 h-6 text-white" />
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileUpload(e, 'avatarUrl')}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  disabled={uploadingField === 'avatar'}
+                />
               </div>
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={(e) => handleFileUpload(e, 'avatarUrl')}
-                className="absolute inset-0 opacity-0 cursor-pointer" 
-                disabled={uploadingField === 'avatar'}
-              />
+
+              {/* Above the file input, which covers the box edge to edge -- a
+                  lower stacking order here would just open the picker. */}
+              {profile.avatarUrl && !isAvatarRemoveArmed && (
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarRemoveArmed(true)}
+                  className="absolute -top-1.5 -right-1.5 z-20 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-gray-500 text-white shadow-xs transition hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1"
+                  aria-label={isKo ? '프로필 이미지 삭제' : 'Remove profile image'}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+
+              {/* Asked in the page rather than through window.confirm, which
+                  in-app webviews suppress -- a suppressed dialog reads as a
+                  dead button. Same reasoning as ConfirmActionButton. */}
+              {isAvatarRemoveArmed && (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-red-50 px-2.5 py-1.5 shadow-md">
+                  <span className="text-[11px] font-bold text-red-700">
+                    {isKo ? '정말 삭제할까요?' : 'Remove this image?'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAvatarRemoveArmed(false);
+                      handleRemoveImage('avatarUrl');
+                    }}
+                    className="cursor-pointer rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-black text-white transition hover:bg-red-700"
+                  >
+                    {isKo ? '삭제' : 'Remove'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAvatarRemoveArmed(false)}
+                    className="cursor-pointer rounded-lg px-2 py-1 text-[11px] font-bold text-gray-500 transition hover:text-gray-800"
+                  >
+                    {isKo ? '취소' : 'Cancel'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           {uploadingField === 'avatar' && <p className="text-xs text-indigo-600 font-medium">{isKo ? '프로필 이미지 업로드 중...' : 'Avatar Uploading...'}</p>}

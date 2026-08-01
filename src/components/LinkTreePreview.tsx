@@ -10,7 +10,7 @@ import {
   type ReservationScheduleItem,
 } from "../store/useStore";
 import { STOREFRONT_AVAILABLE } from "../config/featureFlags";
-import { User, EllipsisVertical, Link2, X, Mail, Copy, Check, Share2, Bell, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, FileDown, MapPin, HandHeart, MoveDiagonal2, Trash2 } from "lucide-react";
+import { EllipsisVertical, Link2, X, Mail, Copy, Check, Share2, Bell, ExternalLink, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, FileDown, MapPin, HandHeart, MoveDiagonal2, Trash2 } from "lucide-react";
 import { getLinkIcon } from "../lib/icons";
 import { getSocialUrl, normalizeSocialPlatform } from "../lib/social";
 import { DonationVisitorModal } from "./DonationVisitorModal";
@@ -1191,9 +1191,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       decoding="async"
                       className="w-full h-full object-cover"
                     />
-                  ) : (
-                    <User className="w-24 h-24 text-gray-400" />
-                  )}
+                  ) : null}
                 </div>
               </div>
             ) : profile.profileLayout === "banner" ? (
@@ -1210,9 +1208,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     className="w-full h-full bg-black/5 object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-amber-100 flex items-center justify-center text-gray-700">
-                    <User className="w-12 h-12" />
-                  </div>
+                  <div className="w-full h-full bg-black/5" />
                 )}
               </div>
             ) : (
@@ -1230,7 +1226,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                     className="w-full h-full bg-black/5 object-cover"
                   />
                 ) : (
-                  <User className="w-16 h-16 text-gray-700 opacity-80" />
+                  <div className="w-full h-full rounded-full bg-black/5" />
                 )}
               </div>
             )}

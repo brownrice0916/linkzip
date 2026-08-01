@@ -57,6 +57,10 @@ const MB = 1024 * 1024;
 
 export const BASIC_THEME_IDS = ['minimalist', 'neon-dark', 'soft-gradient', 'air', 'blocks', 'bloom'] as const;
 
+/** Layouts that need a paid plan. Classic stays available on every plan. */
+export const isAdvancedProfileLayout = (layout: unknown) =>
+  layout === 'hero' || layout === 'banner';
+
 export const isAdvancedTheme = (templateType: unknown, templateValue: unknown) =>
   templateType === 'preset'
   && typeof templateValue === 'string'
@@ -286,7 +290,7 @@ type EntitlementWorkspace = {
   id?: string;
   templateType?: string;
   templateValue?: string;
-  profile?: { hideWatermark?: boolean };
+  profile?: { hideWatermark?: boolean; profileLayout?: string };
   design?: {
     fontFamily?: string;
     titleFontFamily?: string;
@@ -343,6 +347,11 @@ export const validateWorkspacesForPlan = (
       && isAdvancedTheme(workspace.templateType, workspace.templateValue)
       && (workspace.templateType !== previousWorkspace.templateType || workspace.templateValue !== previousWorkspace.templateValue)) {
       return '고급 테마는 스탠다드 플랜부터 저장할 수 있습니다.';
+    }
+    if (!limits.canUseAdvancedDesign
+      && isAdvancedProfileLayout(workspace.profile?.profileLayout)
+      && workspace.profile?.profileLayout !== previousWorkspace.profile?.profileLayout) {
+      return '히어로·배너 레이아웃은 스탠다드 플랜부터 저장할 수 있습니다.';
     }
     if (!limits.canUseAdvancedDesign) {
       if (workspace.design?.backgroundImageUrl
