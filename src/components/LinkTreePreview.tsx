@@ -342,6 +342,9 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
   const backgroundOpacity = usePresetDefaults ? presetDesign.backgroundOpacity : (designSource.backgroundOpacity ?? store.backgroundOpacity);
   const backgroundImageUrl = props.design ? designSource.backgroundImageUrl : store.backgroundImageUrl;
   const backgroundImageFit = (props.design ? designSource.backgroundImageFit : store.backgroundImageFit) ?? 'cover';
+  // Reader preference, deliberately not part of the theme presets: switching
+  // themes must not silently resize someone's page copy.
+  const textScale = (props.design ? designSource.textScale : store.textScale) ?? 'md';
   const legacySticker = designSource.sticker ?? (props.design ? '' : store.sticker) ?? presetDesign.sticker;
   const configuredStickers = designSource.stickers ?? (props.design ? undefined : store.stickers);
   const pageStickers = Array.isArray(configuredStickers)
@@ -879,19 +882,23 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
     ...(buttonTextColor ? { color: colorWithOpacity(buttonTextColor, buttonTextOpacity ?? 100) } : {}),
   };
 
-  const getSocialIconStyle = (link?: CustomLink): React.CSSProperties => {
-    const style = link?.customStyle;
-    const iconColor = style?.iconColor || link?.buttonTextColor || buttonTextColor || pageTextColor;
+  const getSocialIconStyle = (link?: CustomLink | SocialLink): React.CSSProperties => {
+    const blockLink = link as CustomLink | undefined;
+    const socialLink = link as SocialLink | undefined;
+    const style = blockLink?.customStyle;
+    const iconColor = style?.iconColor || blockLink?.buttonTextColor || buttonTextColor || pageTextColor;
+    // Per-icon fill, chosen in the social link editor. No ring by default --
+    // the icons read as plain glyphs until a background is picked.
+    const fill = style?.iconBackgroundColor || socialLink?.backgroundColor;
+    const fillOpacity = style?.iconBackgroundOpacity ?? socialLink?.backgroundOpacity ?? 100;
 
     return {
-      backgroundColor: 'transparent',
+      backgroundColor: fill ? colorWithOpacity(fill, fillOpacity) : 'transparent',
       color: iconColor
         ? colorWithOpacity(iconColor, style?.iconOpacity ?? buttonTextOpacity ?? 100)
         : 'currentColor',
-      borderColor: 'currentColor',
-      borderStyle: 'solid',
-      borderWidth: '1px',
       borderRadius: '9999px',
+      border: 'none',
       boxShadow: 'none',
     };
   };
@@ -1006,10 +1013,12 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
         data-public-profile={isPublic ? 'true' : undefined}
         className={clsx(
           containerClass,
+          "linkzip-text-scale",
           isPublic
-            ? "rounded-none sm:rounded-[2.5rem] sm:my-10 shadow-xl overflow-hidden max-w-[480px] mx-auto"
+            ? "rounded-none sm:rounded-[2.5rem] sm:my-10 shadow-xl overflow-visible max-w-[480px] mx-auto"
             : ""
         )}
+        data-text-scale={textScale}
         style={containerStyle}
       >
         {pageStickers.map((pageSticker, index) => {
@@ -1323,7 +1332,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                       "w-11 h-11 flex items-center justify-center transition hover:scale-110",
                       textClass
                     )}
-                    style={getSocialIconStyle()}
+                    style={getSocialIconStyle(link)}
                     title={link.platform}
                   >
                     <Icon className="w-7 h-7 object-contain" />
@@ -1615,7 +1624,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                             >
                               {!isNone && (
                                 <div
-                                  className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full"
+                                  className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full"
                                   style={getThemedLinkIconContainerStyle(link)}
                                 >
                                   {isImage && link.icon ? (
@@ -1626,7 +1635,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                                       style={getThumbnailImageStyle(link)}
                                     />
                                   ) : (
-                                    <IconComp className="w-5 h-5" />
+                                    <IconComp className="w-6 h-6" />
                                   )}
                                 </div>
                               )}
@@ -2278,7 +2287,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                 >
                   {!isNone && (
                     <div
-                      className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full"
                       style={getThemedLinkIconContainerStyle(block)}
                     >
                       {isImage && block.icon ? (
@@ -2289,7 +2298,7 @@ const LinkTreePreview: React.FC<LinkTreePreviewProps> = (props) => {
                           style={getThumbnailImageStyle(block)}
                         />
                       ) : (
-                        <IconComp className="w-5 h-5" />
+                        <IconComp className="w-6 h-6" />
                       )}
                     </div>
                   )}
